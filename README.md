@@ -57,14 +57,13 @@ never auto-triggers) that operates the memory with four subcommands:
 
 ### Recommended — via the skill
 
-1. Copy the skill into your agent's skills directory (Claude Code shown):
+1. With `npx skills add`:
 
    ```bash
-   git clone https://github.com/diegoos/agent-memory /tmp/agent-memory
-   cp -R /tmp/agent-memory/skills/agent-memory ~/.claude/skills/agent-memory
+   npx skills add https://github.com/diegoos/agent-memory --skill agent-memory
    ```
 
-2. In your project, run:
+2. Then run:
 
    ```text
    /agent-memory init        # create .agents/memory/ and wire your agent file(s)
