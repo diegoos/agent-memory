@@ -6,10 +6,10 @@ description: >-
   subcommand — `init` (create the memory structure and wire
   AGENTS.md/CLAUDE.md/GEMINI.md), `update` (migrate an existing memory to the
   latest structure without touching project memory), `bootstrap` (analyze the
-  project and populate the memory), `lint` (check the memory for broken
-  links, orphan files, and consistency problems), or `help` (list the commands
-  and how to use them). Never trigger automatically; this skill must be invoked
-  on demand only.
+  project and populate the memory), `lint` (check the memory for broken links,
+  orphan files, and consistency problems), or `help` (list the commands and how
+  to use them). Never trigger automatically; this skill must be invoked on
+  demand only.
 metadata:
   invocation: manual
   version: '0.0.1'
@@ -17,11 +17,9 @@ compatibility: >-
   Requires network access for WebFetch when installing from a remote
   agent-memory repository URL.
 allowed-tools: >-
-  Read Grep Glob WebFetch Task
-  Edit(.agents/memory/**) Write(.agents/memory/**)
-  Edit(AGENTS.md) Edit(CLAUDE.md) Edit(GEMINI.md)
-  Write(AGENTS.md) Write(CLAUDE.md) Write(GEMINI.md)
-  Bash(git:*)
+  Read Grep Glob WebFetch Task Edit(.agents/memory/**) Write(.agents/memory/**)
+  Edit(AGENTS.md) Edit(CLAUDE.md) Edit(GEMINI.md) Write(AGENTS.md)
+  Write(CLAUDE.md) Write(GEMINI.md) Bash(git:*)
 disable-model-invocation: true
 ---
 
@@ -41,17 +39,17 @@ This skill never runs on its own.
 
 Pre-approved via the `allowed-tools` frontmatter — a space-separated,
 host-specific, **experimental** field
-([spec](https://agentskills.io/specification#allowed-tools-field)). Hosts that do
-not support it simply ignore it. Names follow the Agent Skills / Claude Code
+([spec](https://agentskills.io/specification#allowed-tools-field)). Hosts that
+do not support it simply ignore it. Names follow the Agent Skills / Claude Code
 convention; adapt them if your host differs.
 
-| Tool | Used for |
-| ---- | -------- |
-| `Read`, `Grep`, `Glob` | Read-only project analysis (`bootstrap`), lint structural checks, migration diffs (`update`), reading `references/*.md` and a local repo clone. |
-| `WebFetch` | Fetch the skeleton / `UPDATE.md` via raw URLs when `git` is unavailable (network; see `compatibility`). |
-| `Task` | Parallel read-only subagents in `bootstrap`. Optional — fall back to sequential analysis. |
-| `Edit`, `Write` (scoped) | Create/edit files **only** under `.agents/memory/**` and the root agent files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`). |
-| `Bash(git:*)` | `git clone` (install) and `git branch` (lint stale-branch check). |
+| Tool                     | Used for                                                                                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Read`, `Grep`, `Glob`   | Read-only project analysis (`bootstrap`), lint structural checks, migration diffs (`update`), reading `references/*.md` and a local repo clone. |
+| `WebFetch`               | Fetch the skeleton / `UPDATE.md` via raw URLs when `git` is unavailable (network; see `compatibility`).                                         |
+| `Task`                   | Parallel read-only subagents in `bootstrap`. Optional — fall back to sequential analysis.                                                       |
+| `Edit`, `Write` (scoped) | Create/edit files **only** under `.agents/memory/**` and the root agent files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`).                          |
+| `Bash(git:*)`            | `git clone` (install) and `git branch` (lint stale-branch check).                                                                               |
 
 **Deliberately not pre-approved** (the host should still prompt): file deletion
 (`rm`, used only on confirmed `update`/cleanup) and any other shell. This keeps
@@ -60,14 +58,14 @@ the "confirm sensitive changes" rule intact.
 ### Write boundary
 
 Create, edit, or delete **only** under `.agents/memory/**`, plus the root agent
-instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or a host-specific agent
-`*.md`) — and those only to wire the memory stub (`init`). Never touch application
-code, configs, or other docs. Read the rest of the workspace freely.
+instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or a host-specific
+agent `*.md`) — and those only to wire the memory stub (`init`). Never touch
+application code, configs, or other docs. Read the rest of the workspace freely.
 
 ## Repository source
 
-`init` and `update` read the canonical skeleton and migration log from the public
-agent-memory repository:
+`init` and `update` read the canonical skeleton and migration log from the
+public agent-memory repository:
 
 - Repository: <https://github.com/diegoos/agent-memory>
 - Skeleton: `agent-memory/memory/`
@@ -99,25 +97,32 @@ and stop. Do not guess the user's intent.
 
 ## Help
 
-For `/agent-memory help` (and for any empty or unknown invocation), print this
-guide — nothing else:
+For `/agent-memory help` (and for any empty or unknown invocation), output the
+following Markdown exactly — nothing else:
 
-```text
-agent-memory — a local Workspace Memory that keeps AI agents on the same page.
+---
 
-Commands:
-  /agent-memory init        Create .agents/memory/ and wire AGENTS/CLAUDE/GEMINI.
-  /agent-memory bootstrap   Analyze the project and populate the memory.
-  /agent-memory update      Migrate the memory to the latest structure (safe).
-  /agent-memory lint        Check the memory for broken links, orphans, staleness.
-  /agent-memory help        Show this guide.
+**agent-memory** — a local Workspace Memory that keeps AI agents on the same
+page.
 
-Getting started:
-  - New project? Run `init`, then optionally `bootstrap`.
-  - Already set up? Use `lint` to check health and `update` to upgrade.
+**Commands**
 
-Method & conventions: .agents/memory/instructions.md
-```
+| Command                   | Does                                                                       |
+| ------------------------- | -------------------------------------------------------------------------- |
+| `/agent-memory init`      | Create `.agents/memory/` and wire `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`. |
+| `/agent-memory bootstrap` | Analyze the project (up to 3 subagents) and populate the memory.           |
+| `/agent-memory update`    | Migrate the memory to the latest structure — never touches your content.   |
+| `/agent-memory lint`      | Check for broken links, orphan files, stale branches, and consistency.     |
+| `/agent-memory help`      | Show this guide.                                                           |
+
+**Getting started**
+
+- New project? Run `init`, then optionally `bootstrap`.
+- Already set up? Use `lint` to check health and `update` to upgrade.
+
+Method & conventions: `.agents/memory/instructions.md`
+
+---
 
 ## Shared rules (apply to every command)
 
