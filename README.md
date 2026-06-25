@@ -43,7 +43,7 @@ when there is real content. See
 ## The skill
 
 [`/agent-memory`](./skills/agent-memory) is a **manual-only** Agent Skill (it
-never auto-triggers) that operates the memory with four subcommands:
+never auto-triggers) that operates the memory with five subcommands:
 
 | Command                   | Does                                                                             |
 | ------------------------- | -------------------------------------------------------------------------------- |
@@ -51,6 +51,7 @@ never auto-triggers) that operates the memory with four subcommands:
 | `/agent-memory init`      | Create `.agents/memory/` and wire `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`.       |
 | `/agent-memory update`    | Migrate an existing memory to the latest structure, never touching your content. |
 | `/agent-memory bootstrap` | Analyze the project (up to 3 subagents) and populate the memory.                 |
+| `/agent-memory sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state.      |
 | `/agent-memory lint`      | Check for broken links, orphan files, stale per-branch files, and consistency.   |
 
 ## Install
@@ -68,6 +69,7 @@ never auto-triggers) that operates the memory with four subcommands:
    ```text
    /agent-memory init        # create .agents/memory/ and wire your agent file(s)
    /agent-memory bootstrap   # (optional) analyze the project and fill the memory
+   /agent-memory sync        # keep current.md / active-work / log.md / index.md fresh
    ```
 
 The skill pulls the canonical skeleton from this repository, so it stays in
@@ -81,15 +83,20 @@ mkdir -p .agents
 cp -R /tmp/agent-memory/agent-memory/memory .agents/memory
 ```
 
-Then commit `.agents/memory/` and add this stub to your `CLAUDE.md`,
-`AGENTS.md`, or `GEMINI.md` (use `@import` where the tool supports it, e.g.
-Claude Code/Gemini):
+Then commit `.agents/memory/` and add this stub to your `AGENTS.md`,
+`CLAUDE.md`, or `GEMINI.md` (the same stub works in all of them — it lists the
+always-load files and adds `@import`, so harnesses that follow the AGENTS.md
+`@import` convention — Claude Code, Gemini CLI, Codex — auto-load
+`instructions.md`, while plain-Markdown readers still load the memory from the
+explicit list):
 
 ```md
 ## Agent Memory
 
-This project uses Agent Memory (a local Workspace Memory). Before any task, read
-and follow `.agents/memory/instructions.md`.
+This project uses Agent Memory (a local Workspace Memory). Before starting any
+task, open and follow `.agents/memory/instructions.md`, then read
+`.agents/memory/index.md`, `.agents/memory/current.md`, and your branch's
+active-work file (`.agents/memory/active-work/<branch>.md`).
 
 @.agents/memory/instructions.md
 ```

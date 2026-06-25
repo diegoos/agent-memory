@@ -46,6 +46,8 @@ fix only what is safe, and never change user content without confirmation.
 5. **Fix offer.** Offer to fix only safe issues (e.g. remove a dead link, add an
    orphan to `index.md`). Any fix that edits user content (`current.md`,
    `decisions.md`, `domains/*`, …) must be confirmed first — show the diff.
+   For stale `current.md` / active-work / `log.md`, suggest `/agent-memory sync`
+   rather than editing by hand.
 
 ## Notes
 

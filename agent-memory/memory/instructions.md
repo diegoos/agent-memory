@@ -69,7 +69,11 @@ branch merges.
 
 **Flush early:** before the context grows long or is compacted, and before
 ending a session, write the essentials to your active-work file (and `log.md`).
-The next agent must continue from the files, never from chat history.
+The next agent must continue from the files, never from chat history. Run
+`/agent-memory sync` as the executable form of the _During_ / _After_ / _Flush
+early_ steps — it refreshes `current.md`, your branch's active-work file,
+`log.md`, and `index.md` from repo state (`git`) and confirms each change before
+writing.
 
 ## Multi-developer rules
 

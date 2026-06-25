@@ -43,7 +43,9 @@ analyses that run as subagents when the host supports them.
      already-made trade-off is documented in the project.
 
 5. **Report.** List which files were created/filled and which were skipped (and
-   why), so the user can fill the gaps later.
+   why), so the user can fill the gaps later. Tell the user to run
+   `/agent-memory sync` at checkpoints to keep `current.md`, active-work,
+   `log.md`, and `index.md` current.
 
 ## Subagent prompts
 

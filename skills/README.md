@@ -13,6 +13,8 @@ subcommand:
   without touching project memory content.
 - `/agent-memory bootstrap` — analyze the project (up to three subagents) and
   populate the memory.
+- `/agent-memory sync` — refresh `current.md`, the branch's
+  `active-work/<branch>.md`, `log.md`, and `index.md` from repo state.
 - `/agent-memory lint` — check the memory for broken links, orphan files, and
   consistency problems.
 - `/agent-memory help` — list the commands and how to use them.

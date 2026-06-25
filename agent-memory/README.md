@@ -30,11 +30,12 @@ directory, then run:
 ```text
 /agent-memory init        # create .agents/memory/ and wire your agent file(s)
 /agent-memory bootstrap   # (optional) analyze the project and fill the memory
+/agent-memory sync        # keep current.md / active-work / log.md / index.md fresh
 ```
 
 The skill installs from this repository's canonical skeleton
-(`agent-memory/memory/`) and also handles `update` and `lint`. See its
-`SKILL.md` for details.
+(`agent-memory/memory/`) and also handles `sync`, `update`, `lint`, and `help`.
+See its `SKILL.md` for details.
 
 **Manual.** Copy the skeleton and add the stub yourself:
 
@@ -48,18 +49,13 @@ by pasting the stub below into `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, or any
 other agent instructions file. The instructions stay in a single source of truth
 (`.agents/memory/instructions.md`); the stub only points to it.
 
-### Stub for tools that support `@import` (e.g. Claude Code, Gemini CLI)
+### Stub (use in `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or any agent file)
 
-```md
-## Agent Memory
-
-This project uses Agent Memory (a local Workspace Memory). Before any task, read
-and follow `.agents/memory/instructions.md`.
-
-@.agents/memory/instructions.md
-```
-
-### Stub for plain-Markdown tools (e.g. `AGENTS.md`)
+The same stub works everywhere. It spells out the always-load files **and**
+adds `@import`, so harnesses that follow the AGENTS.md `@import` convention
+(Claude Code, Gemini CLI, Codex) get `instructions.md` auto-loaded, while
+plain-Markdown readers (Cursor, plain text) still load the memory from the
+explicit list. Including both is harmless.
 
 ```md
 ## Agent Memory
@@ -68,6 +64,8 @@ This project uses Agent Memory (a local Workspace Memory). Before starting any
 task, open and follow `.agents/memory/instructions.md`, then read
 `.agents/memory/index.md`, `.agents/memory/current.md`, and your branch's
 active-work file (`.agents/memory/active-work/<branch>.md`).
+
+@.agents/memory/instructions.md
 ```
 
 ## What's inside the memory (`.agents/memory/`)
