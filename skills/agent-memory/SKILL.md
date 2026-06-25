@@ -5,7 +5,8 @@ description: >-
   ONLY when the user explicitly runs the `/agent-memory` command with a
   subcommand — `init` (create the memory structure and wire
   AGENTS.md/CLAUDE.md/GEMINI.md), `update` (migrate an existing memory to the
-  latest structure without touching project memory), `bootstrap` (analyze the
+  latest structure without touching project memory, and refresh the
+  `<agent-memory>` block in the root agent files), `bootstrap` (analyze the
   project and populate the memory), `sync` (refresh `current.md`, the branch's
   `active-work/<branch>.md`, `log.md`, and `index.md` from repo state), `lint`
   (check the memory for broken links, orphan files, and consistency problems),
@@ -13,7 +14,7 @@ description: >-
   automatically; this skill must be invoked on demand only.
 metadata:
   invocation: manual
-  version: '0.0.2'
+  version: '0.0.4'
 compatibility: >-
   Requires network access for WebFetch when installing from a remote
   agent-memory repository URL.
@@ -60,8 +61,10 @@ the "confirm sensitive changes" rule intact.
 
 Create, edit, or delete **only** under `.agents/memory/**`, plus the root agent
 instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or a host-specific
-agent `*.md`) — and those only to wire the memory stub (`init`). Never touch
-application code, configs, or other docs. Read the rest of the workspace freely.
+agent `*.md`) — and in those **only the `<agent-memory>` … `</agent-memory>`
+block** (to wire it in `init` and refresh it in `update`). Never touch content
+outside that block, application code, configs, or other docs. Read the rest of
+the workspace freely.
 
 ## Repository source
 
@@ -88,7 +91,7 @@ and follow it exactly:
 | Command     | Does                                                                        | Reference                 |
 | ----------- | --------------------------------------------------------------------------- | ------------------------- |
 | `init`      | Create `.agents/memory/` and wire the agent file(s).                        | `references/init.md`      |
-| `update`    | Migrate an existing memory to the latest structure.                         | `references/update.md`    |
+| `update`    | Migrate the memory; refresh the `<agent-memory>` block in the root agent files. | `references/update.md`    |
 | `bootstrap` | Analyze the project and populate the memory.                                | `references/bootstrap.md` |
 | `sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. | `references/sync.md`      |
 | `lint`      | Check the memory for structural and consistency problems.                   | `references/lint.md`      |
@@ -113,7 +116,7 @@ page.
 | ------------------------- | --------------------------------------------------------------------------- |
 | `/agent-memory init`      | Create `.agents/memory/` and wire `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`.  |
 | `/agent-memory bootstrap` | Analyze the project (up to 3 subagents) and populate the memory.            |
-| `/agent-memory update`    | Migrate the memory to the latest structure — never touches your content.    |
+| `/agent-memory update`    | Migrate the memory and refresh the `<agent-memory>` block — never touches your content outside the block. |
 | `/agent-memory sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. |
 | `/agent-memory lint`      | Check for broken links, orphan files, stale branches, and consistency.      |
 | `/agent-memory help`      | Show this guide.                                                            |

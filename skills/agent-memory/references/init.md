@@ -20,34 +20,22 @@ memory.
    `agent-memory/UPDATE.md`, e.g. `0.0.1`.
 
 4. **Wire the agent file(s).** Detect which of `AGENTS.md`, `CLAUDE.md`,
-   `GEMINI.md` exist at the project root and add the memory stub to **each** one
-   that exists. The stub is the same for all of them — it points to
+   `GEMINI.md` exist at the project root and add the memory block to **each**
+   one that exists. Use the **canonical block** defined in
+   [`references/agent-block.md`](./agent-block.md) — copy it verbatim (the
+   `<agent-memory>` … `</agent-memory>` delimiters and everything between them).
+   The delimiters let `/agent-memory update` later find and refresh **only**
+   that block, without touching the rest of the file; the block points to
    `.agents/memory/instructions.md` via `@import` **and** spells out the
    always-load files, so harnesses that ignore `@import` (or only read
-   `AGENTS.md` as plain Markdown) still load the memory:
+   `AGENTS.md` as plain Markdown) still load the memory.
 
-   ```md
-   ## Agent Memory
-
-   This project uses Agent Memory (a local Workspace Memory). Before starting
-   any task, open and follow `.agents/memory/instructions.md`, then read
-   `.agents/memory/index.md`, `.agents/memory/current.md`, and your branch's
-   file in `.agents/memory/active-work/`.
-
-   @.agents/memory/instructions.md
-   ```
-
-   The `@import` line is honored by Claude Code, Gemini CLI, Codex, and any
-   harness that follows the AGENTS.md `@import` convention; the explicit read
-   list above it covers harnesses that treat `AGENTS.md` as plain Markdown
-   (Cursor, plain-text readers). Including both is intentional and harmless — a
-   harness that loads `@import` simply gets `instructions.md` once.
-
-   **Idempotency:** if a file already contains an `## Agent Memory` section,
-   skip it — do not add a second one.
+   **Idempotency:** if a file already contains a `<agent-memory>` block, skip it
+   — do not add a second one. (A legacy `## Agent Memory` section without the
+   delimiters is migrated, not duplicated — see `references/update.md`.)
 
 5. **No agent file exists?** Create `AGENTS.md` at the project root with the
-   plain stub above.
+   canonical block above.
 
 6. **Report.** List what was created and which agent file(s) were wired.
 

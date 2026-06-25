@@ -32,6 +32,9 @@ Format:
 - sensitive: `instructions.md` — the _Workflow_ section now names
   `/agent-memory sync` as the executable trigger for the _During_ / _After_ /
   _Flush early_ steps. `update` must show the diff and confirm.
+
+## 0.0.3
+
 - safe: unify the agent-file stub in `references/init.md` — `AGENTS.md` now
   gets the same stub as `CLAUDE.md` / `GEMINI.md`, with both the explicit
   always-load list and `@.agents/memory/instructions.md`. Covers harnesses that
@@ -39,3 +42,22 @@ Format:
   that read it as plain Markdown (Cursor).
 - safe: `agent-memory/README.md` and root `README.md` — the documented stub is
   now the single unified one.
+
+## 0.0.4
+
+- safe: wrap the memory block in `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` with
+  `<agent-memory>` … `</agent-memory>` delimiters (`references/init.md`), so
+  the block is machine-identifiable.
+- sensitive: `references/update.md` — `update` now refreshes **only** the
+  `<agent-memory>` block in the root agent files (replacing it with the
+  canonical block), and migrates legacy `## Agent Memory` sections into the
+  delimited block. Never touches content outside the delimiters. Show the diff
+  and confirm before applying.
+- safe: `agent-memory/README.md` and root `README.md` — the documented stub is
+  now the delimited block.
+- safe: extract the canonical `<agent-memory>` block into a new reference,
+  `references/agent-block.md`, as the single source of truth.
+- safe: `references/init.md` and `references/update.md` now reference
+  `agent-block.md` instead of inlining the block text. `update` compares the
+  installed block against the canonical block byte-for-byte and skips when
+  identical.

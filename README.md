@@ -84,13 +84,15 @@ cp -R /tmp/agent-memory/agent-memory/memory .agents/memory
 ```
 
 Then commit `.agents/memory/` and add this stub to your `AGENTS.md`,
-`CLAUDE.md`, or `GEMINI.md` (the same stub works in all of them — it lists the
-always-load files and adds `@import`, so harnesses that follow the AGENTS.md
-`@import` convention — Claude Code, Gemini CLI, Codex — auto-load
-`instructions.md`, while plain-Markdown readers still load the memory from the
-explicit list):
+`CLAUDE.md`, or `GEMINI.md` (the same stub works in all of them — it is wrapped
+in `<agent-memory>` … `</agent-memory>` delimiters so `/agent-memory update`
+can refresh **only** that block later; it lists the always-load files and adds
+`@import`, so harnesses that follow the AGENTS.md `@import` convention — Claude
+Code, Gemini CLI, Codex — auto-load `instructions.md`, while plain-Markdown
+readers still load the memory from the explicit list):
 
 ```md
+<agent-memory>
 ## Agent Memory
 
 This project uses Agent Memory (a local Workspace Memory). Before starting any
@@ -99,6 +101,7 @@ task, open and follow `.agents/memory/instructions.md`, then read
 active-work file (`.agents/memory/active-work/<branch>.md`).
 
 @.agents/memory/instructions.md
+</agent-memory>
 ```
 
 ## Repository layout

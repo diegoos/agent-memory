@@ -51,13 +51,16 @@ other agent instructions file. The instructions stay in a single source of truth
 
 ### Stub (use in `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or any agent file)
 
-The same stub works everywhere. It spells out the always-load files **and**
-adds `@import`, so harnesses that follow the AGENTS.md `@import` convention
-(Claude Code, Gemini CLI, Codex) get `instructions.md` auto-loaded, while
-plain-Markdown readers (Cursor, plain text) still load the memory from the
-explicit list. Including both is harmless.
+The same stub works everywhere. It is wrapped in `<agent-memory>` …
+`</agent-memory>` delimiters so `/agent-memory update` can find and refresh
+**only** that block later, without touching the rest of the file. It spells out
+the always-load files **and** adds `@import`, so harnesses that follow the
+AGENTS.md `@import` convention (Claude Code, Gemini CLI, Codex) get
+`instructions.md` auto-loaded, while plain-Markdown readers (Cursor, plain text)
+still load the memory from the explicit list. Including both is harmless.
 
 ```md
+<agent-memory>
 ## Agent Memory
 
 This project uses Agent Memory (a local Workspace Memory). Before starting any
@@ -66,6 +69,7 @@ task, open and follow `.agents/memory/instructions.md`, then read
 active-work file (`.agents/memory/active-work/<branch>.md`).
 
 @.agents/memory/instructions.md
+</agent-memory>
 ```
 
 ## What's inside the memory (`.agents/memory/`)
