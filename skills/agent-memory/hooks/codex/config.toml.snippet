@@ -1,0 +1,21 @@
+# Codex hooks can live in a sidecar hooks.json (see hooks.json) OR inline in
+# config.toml under [hooks]. Inline form (project: .codex/config.toml):
+#
+#   [features]
+#   hooks = true   # enabled by default
+#
+#   [[hooks.PreCompact]]
+#   matcher = "auto|manual"
+#     [[hooks.PreCompact.hooks]]
+#     type    = "command"
+#     command = ["sh", "-c", "AGENT_MEMORY_HOST=codex AGENT_MEMORY_EVENT=precompact .codex/hooks/agent-memory-flush.sh"]
+#     timeout = 5
+#
+#   [[hooks.Stop]]
+#     [[hooks.Stop.hooks]]
+#     type    = "command"
+#     command = ["sh", "-c", "AGENT_MEMORY_HOST=codex AGENT_MEMORY_EVENT=stop .codex/hooks/agent-memory-flush.sh"]
+#     timeout = 5
+#
+# After adding project hooks, run `/hooks` in the Codex TUI to trust them.
+# Codex hooks are disabled on Windows.

@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PreCompact": [
+      {
+        "matcher": "auto|manual",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_MEMORY_HOST=claude AGENT_MEMORY_EVENT=precompact .claude/hooks/agent-memory-flush.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_MEMORY_HOST=claude AGENT_MEMORY_EVENT=stop .claude/hooks/agent-memory-flush.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

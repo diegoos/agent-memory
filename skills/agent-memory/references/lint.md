@@ -49,6 +49,14 @@ fix only what is safe, and never change user content without confirmation.
    For stale `current.md` / active-work / `log.md`, suggest `/agent-memory sync`
    rather than editing by hand.
 
+   `--fix` — with this flag, also offer to **delete stale per-branch
+   `active-work/<branch>.md` files** (files whose branch no longer exists).
+   Each deletion is still confirmed one by one (it removes a file, so it is
+   sensitive) unless combined with an explicit "delete all stale" approval.
+   `--fix` never deletes anything other than stale `active-work` files, never
+   touches `TEMPLATE.md`, and never edits user content — for those, fall back
+   to `sync` or a manual edit.
+
 ## Notes
 
 - This mirrors the "Memory lint" section of `instructions.md`; keep them aligned.

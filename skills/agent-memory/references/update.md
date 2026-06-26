@@ -4,7 +4,9 @@ Migrate an existing `.agents/memory/` to the latest structure from the
 agent-memory repository — **without ever altering the project's memory content.**
 It also refreshes the memory **block** inside the root agent files
 (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`), **only** between the
-`<agent-memory>` … `</agent-memory>` delimiters.
+`<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` delimiters (or legacy
+plain `<agent-memory>` … `</agent-memory>` tags, which `update` migrates to
+the comment form).
 
 ## Boundary (read before doing anything)
 
@@ -12,9 +14,10 @@ It also refreshes the memory **block** inside the root agent files
   `log.md`, `domains/*`, `features/*`, and any user-authored content.
 - **Scaffolding (may change, see rules):** `instructions.md`, the structural
   sections of `index.md`, the `.version` file, brand-new core files, and the
-  `<agent-memory>` block in the root agent files.
+  agent-memory block in the root agent files.
 - **Outside the block (NEVER touch):** any content in `AGENTS.md`, `CLAUDE.md`,
-  or `GEMINI.md` outside the `<agent-memory>` … `</agent-memory>` delimiters.
+  or `GEMINI.md` outside the agent-memory delimiters (`<!-- <agent-memory> -->`
+  … `<!-- </agent-memory> -->`, or legacy plain tags).
 
 ## Canonical memory block
 
@@ -55,11 +58,13 @@ with that canonical block during update (single source of truth).
    `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` at the project root, decide what
    changed and whether it needs updating:
 
-   - **A `<agent-memory>` block exists:** compare its current text (between the
-     delimiters, inclusive) against the canonical block, byte-for-byte.
-     **Identical → skip (already current).** Different → replace its entire
-     content with the canonical block. **Sensitive** — show the unified diff,
-     confirm first. Never touch anything outside the delimiters.
+   - **A delimited block exists** (`<!-- <agent-memory> -->` …
+     `<!-- </agent-memory> -->`, or legacy plain `<agent-memory>` …
+     `</agent-memory>`): compare its current text (between the delimiters,
+     inclusive) against the canonical block, byte-for-byte. **Identical → skip
+     (already current).** Different → replace its entire content with the
+     canonical block (comment delimiters). **Sensitive** — show the unified
+     diff, confirm first. Never touch anything outside the delimiters.
    - **No block yet, but a legacy `## Agent Memory` section exists** (installed
      by an older `init` without delimiters): replace that section with the
      canonical block (delimiters and content). **Sensitive** — show the diff,
@@ -83,9 +88,9 @@ with that canonical block during update (single source of truth).
 
 - Never resolve a sensitive change silently. When in doubt, treat it as sensitive
   and confirm.
-- The block refresh edits only between `<agent-memory>` and `</agent-memory>`. If
-  the delimiters are missing, do **not** guess where the block starts — treat it
-  as the legacy-section case above, or skip and report.
+- The block refresh edits only between the agent-memory delimiters (comment form
+  or legacy plain tags). If no delimiters are found, do **not** guess where the
+  block starts — treat it as the legacy-section case above, or skip and report.
 - The skeleton source of truth is the repository's `agent-memory/memory/`;
   `UPDATE.md` only describes *how* to migrate between versions, not the file
   contents.

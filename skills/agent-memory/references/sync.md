@@ -8,6 +8,15 @@ Refresh the four files that rot between commands — `current.md`, your branch's
 Use it at any checkpoint: end of a task, before a commit, before context
 compaction, or when picking work back up. Safe and idempotent.
 
+## Flags
+
+- `--auto` — apply all proposed diffs without the per-file `AskQuestion`
+  prompt. Use at routine checkpoints (where you would approve everything
+  anyway) to keep the flush low-friction; without it, sync is the careful,
+  per-file-confirm form suited to the first run or a manual review. `--auto`
+  still shows the diffs in the report after applying, and still skips files
+  for which it has no evidence (it never invents progress).
+
 ## Boundary
 
 Sync writes only to: `current.md`, `active-work/<branch>.md`, `log.md`, and the
@@ -42,10 +51,11 @@ Domains/Features lists of `index.md`. It **never** touches `decisions.md`,
    header in `log.md`. If `log.md` is empty, use the repo's first commit
    (`git log --reverse --pretty='%h' | head -1`) or `HEAD~20` as a sane default.
 
-5. **Propose updates (one diff per file).** Show each as a unified diff and
-   confirm via `AskQuestion` before writing — sync touches project memory, so
-   the "confirm before editing user content" rule applies. Allow approve / skip
-   per file.
+5. **Propose updates (one diff per file).** Show each as a unified diff.
+   Unless `--auto` is set, confirm via `AskQuestion` before writing — sync
+   touches project memory, so the "confirm before editing user content" rule
+   applies. Allow approve / skip per file. Under `--auto`, apply all proposed
+   diffs without prompting and report them after.
    - **`active-work/<branch>.md`** — fill/refresh _Task_, _Progress_, _Touched
      files_ (from `git diff --name-only`), and _Blockers_. Keep _Notes_ as-is.
      Overwrite only fields the evidence supports; do not invent progress.

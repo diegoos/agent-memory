@@ -23,16 +23,18 @@ memory.
    `GEMINI.md` exist at the project root and add the memory block to **each**
    one that exists. Use the **canonical block** defined in
    [`references/agent-block.md`](./agent-block.md) — copy it verbatim (the
-   `<agent-memory>` … `</agent-memory>` delimiters and everything between them).
-   The delimiters let `/agent-memory update` later find and refresh **only**
-   that block, without touching the rest of the file; the block points to
-   `.agents/memory/instructions.md` via `@import` **and** spells out the
-   always-load files, so harnesses that ignore `@import` (or only read
-   `AGENTS.md` as plain Markdown) still load the memory.
+   `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` delimiters and
+   everything between them). The delimiters let `/agent-memory update` later
+   find and refresh **only** that block, without touching the rest of the file;
+   the block points to `.agents/memory/instructions.md` via `@import` **and**
+   spells out the always-load files, so harnesses that ignore `@import` (or only
+   read `AGENTS.md` as plain Markdown) still load the memory.
 
-   **Idempotency:** if a file already contains a `<agent-memory>` block, skip it
-   — do not add a second one. (A legacy `## Agent Memory` section without the
-   delimiters is migrated, not duplicated — see `references/update.md`.)
+   **Idempotency:** if a file already contains a delimited agent-memory block
+   (`<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain
+   `<agent-memory>` … `</agent-memory>` from 0.0.4–0.0.5), skip it — do not
+   add a second one. (A legacy `## Agent Memory` section without delimiters is
+   migrated, not duplicated — see `references/update.md`.)
 
 5. **No agent file exists?** Create `AGENTS.md` at the project root with the
    canonical block above.

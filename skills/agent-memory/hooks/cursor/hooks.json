@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "hooks": {
+    "preCompact": [
+      {
+        "command": "AGENT_MEMORY_HOST=cursor AGENT_MEMORY_EVENT=precompact .cursor/hooks/agent-memory-flush.sh",
+        "timeout": 5
+      }
+    ],
+    "stop": [
+      {
+        "command": "AGENT_MEMORY_HOST=cursor AGENT_MEMORY_EVENT=stop .cursor/hooks/agent-memory-flush.sh",
+        "timeout": 5,
+        "loop_limit": 1
+      }
+    ]
+  }
+}

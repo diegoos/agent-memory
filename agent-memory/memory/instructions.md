@@ -73,7 +73,20 @@ The next agent must continue from the files, never from chat history. Run
 `/agent-memory sync` as the executable form of the _During_ / _After_ / _Flush
 early_ steps — it refreshes `current.md`, your branch's active-work file,
 `log.md`, and `index.md` from repo state (`git`) and confirms each change before
-writing.
+writing. Use `/agent-memory sync --auto` at routine checkpoints to apply all
+proposed diffs without the per-file prompt, keeping the flush low-friction.
+
+### Plain-Markdown harnesses (Cursor, for example)
+
+Some harnesses treat `AGENTS.md` as plain Markdown and do **not** honor
+`@import` (Cursor, plain-text readers). For them the agent-memory block (in
+your agent file, between `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`)
+spells out "Read `.agents/memory/instructions.md`" so you load this method
+file directly — otherwise you never see the _During_ / _After_ / _Flush early_
+workflow and the memory stops being updated. If you are on such a harness and
+have not yet Read this file in the current session, Read it now before
+continuing. Harnesses that honor `@import` (Claude Code, Gemini CLI, Codex)
+get `instructions.md` auto-loaded and need no extra step.
 
 ## Multi-developer rules
 

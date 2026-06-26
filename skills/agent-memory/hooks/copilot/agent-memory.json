@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "hooks": {
+    "preCompact": [
+      {
+        "type": "command",
+        "bash": "AGENT_MEMORY_HOST=copilot AGENT_MEMORY_EVENT=precompact .github/hooks/agent-memory-flush.sh",
+        "timeoutSec": 5
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "AGENT_MEMORY_HOST=copilot AGENT_MEMORY_EVENT=stop .github/hooks/agent-memory-flush.sh",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}
