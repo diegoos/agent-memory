@@ -1,26 +1,36 @@
-// OpenCode plugin: remind the agent to flush agent-memory at compaction and
-// when the session goes idle (≈ stop). Non-blocking — it only logs a reminder
-// to stderr; it never writes to the memory and never mutates the compaction
-// output, so it cannot cause memory inconsistency or loops. The agent decides
-// whether to run `/agent-memory sync`.
+// OpenCode plugin: deterministic agent-memory checkpoints at compaction and
+// session idle (≈ end of turn). Spawns the shared sync script — no LLM call.
 //
-// Install (see ../README.md): copy to <project>/.opencode/plugin/agent-memory.ts
-// (or ~/.config/opencode/plugin/). Requires OpenCode's plugin loader.
-//
-// References:
-//   - experimental.session.compacting: fires before the compaction summary.
-//   - session.idle: fires when the session completes (≈ agent stop).
+// Install: copy to <project>/.opencode/plugin/agent-memory.ts and copy
+// hooks/shared/agent-memory-sync.sh → .opencode/hooks/agent-memory-sync.sh
 
+import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-const PRE_MSG =
-  "Context is about to be compacted. Before compaction, flush agent-memory so the next agent continues from the files, not chat history: run `/agent-memory sync` (or manually update `.agents/memory/active-work/<branch>.md` and append to `.agents/memory/log.md`).";
-const STOP_MSG =
-  "Before ending, flush agent-memory: run `/agent-memory sync` (or update `.agents/memory/active-work/<branch>.md`, `.agents/memory/log.md`, and `.agents/memory/current.md` per `.agents/memory/instructions.md`). If the branch just merged, delete its `.agents/memory/active-work/<branch>.md`.";
+const SYNC_SCRIPT = ".opencode/hooks/agent-memory-sync.sh";
 
 function hasMemory(): boolean {
   return fs.existsSync(path.join(process.cwd(), ".agents", "memory"));
+}
+
+function runSync(event: string): void {
+  if (!hasMemory()) return;
+  const script = path.join(process.cwd(), SYNC_SCRIPT);
+  if (!fs.existsSync(script)) return;
+  try {
+    execFileSync(
+      "bash",
+      [script],
+      {
+        env: { ...process.env, AGENT_MEMORY_EVENT: event, AGENT_MEMORY_PROJECT_DIR: process.cwd() },
+        stdio: "ignore",
+        timeout: 15_000,
+      },
+    );
+  } catch {
+    // Fail open — never block the session.
+  }
 }
 
 export const agentMemoryPlugin = async () => {
@@ -28,11 +38,11 @@ export const agentMemoryPlugin = async () => {
 
   return {
     "experimental.session.compacting": async () => {
-      console.error(PRE_MSG);
+      runSync("PreCompact");
     },
     event: async (input: { event: { type: string } }) => {
       if (input?.event?.type === "session.idle") {
-        console.error(STOP_MSG);
+        runSync("Stop");
       }
     },
   };

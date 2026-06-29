@@ -1,17 +1,29 @@
 {
   "version": 1,
   "hooks": {
-    "preCompact": [
+    "sessionStart": [
       {
-        "command": "AGENT_MEMORY_HOST=cursor AGENT_MEMORY_EVENT=precompact .cursor/hooks/agent-memory-flush.sh",
+        "command": "AGENT_MEMORY_HOST=cursor .cursor/hooks/agent-memory-session.sh",
         "timeout": 5
       }
     ],
-    "stop": [
+    "postToolUse": [
       {
-        "command": "AGENT_MEMORY_HOST=cursor AGENT_MEMORY_EVENT=stop .cursor/hooks/agent-memory-flush.sh",
-        "timeout": 5,
-        "loop_limit": 1
+        "command": "AGENT_MEMORY_EVENT=postToolUse .cursor/hooks/agent-memory-sync.sh",
+        "matcher": "Write|Shell",
+        "timeout": 15
+      }
+    ],
+    "afterAgentResponse": [
+      {
+        "command": "AGENT_MEMORY_EVENT=afterAgentResponse .cursor/hooks/agent-memory-sync.sh",
+        "timeout": 15
+      }
+    ],
+    "preCompact": [
+      {
+        "command": "AGENT_MEMORY_EVENT=preCompact .cursor/hooks/agent-memory-sync.sh",
+        "timeout": 15
       }
     ]
   }

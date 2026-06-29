@@ -4,18 +4,35 @@
 #   [features]
 #   hooks = true   # enabled by default
 #
-#   [[hooks.PreCompact]]
-#   matcher = "auto|manual"
-#     [[hooks.PreCompact.hooks]]
+# Copy hooks/shared/agent-memory-sync.sh and agent-memory-session.sh to
+# .codex/hooks/ first (see hooks/README.md).
+#
+#   [[hooks.SessionStart]]
+#   matcher = "startup|resume"
+#     [[hooks.SessionStart.hooks]]
 #     type    = "command"
-#     command = ["sh", "-c", "AGENT_MEMORY_HOST=codex AGENT_MEMORY_EVENT=precompact .codex/hooks/agent-memory-flush.sh"]
+#     command = ["sh", "-c", "AGENT_MEMORY_HOST=codex .codex/hooks/agent-memory-session.sh"]
 #     timeout = 5
+#
+#   [[hooks.PostToolUse]]
+#   matcher = "Bash|apply_patch"
+#     [[hooks.PostToolUse.hooks]]
+#     type    = "command"
+#     command = ["sh", "-c", "AGENT_MEMORY_EVENT=PostToolUse .codex/hooks/agent-memory-sync.sh"]
+#     timeout = 15
 #
 #   [[hooks.Stop]]
 #     [[hooks.Stop.hooks]]
 #     type    = "command"
-#     command = ["sh", "-c", "AGENT_MEMORY_HOST=codex AGENT_MEMORY_EVENT=stop .codex/hooks/agent-memory-flush.sh"]
-#     timeout = 5
+#     command = ["sh", "-c", "AGENT_MEMORY_EVENT=Stop .codex/hooks/agent-memory-sync.sh"]
+#     timeout = 15
+#
+#   [[hooks.PreCompact]]
+#   matcher = "auto|manual"
+#     [[hooks.PreCompact.hooks]]
+#     type    = "command"
+#     command = ["sh", "-c", "AGENT_MEMORY_EVENT=PreCompact .codex/hooks/agent-memory-sync.sh"]
+#     timeout = 15
 #
 # After adding project hooks, run `/hooks` in the Codex TUI to trust them.
 # Codex hooks are disabled on Windows.

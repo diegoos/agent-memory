@@ -1,21 +1,23 @@
 #!/bin/sh
-# agent-memory flush reminder — git pre-commit hook (host-agnostic).
+# agent-memory git pre-commit hook (host-agnostic).
 #
-# This is the one trigger that works for EVERY agent (Claude Code, Cursor,
-# Codex, OpenCode, Copilot CLI/cloud agent) because they all commit via git.
-# It is non-blocking: it only prints a reminder when the staged commit looks
-# like meaningful work and the branch's active-work file / log.md have not been
-# touched in this commit. The agent/user then runs `/agent-memory sync`.
+# Runs the deterministic sync script when co-installed, then reminds when
+# staged work has no .agents/memory/ change (semantic fields may still need
+# /agent-memory sync). Never blocks the commit. Fails open.
 #
-# Install: copy to <project>/.git/hooks/pre-commit (or wire via core.hooksPath
-# / husky) and `chmod +x`. Remove the exec bit or the file to disable.
-#
-# Exits 0 always (never blocks the commit). Fails open.
+# Install:
+#   cp skills/agent-memory/hooks/git/pre-commit .git/hooks/pre-commit
+#   cp skills/agent-memory/hooks/shared/agent-memory-sync.sh .git/hooks/agent-memory-sync.sh
+#   chmod +x .git/hooks/pre-commit .git/hooks/agent-memory-sync.sh
 
 cwd="${GIT_PREFIX:-$PWD}"
 [ -d "$cwd/.agents/memory" ] || exit 0
 
-# Meaningful work = staged changes outside .agents/memory itself.
+hook_dir=$(dirname "$0")
+if [ -x "$hook_dir/agent-memory-sync.sh" ]; then
+  AGENT_MEMORY_EVENT=precommit AGENT_MEMORY_PROJECT_DIR="$cwd" "$hook_dir/agent-memory-sync.sh" || true
+fi
+
 staged=$(git diff --cached --name-only 2>/dev/null | grep -v '^\.agents/memory/' || true)
 [ -n "$staged" ] || exit 0
 
@@ -23,18 +25,14 @@ branch=$(git branch --show-current 2>/dev/null)
 branch=$(printf '%s' "$branch" | tr -c 'A-Za-z0-9._-' '-')
 [ -n "$branch" ] || branch="local"
 
-aw="$cwd/.agents/memory/active-work/$branch.md"
 memory_staged=$(git diff --cached --name-only 2>/dev/null | grep '^\.agents/memory/' || true)
 
-# Remind when the memory is not part of this commit (best-effort; not a hard
-# check — a real flush may happen in a follow-up commit).
 if [ -z "$memory_staged" ]; then
   cat <<EOF
 
-[agent-memory] Staged work on branch '$branch' but no .agents/memory/ change.
-Before continuing, flush the memory so the next agent can pick up from the
-files: run \`/agent-memory sync\`, or manually update
-\`.agents/memory/active-work/$branch.md\` and append to \`.agents/memory/log.md\`.
+[agent-memory] Staged work on branch '$branch' but no .agents/memory/ change in this commit.
+Hooks updated Touched files from git; review task/progress in
+\`.agents/memory/active-work/$branch.md\` and run \`/agent-memory sync\` if needed.
 (This is a reminder, not a block — the commit will proceed.)
 
 EOF

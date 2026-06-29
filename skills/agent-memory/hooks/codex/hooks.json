@@ -1,13 +1,25 @@
 {
   "hooks": {
-    "PreCompact": [
+    "SessionStart": [
       {
-        "matcher": "auto|manual",
+        "matcher": "startup|resume",
         "hooks": [
           {
             "type": "command",
-            "command": "AGENT_MEMORY_HOST=codex AGENT_MEMORY_EVENT=precompact .codex/hooks/agent-memory-flush.sh",
+            "command": "AGENT_MEMORY_HOST=codex .codex/hooks/agent-memory-session.sh",
             "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_MEMORY_EVENT=PostToolUse .codex/hooks/agent-memory-sync.sh",
+            "timeout": 15
           }
         ]
       }
@@ -17,8 +29,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "AGENT_MEMORY_HOST=codex AGENT_MEMORY_EVENT=stop .codex/hooks/agent-memory-flush.sh",
-            "timeout": 5
+            "command": "AGENT_MEMORY_EVENT=Stop .codex/hooks/agent-memory-sync.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "auto|manual",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_MEMORY_EVENT=PreCompact .codex/hooks/agent-memory-sync.sh",
+            "timeout": 15
           }
         ]
       }

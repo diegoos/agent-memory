@@ -1,13 +1,25 @@
 {
   "hooks": {
-    "PreCompact": [
+    "SessionStart": [
       {
-        "matcher": "auto|manual",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "AGENT_MEMORY_HOST=claude AGENT_MEMORY_EVENT=precompact .claude/hooks/agent-memory-flush.sh",
+            "command": "AGENT_MEMORY_HOST=claude .claude/hooks/agent-memory-session.sh",
             "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_MEMORY_EVENT=PostToolUse .claude/hooks/agent-memory-sync.sh",
+            "timeout": 15
           }
         ]
       }
@@ -17,8 +29,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "AGENT_MEMORY_HOST=claude AGENT_MEMORY_EVENT=stop .claude/hooks/agent-memory-flush.sh",
-            "timeout": 5
+            "command": "AGENT_MEMORY_EVENT=Stop .claude/hooks/agent-memory-sync.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "auto|manual",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_MEMORY_EVENT=PreCompact .claude/hooks/agent-memory-sync.sh",
+            "timeout": 15
           }
         ]
       }
