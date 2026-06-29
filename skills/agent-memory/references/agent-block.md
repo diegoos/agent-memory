@@ -47,8 +47,8 @@ outside the delimiters.
   `AGENTS.md` as plain Markdown (Cursor, plain-text readers) rely on — they do
   **not** honor `@import`, so the obligation to read `instructions.md` must be
   spelled out, or the agent never learns the maintain-the-memory workflow and
-  the memory stops being updated. See `instructions.md` → _Cursor and other
-  plain-Markdown harnesses_.
+  the memory stops being updated. On **Cursor**, also wire lifecycle hooks via
+  `init cursor` — see `instructions.md` → _Plain-Markdown harnesses_.
 - The `@.agents/memory/instructions.md` line is honored by harnesses that follow
   the AGENTS.md `@import` convention (Claude Code, Gemini CLI, Codex),
   auto-loading `instructions.md`.

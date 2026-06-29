@@ -3,27 +3,49 @@ name: agent-memory
 description: >-
   Orchestrates the local agent-memory Workspace Memory in `.agents/memory/`. Use
   ONLY when the user explicitly runs the `/agent-memory` command with a
-  subcommand — `init` (create the memory structure and wire
-  AGENTS.md/CLAUDE.md/GEMINI.md), `update` (migrate an existing memory to the
-  latest structure without touching project memory, and refresh the agent-memory
-  block in the root agent files), `bootstrap` (analyze the project and populate
-  the memory),   `sync` (refresh `current.md`, the branch's
-  `active-work/<branch>.md`, `log.md`, and `index.md` from repo state; accepts
-  `--auto` to apply all proposed diffs without the per-file prompt), `lint`
-  (check the memory for broken links, orphan files, and consistency problems;
-  accepts `--fix` to also delete stale per-branch `active-work` files), or
-  `help` (list the commands and how to use them). Never trigger automatically;
-  this skill must be invoked on demand only.
+  subcommand — `init` (create the memory structure; wire agent files and
+  harness-specific config — `init` auto-detects, or `init cursor` / `init
+  claude` / `init codex` / `init opencode` / `init copilot` / `init gemini` for
+  one harness), `update` (migrate an existing memory to the latest structure
+  without project memory, refresh the agent-memory block in the root agent
+  files), `bootstrap` (analyze the project and populate the memory),   `sync`
+  (refresh `current.md`, the branch's `active-work/<branch>.md`, `log.md`, and
+  `index.md` from repo state; accepts `--auto` to apply all proposed diffs
+  without the per-file prompt), `lint` (check the memory for broken links,
+  orphan files, and consistency problems; accepts `--fix` to also delete stale
+  per-branch `active-work` files), or `help` (list the commands and how to use
+  them). Never trigger automatically; this skill must be invoked on demand only.
 metadata:
   invocation: manual
-  version: '0.0.5'
+  version: '0.0.6'
 compatibility: >-
   Requires network access for WebFetch when installing from a remote
   agent-memory repository URL.
 allowed-tools: >-
   Read Grep Glob WebFetch Task Edit(.agents/memory/**) Write(.agents/memory/**)
   Edit(AGENTS.md) Edit(CLAUDE.md) Edit(GEMINI.md) Write(AGENTS.md)
-  Write(CLAUDE.md) Write(GEMINI.md) Bash(git:*)
+  Write(CLAUDE.md) Write(GEMINI.md) Edit(.claude/settings.json)
+  Write(.claude/settings.json) Edit(.claude/hooks/agent-memory-sync.sh)
+  Write(.claude/hooks/agent-memory-sync.sh)
+  Edit(.claude/hooks/agent-memory-session.sh)
+  Write(.claude/hooks/agent-memory-session.sh) Edit(.codex/hooks.json)
+  Write(.codex/hooks.json) Edit(.codex/hooks/agent-memory-sync.sh)
+  Write(.codex/hooks/agent-memory-sync.sh)
+  Edit(.codex/hooks/agent-memory-session.sh)
+  Write(.codex/hooks/agent-memory-session.sh)
+  Edit(.github/hooks/agent-memory.json) Write(.github/hooks/agent-memory.json)
+  Edit(.github/hooks/agent-memory-sync.sh)
+  Write(.github/hooks/agent-memory-sync.sh)
+  Edit(.github/hooks/agent-memory-session.sh)
+  Write(.github/hooks/agent-memory-session.sh) Edit(.cursor/hooks.json)
+  Write(.cursor/hooks.json) Edit(.cursor/hooks/agent-memory-sync.sh)
+  Write(.cursor/hooks/agent-memory-sync.sh)
+  Edit(.cursor/hooks/agent-memory-session.sh)
+  Write(.cursor/hooks/agent-memory-session.sh)
+  Edit(.opencode/hooks/agent-memory-sync.sh)
+  Write(.opencode/hooks/agent-memory-sync.sh)
+  Edit(.opencode/plugin/agent-memory.ts) Write(.opencode/plugin/agent-memory.ts)
+  Bash(git:*)
 disable-model-invocation: true
 ---
 
@@ -47,13 +69,13 @@ host-specific, **experimental** field
 do not support it simply ignore it. Names follow the Agent Skills / Claude Code
 convention; adapt them if your host differs.
 
-| Tool                     | Used for                                                                                                                                        |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Read`, `Grep`, `Glob`   | Read-only project analysis (`bootstrap`), lint structural checks, migration diffs (`update`), reading `references/*.md` and a local repo clone. |
-| `WebFetch`               | Fetch the skeleton / `UPDATE.md` via raw URLs when `git` is unavailable (network; see `compatibility`).                                         |
-| `Task`                   | Parallel read-only subagents in `bootstrap`. Optional — fall back to sequential analysis.                                                       |
-| `Edit`, `Write` (scoped) | Create/edit files **only** under `.agents/memory/**` and the root agent files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`).                          |
-| `Bash(git:*)`            | `git clone` (install) and `git branch` (lint stale-branch check).                                                                               |
+| Tool                     | Used for                                                                                                                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Read`, `Grep`, `Glob`   | Read-only project analysis (`bootstrap`), lint structural checks, migration diffs (`update`), reading `references/*.md` and a local repo clone.                                                   |
+| `WebFetch`               | Fetch the skeleton / `UPDATE.md` via raw URLs when `git` is unavailable (network; see `compatibility`).                                                                                           |
+| `Task`                   | Parallel read-only subagents in `bootstrap`. Optional — fall back to sequential analysis.                                                                                                         |
+| `Edit`, `Write` (scoped) | `.agents/memory/**`, root agent files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`), harness wiring per `references/init.md` (`.cursor/hooks/`, `.claude/`, `.codex/`, `.github/hooks/`, `.opencode/`). |
+| `Bash(git:*)`            | `git clone` (install) and `git branch` (lint stale-branch check).                                                                                                                                 |
 
 **Deliberately not pre-approved** (the host should still prompt): file deletion
 (`rm`, used only on confirmed `update`/cleanup) and any other shell. This keeps
@@ -65,9 +87,11 @@ Create, edit, or delete **only** under `.agents/memory/**`, plus the root agent
 instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or a host-specific
 agent `*.md`) — and in those **only the agent-memory block** (between
 `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain tags —
-to wire it in `init` and refresh it in `update`). Never touch content outside
-that block, application code, configs, or other docs. Read the rest of the
-workspace freely.
+to wire it in `init` and refresh it in `update`) — plus harness wiring paths
+listed in `references/init.md` (only into existing harness dirs; never create
+`.cursor/`, `.claude/`, etc.). Never touch content outside those scopes,
+application code, other configs, or other docs. Read the rest of the workspace
+freely.
 
 `init` and `update` read the canonical skeleton and migration log from the
 public agent-memory repository:
@@ -89,17 +113,21 @@ public agent-memory repository:
 Read the subcommand from the invocation, load **only** the matching reference,
 and follow it exactly:
 
-| Command     | Does                                                                        | Reference                 |
-| ----------- | --------------------------------------------------------------------------- | ------------------------- |
-| `init`      | Create `.agents/memory/` and wire the agent file(s).                        | `references/init.md`      |
-| `update`    | Migrate the memory; refresh the agent-memory block in the root agent files. | `references/update.md`    |
-| `bootstrap` | Analyze the project and populate the memory.                                | `references/bootstrap.md` |
-| `sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. | `references/sync.md`      |
-| `lint`      | Check the memory for structural and consistency problems.                   | `references/lint.md`      |
-| `help`      | List the commands and how to use them.                                      | _Help_ section below      |
+| Command     | Does                                                                                | Reference                 |
+| ----------- | ----------------------------------------------------------------------------------- | ------------------------- |
+| `init`      | Create `.agents/memory/`; wire agent + harness config (`init` or `init <harness>`). | `references/init.md`      |
+| `update`    | Migrate memory; refresh agent-memory block in root agent files.                     | `references/update.md`    |
+| `bootstrap` | Analyze the project and populate the memory.                                        | `references/bootstrap.md` |
+| `sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state.         | `references/sync.md`      |
+| `lint`      | Check the memory for structural and consistency problems.                           | `references/lint.md`      |
+| `help`      | List the commands and how to use them.                                              | _Help_ section below      |
 
 If no subcommand is given, or it is not one of those above, run `help` (below)
 and stop. Do not guess the user's intent.
+
+For `init`, an optional second token selects one harness (`cursor`, `claude`,
+`codex`, `opencode`, `copilot`, `gemini`). Load `references/init.md` and follow
+its harness table.
 
 ## Help
 
@@ -113,27 +141,26 @@ page.
 
 **Commands**
 
-| Command                   | Does                                                                                                                              |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `/agent-memory init`      | Create `.agents/memory/` and wire `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`.                                                        |
-| `/agent-memory bootstrap` | Analyze the project (up to 3 subagents) and populate the memory.                                                                  |
-| `/agent-memory update`    | Migrate the memory and refresh the agent-memory block — never touches your content outside the block.                             |
-| `/agent-memory sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. `--auto` applies all diffs without per-file prompts.  |
-| `/agent-memory lint`      | Check for broken links, orphan files, stale branches, and consistency. `--fix` also deletes stale per-branch `active-work` files. |
-| `/agent-memory help`      | Show this guide.                                                                                                                  |
+| Command                   | Does                                                                                                                                |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `/agent-memory init`      | Create `.agents/memory/`; auto-detect harnesses, or `init cursor` / `claude` / `codex` / `opencode` / `copilot` / `gemini` for one. |
+| `/agent-memory bootstrap` | Analyze the project (up to 3 subagents) and populate the memory.                                                                    |
+| `/agent-memory update`    | Migrate memory; refresh agent-memory block — never touches your content outside that scope.                                         |
+| `/agent-memory sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. `--auto` applies all diffs without per-file prompts.    |
+| `/agent-memory lint`      | Check for broken links, orphan files, stale branches, and consistency. `--fix` also deletes stale per-branch `active-work` files.   |
+| `/agent-memory help`      | Show this guide.                                                                                                                    |
 
 **Getting started**
 
-- New project? Run `init`, then optionally `bootstrap`.
+- New project? Run `init` (or `init <harness>` — e.g. `init cursor` if you use
+  Cursor and already have a `.cursor/` directory), then optionally `bootstrap`.
 - Keeping the memory current? Run `sync` at checkpoints (end of task, before
   commit, before compaction). Use `sync --auto` for low-friction routine
   flushes.
 - Already set up? Use `lint` to check health (`lint --fix` also removes stale
   per-branch files) and `update` to upgrade.
-- On Cursor? The maintenance workflow is prose in `instructions.md`, which
-  Cursor does not auto-load. Optional flush-reminder hooks for Cursor, Claude
-  Code, Codex, OpenCode, Copilot, and a host-agnostic git pre-commit hook live
-  in `skills/agent-memory/hooks/` (see its `README.md`).
+- On Cursor? Run `init cursor` when `.cursor/` exists and install hooks — see
+  `skills/agent-memory/hooks/`. `@import` in `AGENTS.md` is a no-op in Cursor.
 
 Method & conventions: `.agents/memory/instructions.md`
 

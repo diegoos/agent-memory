@@ -79,14 +79,24 @@ proposed diffs without the per-file prompt, keeping the flush low-friction.
 ### Plain-Markdown harnesses (Cursor, for example)
 
 Some harnesses treat `AGENTS.md` as plain Markdown and do **not** honor
-`@import` (Cursor, plain-text readers). For them the agent-memory block (in
-your agent file, between `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`)
-spells out "Read `.agents/memory/instructions.md`" so you load this method
-file directly — otherwise you never see the _During_ / _After_ / _Flush early_
-workflow and the memory stops being updated. If you are on such a harness and
-have not yet Read this file in the current session, Read it now before
-continuing. Harnesses that honor `@import` (Claude Code, Gemini CLI, Codex)
-get `instructions.md` auto-loaded and need no extra step.
+`@import` — in Cursor, `@.agents/memory/instructions.md` in the agent-memory
+block is a no-op. `AGENTS.md` may also fail to auto-inject (known Cursor
+regression: it can appear as "requestable" instead of "always applied"), so the
+agent-memory block alone may never reach the model.
+
+**On Cursor:** run `/agent-memory init cursor` when `.cursor/` already exists to
+wire lifecycle hooks (recommended). `@import` in `AGENTS.md` is a no-op, and
+`AGENTS.md` may not auto-inject reliably. Hooks update Touched files from `git`
+between turns; you still own task/progress text and `current.md`. See
+`skills/agent-memory/hooks/README.md`.
+
+The agent-memory block in `AGENTS.md` still spells out "Read
+`.agents/memory/instructions.md`" for harnesses that do load it — and remains
+the cross-tool stub for Claude Code, Codex, Gemini, etc. If you are on Cursor
+and have not yet Read `instructions.md` in the current session, Read it now
+before continuing. Harnesses that honor `@import` (Claude Code, Gemini CLI,
+Codex) get `instructions.md` auto-loaded and need no extra step beyond the
+block.
 
 ## Multi-developer rules
 

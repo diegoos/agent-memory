@@ -109,3 +109,33 @@ Format:
   `README.md`, `agent-memory/README.md`, and `instructions.md` — documentation
   updated for the new delimiters and legacy migration path. No file rename or
   move.
+
+## 0.0.6
+
+- safe: `references/init.md` — `init` accepts an optional harness target
+  (`init cursor`, `init claude`, `init codex`, `init opencode`, `init copilot`,
+  `init gemini`) or auto-detects from existing agent files and harness dirs.
+  Wires shared lifecycle hooks into existing harness dirs only (never creates
+  `.cursor/`, `.claude/`, etc.).
+- safe: add `hooks/shared/agent-memory-sync.sh` and
+  `hooks/shared/agent-memory-session.sh` — deterministic git checkpoint (Touched
+  files + conservative `log.md` append; no LLM). Replaces flush-reminder hooks
+  (`agent-memory-flush.sh` removed).
+- safe: unify harness hooks on the shared scripts — Cursor (`sessionStart`,
+  `postToolUse`, `afterAgentResponse`, `preCompact`; no `stop` +
+  `followup_message`), Claude Code (`SessionStart`, `PostToolUse`, `Stop`,
+  `PreCompact`), Codex, Copilot, OpenCode plugin, git `pre-commit`.
+- safe: Cursor integration is **hooks-only** — no `.cursor/rules/agent-memory.mdc`
+  ( `@import` in `AGENTS.md` remains a no-op). Root `README.md` and
+  `hooks/README.md` document hooks as the recommended Cursor path.
+- sensitive: `agent-memory/memory/instructions.md` — _Plain-Markdown harnesses_
+  section updated for hooks-only Cursor integration.
+- safe: `references/update.md` — drop Cursor rule refresh step; note optional
+  removal of legacy `.cursor/rules/agent-memory.mdc`.
+- safe: `references/agent-block.md`, root `README.md`, `agent-memory/README.md`,
+  `SKILL.md` help/routing/allowed-tools — aligned with harness `init` and unified
+  hooks.
+- safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.6`.
+- safe: add `agent-memory/memory/.gitignore` — ignores hook checkpoint state
+  (`.hook-sync-state`, legacy `.cursor-hook-state`). Shipped with the skeleton;
+  `init` copies it; `update` creates it when missing.

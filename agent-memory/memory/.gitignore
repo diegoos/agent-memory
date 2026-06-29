@@ -1,0 +1,3 @@
+# Hook checkpoint state (local; created by lifecycle hooks)
+.hook-sync-state
+.cursor-hook-state
