@@ -13,12 +13,22 @@ npx skills add diegoos/agent-memory --skill agent-memory
 Then, in your agent:
 
 ```text
-/agent-memory init        # create .agents/memory/ and wire your agent file(s)
-/agent-memory bootstrap   # optional: analyze the project and fill the memory
-/agent-memory sync        # at checkpoints: keep current.md / active-work / log.md / index.md fresh
+/agent-memory init              # auto-detect: wire agent files + harness dirs that exist
+/agent-memory init cursor       # Cursor only (.cursor/ must exist — wires hooks)
+/agent-memory init claude       # Claude Code only
+/agent-memory init codex        # Codex only
+/agent-memory init opencode     # OpenCode only
+/agent-memory init copilot      # Copilot only
+/agent-memory init gemini       # Gemini only
+/agent-memory bootstrap         # optional: analyze the project and fill the memory
+/agent-memory sync              # at checkpoints: keep current.md / active-work / log.md / index.md fresh
 ```
 
-The memory lives in `.agents/memory/`, versioned in Git. That's the whole setup.
+Without a harness name, `init` wires `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`
+that already exist, and installs harness-specific hooks only into directories
+that already exist (e.g. `.cursor/hooks/` when `.cursor/` is present — it never
+creates `.cursor/` for you). Use `init <harness>` when you know which agent you
+use.
 
 ## Why
 
@@ -65,28 +75,33 @@ workflow is in [`instructions.md`](./agent-memory/memory/instructions.md).
 [`/agent-memory`](./skills/agent-memory) is a **manual-only** Agent Skill (it
 never auto-triggers) with six subcommands:
 
-| Command                   | Does                                                                            |
-| ------------------------- | ------------------------------------------------------------------------------- |
-| `/agent-memory help`      | List the commands and how to use them.                                          |
-| `/agent-memory init`      | Create `.agents/memory/` and wire `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`.      |
-| `/agent-memory update`    | Migrate an existing memory to the latest structure; never touches your content. |
-| `/agent-memory bootstrap` | Analyze the project (up to 3 subagents) and populate the memory.                |
-| `/agent-memory sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state.     |
-| `/agent-memory lint`      | Check for broken links, orphan files, stale per-branch files, consistency.      |
+| Command                   | Does                                                                             |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| `/agent-memory help`      | List the commands and how to use them.                                           |
+| `/agent-memory init`      | Create `.agents/memory/`; `init` auto-detects or `init <harness>` for one agent. |
+| `/agent-memory update`    | Migrate an existing memory to the latest structure; never touches your content.  |
+| `/agent-memory bootstrap` | Analyze the project (up to 3 subagents) and populate the memory.                 |
+| `/agent-memory sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state.      |
+| `/agent-memory lint`      | Check for broken links, orphan files, stale per-branch files, consistency.       |
 
 ## Keeping the memory current
 
 The memory only helps if agents keep it current. The agent-memory block that
 `init` wires into your agent file tells them to **read and write** it — and to
 run `/agent-memory sync` at checkpoints (end of a task, before a commit, before
-compaction). For agents that don't auto-load the method (Cursor and other
-plain-Markdown readers), the block's explicit **Read** line is what makes
-maintenance happen.
+compaction).
 
-Optional **flush-reminder hooks** can nudge the agent at compaction / stop /
-commit for Cursor, Claude Code, Codex, OpenCode, and Copilot, plus a
-host-agnostic git `pre-commit` hook. They only remind — they never write to the
-memory. See [`skills/agent-memory/hooks/`](./skills/agent-memory/hooks/).
+**On Cursor:** `@import` in `AGENTS.md` does nothing, and `AGENTS.md` may not be
+auto-injected (known regression). **Hooks are the recommended integration** —
+run `init cursor` when `.cursor/` already exists to wire deterministic
+checkpoints (`sessionStart`, `postToolUse`, `afterAgentResponse`, `preCompact`)
+that update Touched files from `git` without an extra LLM request. See
+[`skills/agent-memory/hooks/`](./skills/agent-memory/hooks/).
+
+Optional **hooks** for Claude Code, Codex, OpenCode, Copilot, and a
+host-agnostic git `pre-commit` hook use the same shared sync script. They update
+evidence-backed fields only; task/progress and `current.md` stay manual (or
+`/agent-memory sync`).
 
 ## Install
 
@@ -121,8 +136,8 @@ so `/agent-memory update` can refresh **only** that block later (comments are
 invisible in rendered Markdown). It tells the agent to **Read**
 `instructions.md` and to **write** the memory as it works, and adds `@import`,
 so harnesses that follow the AGENTS.md `@import` convention (Claude Code, Gemini
-CLI, Codex) auto-load `instructions.md`, while plain-Markdown readers (Cursor)
-still load the method via the explicit Read line.
+CLI, Codex) auto-load `instructions.md`. For Cursor, run
+`/agent-memory init cursor` when `.cursor/` exists to wire hooks.
 
 ## Repository layout
 
