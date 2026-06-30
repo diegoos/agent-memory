@@ -125,17 +125,49 @@ Format:
   `postToolUse`, `afterAgentResponse`, `preCompact`; no `stop` +
   `followup_message`), Claude Code (`SessionStart`, `PostToolUse`, `Stop`,
   `PreCompact`), Codex, Copilot, OpenCode plugin, git `pre-commit`.
-- safe: Cursor integration is **hooks-only** — no `.cursor/rules/agent-memory.mdc`
-  ( `@import` in `AGENTS.md` remains a no-op). Root `README.md` and
-  `hooks/README.md` document hooks as the recommended Cursor path.
+- safe: Cursor integration is **hooks-only** — no
+  `.cursor/rules/agent-memory.mdc` ( `@import` in `AGENTS.md` remains a no-op).
+  Root `README.md` and `hooks/README.md` document hooks as the recommended
+  Cursor path.
 - sensitive: `agent-memory/memory/instructions.md` — _Plain-Markdown harnesses_
   section updated for hooks-only Cursor integration.
 - safe: `references/update.md` — drop Cursor rule refresh step; note optional
   removal of legacy `.cursor/rules/agent-memory.mdc`.
 - safe: `references/agent-block.md`, root `README.md`, `agent-memory/README.md`,
-  `SKILL.md` help/routing/allowed-tools — aligned with harness `init` and unified
-  hooks.
+  `SKILL.md` help/routing/allowed-tools — aligned with harness `init` and
+  unified hooks.
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.6`.
 - safe: add `agent-memory/memory/.gitignore` — ignores hook checkpoint state
-  (`.hook-sync-state`, legacy `.cursor-hook-state`). Shipped with the skeleton;
-  `init` copies it; `update` creates it when missing.
+  (`.hook-sync-state`). Shipped with the skeleton; `init` copies it; `update`
+  creates it when missing.
+
+## 0.0.7
+
+- safe: add `hooks/shared/agent-memory-common.sh` — shared helpers sourced by
+  sync and session hooks (session ID, log headings, active-work/current.md
+  refresh). `init` must copy all three shared scripts together.
+- safe: refactor `agent-memory-sync.sh` and `agent-memory-session.sh` to source
+  `agent-memory-common.sh`; session hook refreshes `current.md` _In progress_
+  on session start.
+- safe: hooks append file-path bullets under per-session `log.md` headings
+  (session ID when available); no-id sessions and session-ID promotion from
+  type-tag headings.
+- safe: OpenCode plugin bridges session start to `agent-memory-session.sh`;
+  install all three shared scripts under `.opencode/hooks/`.
+- safe: `references/init.md`, `hooks/README.md`, `SKILL.md` allowed-tools —
+  three-script hook install documented.
+- sensitive: `agent-memory/memory/instructions.md` — _Obligations by file_
+  section (hook vs agent per file); per-session `log.md` contract.
+- sensitive: `agent-memory/memory/log.md` — per-session heading format
+  (`## [date] [session-id] [type] summary`).
+- sensitive: `agent-memory/memory/decisions.md` — mandatory ADR-style recording
+  when decisions change.
+- sensitive: `agent-memory/memory/current.md`, `index.md`,
+  `active-work/TEMPLATE.md` — clearer hook vs agent responsibilities.
+- sensitive: `references/agent-block.md` — obligations aligned with
+  `instructions.md`.
+- safe: `references/bootstrap.md`, `references/sync.md` — vision gate,
+  per-session log format, `index.md` alignment.
+- safe: `agent-memory/memory/.gitignore` — drop legacy `.cursor-hook-state`
+  entry.
+- safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.7`.

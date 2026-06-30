@@ -43,7 +43,7 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
 3. **Write the version anchor.** Create `.agents/memory/.version` containing the
    latest version — the newest version section in the repository's
-   `agent-memory/UPDATE.md`, e.g. `0.0.6`.
+   `agent-memory/UPDATE.md`, e.g. `0.0.7`.
 
 4. **Parse the harness target.** From the invocation, read optional `<harness>`.
    Normalize aliases (`claude-code` → `claude`, `github` → `copilot`). If

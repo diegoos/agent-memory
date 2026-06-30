@@ -12,6 +12,32 @@ both in sync on version bumps.
 
 ## [Unreleased]
 
+## [0.0.7] - 2026-06-30
+
+### Added
+
+- `hooks/shared/agent-memory-common.sh` — shared deterministic helpers sourced by
+  session and sync hooks.
+- Per-session `log.md` headings with optional session ID; hooks append file-path
+  bullets once per file per session.
+- Session-start refresh of `current.md` _In progress_ from open `active-work/`
+  files.
+- OpenCode plugin session-start bridge via `agent-memory-session.sh`.
+
+### Changed
+
+- `instructions.md` — per-file obligations (hooks vs agent); strengthened
+  `decisions.md` recording requirement.
+- Skeleton guidance in `log.md`, `current.md`, `decisions.md`, `index.md`, and
+  `active-work/TEMPLATE.md`.
+- `agent-block.md`, `bootstrap.md`, `init.md`, `sync.md`, and `hooks/README.md`
+  aligned with hook behavior.
+- `init` requires all three shared hook scripts (`common`, `sync`, `session`).
+
+### Removed
+
+- Legacy `.cursor-hook-state` entry from skeleton `.gitignore`.
+
 ## [0.0.6] - 2026-06-29
 
 ### Added
@@ -25,7 +51,7 @@ both in sync on version bumps.
 - Unified hook wiring for Cursor, Claude Code, Codex, Copilot, OpenCode, and git
   `pre-commit`.
 - `agent-memory/memory/.gitignore` in the skeleton — ignores hook checkpoint
-  state (`.hook-sync-state`, legacy `.cursor-hook-state`).
+  state (`.hook-sync-state`).
 
 ### Changed
 
