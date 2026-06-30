@@ -7,6 +7,10 @@ above to the real branch name. Delete your file when the branch merges.
 
 ## Task
 
+**Required.** Hooks seed a stub from the branch name when this is still a
+placeholder; refine from `current.md`, `log.md`, and the user's request — one or
+two concise lines. Semantic task text is your responsibility.
+
 - _No active task._
 
 ## Progress
@@ -14,6 +18,9 @@ above to the real branch name. Delete your file when the branch merges.
 - _none_
 
 ## Touched files
+
+Hooks refresh this section from `git` between turns. You may add notes in
+_Progress_ or _Notes_ for files that matter semantically.
 
 - _none_
 

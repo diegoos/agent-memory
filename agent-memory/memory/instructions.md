@@ -32,7 +32,7 @@ Single root `.agents/memory/`; sub-areas (services, packages, contexts) go under
 | `current.md`      | Shared project state (version, done, in progress).     | frequent   |
 | `active-work/`    | Per-branch ephemeral scratchpad (one file per branch). | very freq. |
 | `decisions.md`    | Important decisions + the reasoning.                   | frequent   |
-| `log.md`          | Chronological activity record.                         | frequent   |
+| `log.md`          | Chronological activity record (per session).           | frequent   |
 
 **Lazy files** — create only when there is real content, then link from
 `index.md`: `vision.md` (purpose/scope), `architecture.md`
@@ -58,23 +58,97 @@ file when the branch merges** — conflict-free, since no other branch touches i
 active-work file (create from `active-work/TEMPLATE.md` if missing). Consult on
 demand: `decisions.md`, `log.md`, and the lazy files.
 
-**During:** keep your active-work file current (task, progress, touched files,
-blockers); append events to `log.md`; record decisions (with reasoning) in
-`decisions.md` and pitfalls in `mistakes.md`.
+**During:** keep your active-work file current; append to the **current
+session's** `log.md` entry; record decisions in `decisions.md`; update lazy
+files when their triggers fire (below).
 
-**After:** update `current.md` if the project state changed; finalize entries in
-`decisions.md` / `mistakes.md` / `log.md`; create lazy files only when a new
-domain or significant feature emerges; delete your active-work file when the
-branch merges.
+**After:** update `current.md` if project state changed; finalize `decisions.md`
+/ `mistakes.md` / `log.md`; keep `index.md` aligned; delete your active-work
+file when the branch merges.
 
 **Flush early:** before the context grows long or is compacted, and before
-ending a session, write the essentials to your active-work file (and `log.md`).
+ending a session, write the essentials to your active-work file and `log.md`.
 The next agent must continue from the files, never from chat history. Run
 `/agent-memory sync` as the executable form of the _During_ / _After_ / _Flush
 early_ steps — it refreshes `current.md`, your branch's active-work file,
 `log.md`, and `index.md` from repo state (`git`) and confirms each change before
 writing. Use `/agent-memory sync --auto` at routine checkpoints to apply all
 proposed diffs without the per-file prompt, keeping the flush low-friction.
+
+### Obligations by file
+
+#### `log.md` — session log (hooks + agent)
+
+Hooks maintain the session **heading** and append **file-path bullets** from
+`git` (evidence only). You add semantic bullets (fixes, features, outcomes) and
+refine the heading type/summary.
+
+- **One heading per session** (date + session ID). Hooks open
+  `## [YYYY-MM-DD] [session-id] [chore] session work` on session start; you
+  change `[chore]` and the summary when the session goal is clear.
+- Append your bullets under the same heading — do not open a new heading per
+  checkpoint.
+- Session ID: `AGENT_MEMORY_SESSION_ID` (from sessionStart `env`), harness stdin
+  (`session_id` / `conversation_id`), or `.hook-sync-state`.
+
+#### `decisions.md` — required; update when decisions change
+
+**You MUST** append an ADR-style entry when you **make, confirm, or change** a
+design, architecture, or convention choice (see `decisions.md`). When you
+reverse or supersede a decision, add a new entry that references the old one. Do
+not rely on chat or `log.md` alone.
+
+#### `active-work/<branch>.md` — hooks + agent
+
+- Hooks: ensure the file exists, refresh _Touched files_ from `git`, and seed
+  _Task_ from the branch name when still a placeholder.
+- **You:** refine **Task** from branch + request + `log.md`; keep **Progress**,
+  **Blockers**, and **Notes** current.
+
+#### `current.md` — shared snapshot
+
+- **In progress:** hooks refresh this list on **session start** from open
+  `active-work/*.md`; you refine summaries when branch goals change.
+- **Done:** when a branch merges and its active-work file is removed, add a
+  one-line summary of what landed here.
+- **Next steps:** **only** when an explicit roadmap or user-recorded plan exists
+  in the project — never infer or invent upcoming work.
+
+#### `index.md` — keep the map aligned
+
+Whenever you create, rename, or delete a lazy file or a `domains/*` /
+`features/*` file, update the matching section in `index.md` (add link, remove
+stale link). `/agent-memory sync` can add missing domain/feature links from
+`git`, but you must maintain lazy-file links and remove dead entries.
+
+#### `vision.md` — ask when uncertain
+
+During `init`, `bootstrap`, or `sync` (without `--force` / `--auto`): if product
+purpose or scope is unclear from existing docs, **ask the user** before writing
+or changing `vision.md`. If vision may need updating after your session, tell
+the user at the end — do not silently rewrite goals.
+
+#### `architecture.md` — update on structural change
+
+Create or update when any of these occur:
+
+- Major dependency or runtime version change (language, framework, DB, Node,
+  etc.).
+- New service, package, or top-level module; removal or merge of one.
+- Page/app routing or layout architecture change.
+- New external integration or deployment topology change.
+
+Keep components, stack, and key flows accurate; link from `index.md`.
+
+#### `patterns.md` — update on convention change
+
+Create or update when coding conventions change or when you establish patterns
+that should hold across the repo. Stay aligned with `AGENTS.md`, `CLAUDE.md`,
+`GEMINI.md`, and project linters — record project-specific rules here, do not
+duplicate the full agent files.
+
+Triggers: new error-handling pattern, API client pattern, test layout, naming
+scheme, or anything you would want the next agent to follow consistently.
 
 ### Plain-Markdown harnesses (Cursor, for example)
 
@@ -86,8 +160,10 @@ agent-memory block alone may never reach the model.
 
 **On Cursor:** run `/agent-memory init cursor` when `.cursor/` already exists to
 wire lifecycle hooks (recommended). `@import` in `AGENTS.md` is a no-op, and
-`AGENTS.md` may not auto-inject reliably. Hooks update Touched files from `git`
-between turns; you still own task/progress text and `current.md`. See
+`AGENTS.md` may not auto-inject reliably. Hooks keep `active-work/` (Touched
+files, Task stub), `log.md` (session heading + file bullets), and `current.md`
+_In progress_ on session start — you own semantic log text, Task meaning,
+`decisions.md`, _Done_, and `index.md`. See
 `skills/agent-memory/hooks/README.md`.
 
 The agent-memory block in `AGENTS.md` still spells out "Read
@@ -112,11 +188,23 @@ block.
 
 `log.md` and `decisions.md` have parseable headers, so `grep` suffices:
 
+> When available, use ripgrep (`rg`) instead of `grep` for better performance.
+> To check if you have ripgrep installed, run `rg --version`.
+
 ```bash
-grep "^## \[" log.md | tail -5         # last 5 entries (newest at bottom)
-grep "^## \[2026-06" log.md            # by date / month
-grep "^## \[.*\] fix " log.md          # by type
-grep -A3 "^## \[2026-06-20\]" log.md   # one entry with its body
+grep "^## \[" log.md | tail -5              # last 5 session headings
+grep "^## \[2026-06" log.md                 # by date / month
+grep "^## \[.*\] \[fix\]" log.md            # by type tag
+grep -A5 "^## \[2026-06-20\]" log.md       # heading + bullets
+```
+
+If you have ripgrep installed, you can use the following commands instead:
+
+```bash
+rg "^## \[" log.md | tail -5              # last 5 session headings
+rg "^## \[2026-06" log.md                 # by date / month
+rg "^## \[.*\] \[fix\]" log.md            # by type tag
+rg -A5 "^## \[2026-06-20\]" log.md       # heading + bullets
 ```
 
 ## Memory lint (anti-rot)
@@ -137,7 +225,8 @@ find domains features -name '*.md' 2>/dev/null | while read -r f; do
 # Stale per-branch files (skipped if git lists no branches)
 branches=$(git branch --format='%(refname:short)' | sed 's#[^A-Za-z0-9._-]#-#g')
 [ -n "$branches" ] && find active-work -name '*.md' ! -name 'TEMPLATE.md' 2>/dev/null | while read -r f; do
-  printf '%s\n' "$branches" | grep -qx "$(basename "$f" .md)" || echo "stale: $f"; done
+  printf '%s\n' "$branches" | grep -qx "$(basename "$f" .md)" || echo "stale: $f"
+done
 ```
 
 ## When in doubt
