@@ -20,12 +20,16 @@ file in `.agents/memory/active-work/`.
 
 This memory is **read AND written** by agents — it is not chat history. While
 you work and when you finish a task, keep it current per `instructions.md`:
-update your branch's `active-work/<branch>.md` (task, progress, touched files,
-blockers), append events to `log.md`, record decisions in `decisions.md`, and
-refresh `current.md` when project state changes. Delete your `active-work/` file
-when the branch merges. At checkpoints (end of task, before commit, before
-compaction, end of session), run `/agent-memory sync` to flush `current.md`,
-`active-work`, `log.md`, and `index.md` from repo state.
+update your branch's `active-work/<branch>.md` (Task, progress, touched files,
+blockers), append bullets to the **current session** heading in `log.md`,
+**record architecture and design decisions in `decisions.md`**, keep `index.md`
+aligned with lazy and domain/feature files, and refresh `current.md` when
+project state changes (list open active-work files in _In progress_; move
+completed work to _Done_). Ask the user before changing `vision.md` when
+uncertain. Delete your `active-work/` file when the branch merges. At
+checkpoints (end of task, before commit, before compaction, end of session), run
+`/agent-memory sync` to flush `current.md`, active-work, `log.md`, and
+`index.md` from repo state.
 
 @.agents/memory/instructions.md
 

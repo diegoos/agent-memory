@@ -38,8 +38,8 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
 2. **Copy the skeleton.** Obtain the repository (see `SKILL.md` → Repository
    source) and copy its `agent-memory/memory/` directory into the project as
-   `.agents/memory/` (the entire directory, including
-   `active-work/TEMPLATE.md` and `.gitignore` for hook-local state files).
+   `.agents/memory/` (the entire directory, including `active-work/TEMPLATE.md`
+   and `.gitignore` for hook-local state files).
 
 3. **Write the version anchor.** Create `.agents/memory/.version` containing the
    latest version — the newest version section in the repository's
@@ -74,20 +74,23 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
    without a harness after adding it).
 
    Run **only** the rows that apply (targeted: that harness only; auto: every
-   row whose harness dir exists). Copy shared scripts from
-   [`hooks/shared/`](../hooks/shared/) (`agent-memory-sync.sh`,
-   `agent-memory-session.sh` where the host uses session start), `chmod +x`.
+   row whose harness dir exists). Copy **all three** shared scripts from
+   [`hooks/shared/`](../hooks/shared/) (`agent-memory-common.sh`,
+   `agent-memory-sync.sh`, `agent-memory-session.sh` — common is required by
+   sync/session; never install sync/session alone), `chmod +x`.
 
    | Harness    | Prerequisite dir | What to install (idempotent)                                                                                                                                           |
    | ---------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
    | `cursor`   | `.cursor/`       | Copy shared scripts → `.cursor/hooks/`. Merge [`hooks/cursor/hooks.json`](../hooks/cursor/hooks.json) into `.cursor/hooks.json`. **Never create `.cursor/`.**          |
    | `claude`   | `.claude/`       | Copy shared scripts → `.claude/hooks/`. Merge [`hooks/claude-code/settings.json`](../hooks/claude-code/settings.json) into `.claude/settings.json`.                    |
    | `codex`    | `.codex/`        | Copy shared scripts → `.codex/hooks/`. Merge [`hooks/codex/hooks.json`](../hooks/codex/hooks.json) into `.codex/hooks.json`. Remind user to run `/hooks` in Codex TUI. |
-   | `opencode` | `.opencode/`     | Copy `agent-memory-sync.sh` → `.opencode/hooks/`. Copy [`hooks/opencode/agent-memory.ts`](../hooks/opencode/agent-memory.ts) → `.opencode/plugin/agent-memory.ts`.     |
+   | `opencode` | `.opencode/`     | Copy all three shared scripts → `.opencode/hooks/`. Copy [`hooks/opencode/agent-memory.ts`](../hooks/opencode/agent-memory.ts) → `.opencode/plugin/agent-memory.ts`.   |
    | `copilot`  | `.github/`       | Copy shared scripts → `.github/hooks/`. Copy [`hooks/copilot/agent-memory.json`](../hooks/copilot/agent-memory.json) → `.github/hooks/agent-memory.json` if missing.   |
 
-   Hooks run a **deterministic git checkpoint** (Touched files + optional
-   `log.md` append) — see [`hooks/README.md`](../hooks/README.md).
+   Hooks run a **deterministic checkpoint** — `active-work/`, `log.md`
+   (heading + file bullets), `current.md` _In progress_ on session start.
+   Semantic log text and `decisions.md` stay agent-owned. See
+   [`hooks/README.md`](../hooks/README.md).
 
 7. **Fallback agent file (auto mode only).** If mode is `auto` and none of
    `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` exist, create `AGENTS.md` at the
@@ -101,6 +104,8 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 ## Notes
 
 - Do not populate the memory here — `init` only scaffolds. To fill it from the
-  codebase, the user runs `/agent-memory bootstrap`.
+  codebase, the user runs `/agent-memory bootstrap`. If product vision is
+  unclear, ask the user before writing `vision.md` (same rule as `bootstrap` /
+  `sync`).
 - Optional git `pre-commit` hook is **not** wired by `init` — see
   [`hooks/README.md`](../hooks/README.md).

@@ -2,27 +2,34 @@
 
 Refresh the four files that rot between commands — `current.md`, your branch's
 `active-work/<branch>.md`, `log.md`, and `index.md` — from **actual repo state**
-(`git`), not chat history. This is the executable form of the _During_ / _After_
-/ _Flush early_ workflow in `instructions.md`.
+(`git`) and session context, not chat history. This is the executable form of
+the _During_ / _After_ / _Flush early_ workflow in `instructions.md`.
 
 Use it at any checkpoint: end of a task, before a commit, before context
 compaction, or when picking work back up. Safe and idempotent.
 
 ## Flags
 
-- `--auto` — apply all proposed diffs without the per-file `AskQuestion`
-  prompt. Use at routine checkpoints (where you would approve everything
-  anyway) to keep the flush low-friction; without it, sync is the careful,
-  per-file-confirm form suited to the first run or a manual review. `--auto`
-  still shows the diffs in the report after applying, and still skips files
-  for which it has no evidence (it never invents progress).
+- `--auto` — apply all proposed diffs without the per-file `AskQuestion` prompt.
+  Use at routine checkpoints (where you would approve everything anyway) to keep
+  the flush low-friction; without it, sync is the careful, per-file-confirm form
+  suited to the first run or a manual review. `--auto` still shows the diffs in
+  the report after applying, and still skips fields for which it has no evidence
+  (it never invents progress or log bullets).
+- `--force` — reserved for explicit user override; does not skip the vision
+  uncertainty gate below.
 
 ## Boundary
 
-Sync writes only to: `current.md`, `active-work/<branch>.md`, `log.md`, and the
-Domains/Features lists of `index.md`. It **never** touches `decisions.md`,
-`instructions.md`, `domains/*` / `features/*` content, or any file outside
-`.agents/memory/`. It never deletes anything.
+Sync writes only to: `current.md`, `active-work/<branch>.md`, `log.md`, and
+`index.md` (domains/features links and lazy-file links when evidence exists). It
+**never** touches `decisions.md`, `instructions.md`, `domains/*` / `features/*`
+body content, or any file outside `.agents/memory/`. It never deletes anything
+except replacing placeholder lines inside the four target files.
+
+Hooks maintain `log.md` session headings and file-path bullets from `git`; sync
+adds semantic bullets, refines summaries/types, and aligns `decisions.md`
+indirectly (sync still does not write `decisions.md` — the agent must).
 
 ## Steps
 
@@ -38,7 +45,7 @@ Domains/Features lists of `index.md`. It **never** touches `decisions.md`,
    real branch name (never reverse the lossy filename). If it exists, leave the
    header as-is.
 
-4. **Gather evidence (read-only, from `git`).**
+4. **Gather evidence (read-only, from `git` and memory).**
 
    ```bash
    git log --since="<last-log-date>" --pretty='%h %ad %s' --date=short --no-merges
@@ -47,41 +54,65 @@ Domains/Features lists of `index.md`. It **never** touches `decisions.md`,
    git diff --name-only <last-log-sha>..HEAD 2>/dev/null || true
    ```
 
-   `<last-log-date>` and `<last-log-sha>` come from the newest `## [YYYY-MM-DD]`
-   header in `log.md`. If `log.md` is empty, use the repo's first commit
-   (`git log --reverse --pretty='%h' | head -1`) or `HEAD~20` as a sane default.
+   Session ID: `AGENT_MEMORY_SESSION_ID`, harness stdin (`session_id` /
+   `conversation_id` / `sessionId`), or `current_session_id` from
+   `.agents/memory/.hook-sync-state`.
 
-5. **Propose updates (one diff per file).** Show each as a unified diff.
-   Unless `--auto` is set, confirm via `AskQuestion` before writing — sync
-   touches project memory, so the "confirm before editing user content" rule
-   applies. Allow approve / skip per file. Under `--auto`, apply all proposed
-   diffs without prompting and report them after.
-   - **`active-work/<branch>.md`** — fill/refresh _Task_, _Progress_, _Touched
-     files_ (from `git diff --name-only`), and _Blockers_. Keep _Notes_ as-is.
-     Overwrite only fields the evidence supports; do not invent progress.
-   - **`log.md`** — append one entry per meaningful change since the last entry:
-     `## [YYYY-MM-DD] type | description`. Type from the commit message or the
-     change shape (`feature`, `fix`, `refactor`, `docs`, `chore`, `test`,
-     `perf`, `security`). Merge trivial churn into a single `chore` entry.
-     Oldest first / newest at the bottom; keep both on conflict.
-   - **`current.md`** — refresh _Version / milestone_, _Done_, _In progress_,
-     _Next steps_ from the evidence plus a read of `active-work/<branch>.md`.
-     Keep it a short snapshot — detail stays in `log.md` / lazy files.
-   - **`index.md`** — for every `domains/*.md` / `features/*.md` that exists but
-     is not yet listed under its section, add a link line (replacing the
-     `_None yet._` placeholder the first time). Do not remove existing entries.
+   For `log.md`, find the **current session** heading:
+   `## [YYYY-MM-DD] [session-id] ...` (session-id bracket optional). Append
+   bullets under it; open a new heading only for a new session.
 
-6. **Apply approved diffs** only, with `Edit`/`Write` scoped to
+   `<last-log-date>` comes from the newest `## [YYYY-MM-DD]` in `log.md`. If
+   empty, use the repo's first commit or `HEAD~20` as a sane default.
+
+   `<last-log-sha>` is `last_processed_head` from `.agents/memory/.hook-sync-state`
+   (written by hooks after each checkpoint). If empty, skip the
+   `git diff --name-only <last-log-sha>..HEAD` line — there is no prior
+   processed commit to diff from.
+
+5. **Vision gate (unless `--auto`).** If `vision.md` does not exist or looks
+   stale/ambiguous and docs do not clarify product purpose, **ask the user**
+   before creating or rewriting `vision.md`. If you inferred a vision change
+   during sync, note it in the report for the user to confirm at session end.
+
+6. **Propose updates (one diff per file).** Show each as a unified diff. Unless
+   `--auto` is set, confirm via `AskQuestion` before writing — sync touches
+   project memory, so the "confirm before editing user content" rule applies.
+   Allow approve / skip per file. Under `--auto`, apply all proposed diffs
+   without prompting and report them after.
+   - **`active-work/<branch>.md`** — fill/refresh _Task_ (infer from branch
+     name, user context, `current.md`, recent `log.md`), _Progress_, _Touched
+     files_ (from `git diff --name-only`), and _Blockers_. Keep _Notes_ as-is
+     unless evidence supports an update. Overwrite only fields the evidence
+     supports.
+   - **`log.md`** — maintain **one heading per session**:
+     `## [YYYY-MM-DD] [session-id] [type] short summary` with `-` bullets for
+     concrete changes this session. Hooks may have appended ``- `path` ``
+     bullets already — add semantic bullets; refine type/summary; dedupe. Oldest
+     first / newest at bottom.
+   - **`current.md`** — refresh _Version / milestone_, _Done_, _In progress_
+     (list each open `active-work/*.md` with a one-line branch goal), from
+     evidence plus active-work files. Move completed branch work to _Done_ when
+     the active-work file is gone. _Next steps_ **only** if an explicit
+     roadmap/plan exists — remove or leave placeholder otherwise; never infer.
+   - **`index.md`** — for every existing lazy file (`vision.md`,
+     `architecture.md`, `patterns.md`, etc.) and every `domains/*.md` /
+     `features/*.md` not yet listed, add a link (replace `_None yet._` the first
+     time). Remove links to deleted files. Do not remove valid entries.
+
+7. **Apply approved diffs** only, with `Edit`/`Write` scoped to
    `.agents/memory/**`. Skip anything the user declined.
 
-7. **Report.** List each file: updated, skipped, or unchanged — and one line on
+8. **Report.** List each file: updated, skipped, or unchanged — and one line on
    what the next agent should read to continue (the branch's active-work file
-   plus `current.md`).
+   plus `current.md`). If `vision.md` may need user input, say so explicitly.
 
 ## Notes
 
-- Sync is **additive and conservative**. It will not remove a stale `current.md`
-  fact on its own — flag staleness for `lint` instead.
+- Sync is **additive and conservative** for `current.md` facts — flag staleness
+  for `lint` instead of silent deletion.
 - If `git` is unavailable, fall back to reading recently modified files under
   the project and ask the user to confirm what changed.
+- Remind the agent to update `decisions.md`, `architecture.md`, and
+  `patterns.md` when their triggers fired — sync does not write those files.
 - Mirrors the _Flush early_ section of `instructions.md`; keep them aligned.
