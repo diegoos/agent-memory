@@ -7,8 +7,8 @@
 #
 # Install:
 #   cp skills/agent-memory/hooks/git/pre-commit .git/hooks/pre-commit
-#   cp skills/agent-memory/hooks/shared/agent-memory-sync.sh .git/hooks/agent-memory-sync.sh
-#   chmod +x .git/hooks/pre-commit .git/hooks/agent-memory-sync.sh
+#   cp skills/agent-memory/hooks/shared/agent-memory-*.sh .git/hooks/
+#   chmod +x .git/hooks/pre-commit .git/hooks/agent-memory-*.sh
 
 cwd="${GIT_PREFIX:-$PWD}"
 [ -d "$cwd/.agents/memory" ] || exit 0
