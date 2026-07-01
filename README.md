@@ -84,24 +84,36 @@ never auto-triggers) with six subcommands:
 | `/agent-memory sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state.      |
 | `/agent-memory lint`      | Check for broken links, orphan files, stale per-branch files, consistency.       |
 
+## Hooks
+
+Optional lifecycle hooks keep `.agents/memory/` current **during** agent work
+with deterministic git checkpoints — no LLM call, no `followup_message` loops.
+
+On **session start**, hooks bind the session ID, refresh `current.md` _In
+progress_ from `active-work/`, and open the `log.md` session heading. After
+writes and at end-of-turn / compaction / pre-commit, they update
+`active-work/<branch>.md` (_Touched files_, Task stub from the branch name) and
+append file-path bullets under the current `log.md` heading.
+
+Semantic content stays **agent-owned** (or `/agent-memory sync`): log
+summary/type and bullets, `decisions.md`, active-work Progress/Blockers/Notes,
+`current.md` _Done_ / _Next steps_, and lazy files.
+
+**Supported harnesses:** Cursor (it is recommended to use hooks), Claude Code,
+Codex, Copilot, OpenCode (Bun plugin spawns the same shell scripts), plus an
+optional git `pre-commit` hook. Wire with `/agent-memory init <harness>` when
+the harness directory already exists.
+
+Full install steps, event matrix, and harness-agnostic session/project-dir
+resolution:
+[`skills/agent-memory/hooks/README.md`](./skills/agent-memory/hooks/README.md).
+
 ## Keeping the memory current
 
 The memory only helps if agents keep it current. The agent-memory block that
 `init` wires into your agent file tells them to **read and write** it — and to
 run `/agent-memory sync` at checkpoints (end of a task, before a commit, before
 compaction).
-
-**On Cursor:** `@import` in `AGENTS.md` does nothing, and `AGENTS.md` may not be
-auto-injected (known regression). **Hooks are the recommended integration** —
-run `init cursor` when `.cursor/` already exists to wire deterministic
-checkpoints (`sessionStart`, `postToolUse`, `afterAgentResponse`, `preCompact`)
-that update Touched files from `git` without an extra LLM request. See
-[`skills/agent-memory/hooks/`](./skills/agent-memory/hooks/).
-
-Optional **hooks** for Claude Code, Codex, OpenCode, Copilot, and a
-host-agnostic git `pre-commit` hook use the same shared sync script. They update
-evidence-backed fields only; task/progress and `current.md` stay manual (or
-`/agent-memory sync`).
 
 ## Install
 
