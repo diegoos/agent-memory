@@ -28,13 +28,14 @@ and list the accepted values.
 Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
 - Agent block: [`references/agent-block.md`](./agent-block.md)
-- Harness hooks/plugin: [`../hooks/`](../hooks/) (see per-harness table below)
+- Harness hooks/plugin: [`references/install-hooks.md`](./install-hooks.md)
 
 ## Steps
 
 1. **Guard.** If `.agents/memory/` already exists, stop and tell the user the
-   project is already initialized — suggest `/agent-memory update` instead. Do
-   not overwrite anything.
+   project is already initialized — suggest `/agent-memory update` or
+   `/agent-memory install hooks <harness>` to refresh hooks. Do not overwrite
+   anything.
 
 2. **Copy the skeleton.** Obtain the repository (see `SKILL.md` → Repository
    source) and copy its `agent-memory/memory/` directory into the project as
@@ -67,30 +68,11 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
    `<agent-memory>` … `</agent-memory>` from 0.0.4–0.0.5), skip it — do not add
    a second one.
 
-6. **Wire harness-specific config.** Never create harness root directories
-   (`.cursor/`, `.claude/`, etc.) — only install into directories that **already
-   exist**. If a harness dir is missing, skip its extras and say so in the
-   report (targeted mode: tell the user to create the dir first or run `init`
-   without a harness after adding it).
-
-   Run **only** the rows that apply (targeted: that harness only; auto: every
-   row whose harness dir exists). Copy **all three** shared scripts from
-   [`hooks/shared/`](../hooks/shared/) (`agent-memory-common.sh`,
-   `agent-memory-sync.sh`, `agent-memory-session.sh` — common is required by
-   sync/session; never install sync/session alone), `chmod +x`.
-
-   | Harness    | Prerequisite dir | What to install (idempotent)                                                                                                                                           |
-   | ---------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-   | `cursor`   | `.cursor/`       | Copy shared scripts → `.cursor/hooks/`. Merge [`hooks/cursor/hooks.json`](../hooks/cursor/hooks.json) into `.cursor/hooks.json`. **Never create `.cursor/`.**          |
-   | `claude`   | `.claude/`       | Copy shared scripts → `.claude/hooks/`. Merge [`hooks/claude-code/settings.json`](../hooks/claude-code/settings.json) into `.claude/settings.json`.                    |
-   | `codex`    | `.codex/`        | Copy shared scripts → `.codex/hooks/`. Merge [`hooks/codex/hooks.json`](../hooks/codex/hooks.json) into `.codex/hooks.json`. Remind user to run `/hooks` in Codex TUI. |
-   | `opencode` | `.opencode/`     | Copy all three shared scripts → `.opencode/hooks/`. Copy [`hooks/opencode/agent-memory.ts`](../hooks/opencode/agent-memory.ts) → `.opencode/plugin/agent-memory.ts`.   |
-   | `copilot`  | `.github/`       | Copy shared scripts → `.github/hooks/`. Copy [`hooks/copilot/agent-memory.json`](../hooks/copilot/agent-memory.json) → `.github/hooks/agent-memory.json` if missing.   |
-
-   Hooks run a **deterministic checkpoint** — `active-work/`, `log.md`
-   (heading + file bullets), `current.md` _In progress_ on session start.
-   Semantic log text and `decisions.md` stay agent-owned. See
-   [`hooks/README.md`](../hooks/README.md).
+6. **Wire harness-specific config.** Follow
+   [`references/install-hooks.md`](./install-hooks.md) for each harness that
+   applies (targeted: that harness only; auto: every row whose prerequisite dir
+   exists). In `init`, run the install-hooks steps **without** the memory guard
+   (step 1 of that reference).
 
 7. **Fallback agent file (auto mode only).** If mode is `auto` and none of
    `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` exist, create `AGENTS.md` at the

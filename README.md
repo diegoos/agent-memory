@@ -21,6 +21,8 @@ Then, in your agent:
 /agent-memory init copilot      # Copilot only
 /agent-memory init gemini       # Gemini only
 /agent-memory bootstrap         # optional: analyze the project and fill the memory
+/agent-memory install hooks <harness>  # install or refresh hooks (memory must exist)
+/agent-memory update            # migrate memory + refresh installed harness hooks
 /agent-memory sync              # at checkpoints: keep current.md / active-work / log.md / index.md fresh
 ```
 

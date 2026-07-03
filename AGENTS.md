@@ -15,7 +15,7 @@ agent-memory/
 
 skills/agent-memory/
 ├── SKILL.md          # skill entry (version in frontmatter)
-├── references/       # init, update, bootstrap, sync, lint, agent-block.md
+├── references/       # init, install-hooks, update, bootstrap, sync, lint, agent-block.md
 └── hooks/            # optional lifecycle hooks per harness
 
 CHANGELOG.md          # release history (Keep a Changelog + SemVer)
@@ -37,11 +37,11 @@ CHANGELOG.md          # release history (Keep a Changelog + SemVer)
 - **Skill boundary** — `/agent-memory` is manual-only
   (`disable-model-invocation: true`). Never auto-trigger it; follow `SKILL.md`
   and the matching `references/<command>.md` when the user invokes a subcommand.
-- **Hooks** — shared scripts in `skills/agent-memory/hooks/shared/` (`common`,
-  `sync`, `session`); per-host config in `hooks/<harness>/`. Deterministic
-  checkpoint: `active-work/`, `log.md` file bullets, `current.md` _In progress_
-  on session start — no LLM loops (`followup_message` on Cursor `stop` is
-  intentionally unused).
+- **Hooks** — shared scripts in `skills/agent-memory/hooks/agent-memory-hooks/`
+  (`common`, `sync`, `session`); per-host config in `hooks/<harness>/`.
+  Deterministic checkpoint: `active-work/`, `log.md` file bullets, `current.md`
+  _In progress_ on session start — no LLM loops (`followup_message` on Cursor
+  `stop` is intentionally unused).
 - **Markdown** — `markdownlint` with 100-char line length
   (`.markdownlint.json`).
 - **Commits** — English, Conventional Commits; do not push unless asked.

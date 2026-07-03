@@ -6,15 +6,17 @@ description: >-
   subcommand — `init` (create the memory structure; wire agent files and
   harness-specific config — `init` auto-detects, or `init cursor` / `init
   claude` / `init codex` / `init opencode` / `init copilot` / `init gemini` for
-  one harness), `update` (migrate an existing memory to the latest structure
-  without project memory, refresh the agent-memory block in the root agent
-  files), `bootstrap` (analyze the project and populate the memory),   `sync`
-  (refresh `current.md`, the branch's `active-work/<branch>.md`, `log.md`, and
-  `index.md` from repo state; accepts `--auto` to apply all proposed diffs
-  without the per-file prompt), `lint` (check the memory for broken links,
-  orphan files, and consistency problems; accepts `--fix` to also delete stale
-  per-branch `active-work` files), or `help` (list the commands and how to use
-  them). Never trigger automatically; this skill must be invoked on demand only.
+  one harness), `install hooks` (install or refresh lifecycle hooks for one
+  harness when memory already exists), `update` (migrate an existing memory to
+  the latest structure without project memory, refresh the agent-memory block in
+  the root agent files, and refresh installed harness hooks), `bootstrap`
+  (analyze the project and populate the memory), `sync` (refresh `current.md`,
+  the branch's `active-work/<branch>.md`, `log.md`, and `index.md` from repo
+  state; accepts `--auto` to apply all proposed diffs without the per-file
+  prompt), `lint` (check the memory for broken links, orphan files, and
+  consistency problems; accepts `--fix` to also delete stale per-branch
+  `active-work` files), or `help` (list the commands and how to use them). Never
+  trigger automatically; this skill must be invoked on demand only.
 metadata:
   invocation: manual
   version: '0.0.7'
@@ -100,13 +102,13 @@ instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or a host-specific
 agent `*.md`) — and in those **only the agent-memory block** (between
 `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain tags —
 to wire it in `init` and refresh it in `update`) — plus harness wiring paths
-listed in `references/init.md` (only into existing harness dirs; never create
-`.cursor/`, `.claude/`, etc.). Never touch content outside those scopes,
-application code, other configs, or other docs. Read the rest of the workspace
-freely.
+listed in `references/init.md` and `references/install-hooks.md` (only into
+existing harness dirs; never create `.cursor/`, `.claude/`, etc.). Never touch
+content outside those scopes, application code, other configs, or other docs.
+Read the rest of the workspace freely.
 
-`init` and `update` read the canonical skeleton and migration log from the
-public agent-memory repository:
+`init` and `update` read the canonical skeleton, hooks, and migration log from
+the public agent-memory repository:
 
 - Repository: <https://github.com/diegoos/agent-memory>
 - Skeleton: `agent-memory/memory/`
@@ -125,14 +127,15 @@ public agent-memory repository:
 Read the subcommand from the invocation, load **only** the matching reference,
 and follow it exactly:
 
-| Command     | Does                                                                                | Reference                 |
-| ----------- | ----------------------------------------------------------------------------------- | ------------------------- |
-| `init`      | Create `.agents/memory/`; wire agent + harness config (`init` or `init <harness>`). | `references/init.md`      |
-| `update`    | Migrate memory; refresh agent-memory block in root agent files.                     | `references/update.md`    |
-| `bootstrap` | Analyze the project and populate the memory.                                        | `references/bootstrap.md` |
-| `sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state.         | `references/sync.md`      |
-| `lint`      | Check the memory for structural and consistency problems.                           | `references/lint.md`      |
-| `help`      | List the commands and how to use them.                                              | _Help_ section below      |
+| Command         | Does                                                                                | Reference                     |
+| --------------- | ----------------------------------------------------------------------------------- | ----------------------------- |
+| `init`          | Create `.agents/memory/`; wire agent + harness config (`init` or `init <harness>`). | `references/init.md`          |
+| `install hooks` | Install or refresh lifecycle hooks for one harness.                                 | `references/install-hooks.md` |
+| `update`        | Migrate memory; refresh agent-memory block and installed hooks.                     | `references/update.md`        |
+| `bootstrap`     | Analyze the project and populate the memory.                                        | `references/bootstrap.md`     |
+| `sync`          | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state.         | `references/sync.md`          |
+| `lint`          | Check the memory for structural and consistency problems.                           | `references/lint.md`          |
+| `help`          | List the commands and how to use them.                                              | _Help_ section below          |
 
 If no subcommand is given, or it is not one of those above, run `help` (below)
 and stop. Do not guess the user's intent.
@@ -140,6 +143,10 @@ and stop. Do not guess the user's intent.
 For `init`, an optional second token selects one harness (`cursor`, `claude`,
 `codex`, `opencode`, `copilot`, `gemini`). Load `references/init.md` and follow
 its harness table.
+
+For `install hooks` (or `install hook`), a `<harness>` token is **required**
+(`cursor`, `claude`, `codex`, `opencode`, `copilot`, `gemini`). Load
+`references/install-hooks.md`.
 
 ## Help
 
@@ -153,26 +160,29 @@ page.
 
 **Commands**
 
-| Command                   | Does                                                                                                                                |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `/agent-memory init`      | Create `.agents/memory/`; auto-detect harnesses, or `init cursor` / `claude` / `codex` / `opencode` / `copilot` / `gemini` for one. |
-| `/agent-memory bootstrap` | Analyze the project (up to 3 subagents) and populate the memory.                                                                    |
-| `/agent-memory update`    | Migrate memory; refresh agent-memory block — never touches your content outside that scope.                                         |
-| `/agent-memory sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. `--auto` applies all diffs without per-file prompts.    |
-| `/agent-memory lint`      | Check for broken links, orphan files, stale branches, and consistency. `--fix` also deletes stale per-branch `active-work` files.   |
-| `/agent-memory help`      | Show this guide.                                                                                                                    |
+| Command                       | Does                                                                                                                                |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `/agent-memory init`          | Create `.agents/memory/`; auto-detect harnesses, or `init cursor` / `claude` / `codex` / `opencode` / `copilot` / `gemini` for one. |
+| `/agent-memory install hooks` | Install or refresh hooks for one harness — `cursor`, `claude`, `codex`, `opencode`, `copilot`, `gemini` (memory must exist).        |
+| `/agent-memory bootstrap`     | Analyze the project (up to 3 subagents) and populate the memory.                                                                    |
+| `/agent-memory update`        | Migrate memory; refresh agent-memory block and installed harness hooks.                                                             |
+| `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. `--auto` applies all diffs without per-file prompts.    |
+| `/agent-memory lint`          | Check for broken links, orphan files, stale branches, and consistency. `--fix` also deletes stale per-branch `active-work` files.   |
+| `/agent-memory help`          | Show this guide.                                                                                                                    |
 
 **Getting started**
 
 - New project? Run `init` (or `init <harness>` — e.g. `init cursor` if you use
   Cursor and already have a `.cursor/` directory), then optionally `bootstrap`.
+- Memory exists but hooks missing or stale? Run `install hooks <harness>`
+  (`cursor`, `claude`, `codex`, `opencode`, `copilot`) or `update` to refresh
+  all installed harness hooks.
 - Keeping the memory current? Run `sync` at checkpoints (end of task, before
   commit, before compaction). Use `sync --auto` for low-friction routine
   flushes.
 - Already set up? Use `lint` to check health (`lint --fix` also removes stale
-  per-branch files) and `update` to upgrade.
-- On Cursor? Run `init cursor` when `.cursor/` exists and install hooks — see
-  `skills/agent-memory/hooks/`. `@import` in `AGENTS.md` is a no-op in Cursor.
+  per-branch files), `update` to upgrade memory and hooks, or
+  `install hooks <harness>` to refresh one harness.
 
 Method & conventions: `.agents/memory/instructions.md`
 

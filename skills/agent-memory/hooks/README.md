@@ -26,6 +26,7 @@ Copy the shared scripts plus host config (paths from repo root):
 | **Codex**       | → `.codex/hooks/`                                           | merge `hooks/codex/hooks.json`          |
 | **Copilot**     | → `.github/hooks/`                                          | `hooks/copilot/agent-memory.json`       |
 | **OpenCode**    | plugin → `.opencode/hooks/*.sh`                             | `.opencode/plugin/agent-memory.ts`      |
+| **Gemini CLI**  | → `.gemini/hooks/`                                          | merge `.gemini/settings.json`           |
 
 Or run `/agent-memory init <harness>` when the harness directory already exists.
 
@@ -186,17 +187,20 @@ Scripts never assume a single harness. Shared helpers in
 3. `CLAUDE_PROJECT_DIR` (Claude Code hooks)
 4. `CODEX_PROJECT_DIR` (Codex hooks)
 5. `GITHUB_WORKSPACE` (CI / Copilot cloud)
-6. `cwd` or `workspace_roots[0]` from hook stdin JSON
-7. `$PWD`
+6. `GEMINI_PROJECT_DIR` (Gemini CLI)
+7. `cwd` or `workspace_roots[0]` from hook stdin JSON
+8. `$PWD`
 
 **Session ID** (`resolve_session_id`):
 
 1. `AGENT_MEMORY_SESSION_ID` — set by `sessionStart` via hook `env` output
    (Cursor, Claude, Copilot) or export (Codex, OpenCode plugin)
-2. `CURSOR_SESSION_ID` — legacy fallback only
-3. `session_id`, `conversation_id`, or `sessionId` from hook stdin JSON (Cursor,
-   Claude, Copilot, Codex on every lifecycle event)
-4. `current_session_id` in `.hook-sync-state` (last sessionStart)
+2. `CURSOR_SESSION_ID` — interop fallback (not Cursor-native; third-party hooks
+   may export it via sessionStart env output)
+3. `GEMINI_SESSION_ID` (Gemini CLI)
+4. `session_id`, `conversation_id`, or `sessionId` from hook stdin JSON (Cursor,
+   Claude, Copilot, Codex, Gemini on every lifecycle event)
+5. `current_session_id` in `.hook-sync-state` (last sessionStart)
 
 Cursor `afterAgentResponse` omits `session_id` on stdin — sync relies on (1) or
 (4). Claude `PostToolUse` / `Stop` include `session_id` on stdin — sync parses

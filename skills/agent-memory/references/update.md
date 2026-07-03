@@ -79,17 +79,27 @@ that canonical block during update (single source of truth).
    byte-identical to the canonical block, report "agent-file blocks already
    current" and move on.
 
-6. **Finalize.** Update `.agents/memory/.version` to the latest. Append one
+6. **Refresh installed hooks.** Follow
+   [`references/install-hooks.md`](./install-hooks.md) → **Detecting installed
+   harnesses** and run steps 4–6 for each harness that is already installed.
+   This is **safe** — overwrite canonical shared scripts and merge harness
+   config idempotently (agent-memory entries only). Run even when the installed
+   version already equals the latest (hook scripts may have changed without a
+   memory migration). Report which harnesses were refreshed and which were
+   skipped.
+
+7. **Finalize.** Update `.agents/memory/.version` to the latest. Append one
    entry to `log.md`:
    `## [YYYY-MM-DD] chore | agent-memory update to <version>`.
 
-7. **Report.** Summarize what was applied automatically, what was confirmed, and
+8. **Report.** Summarize what was applied automatically, what was confirmed, and
    what was skipped — including which agent files had their block refreshed,
-   which had a legacy section migrated, and which files were left untouched.
+   which had a legacy section migrated, which files were left untouched, and
+   which harness hooks were refreshed.
 
    If `.cursor/rules/agent-memory.mdc` exists (legacy — use hooks instead),
-   mention that the user may delete it manually after wiring hooks via
-   `init cursor`.
+   mention that the user may delete it manually; wire hooks with
+   `/agent-memory install hooks <harness>`.
 
 ## Gotchas
 

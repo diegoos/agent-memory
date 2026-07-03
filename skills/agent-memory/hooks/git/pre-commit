@@ -7,7 +7,7 @@
 #
 # Install:
 #   cp skills/agent-memory/hooks/git/pre-commit .git/hooks/pre-commit
-#   cp skills/agent-memory/hooks/shared/agent-memory-*.sh .git/hooks/
+#   cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .git/hooks/
 #   chmod +x .git/hooks/pre-commit .git/hooks/agent-memory-*.sh
 
 cwd="${GIT_PREFIX:-$PWD}"
@@ -21,6 +21,9 @@ fi
 staged=$(git diff --cached --name-only 2>/dev/null | grep -v '^\.agents/memory/' || true)
 [ -n "$staged" ] || exit 0
 
+# Branch sanitization must mirror common.sh:sanitize_branch so the reminder
+# path matches the file ensure_active_work writes. (This hook is /bin/sh and
+# does not source common.sh, so the logic is duplicated by necessity.)
 branch=$(git branch --show-current 2>/dev/null)
 branch=$(printf '%s' "$branch" | tr -c 'A-Za-z0-9._-' '-')
 [ -n "$branch" ] || branch="local"

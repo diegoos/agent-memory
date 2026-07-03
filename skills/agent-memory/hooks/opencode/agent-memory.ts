@@ -5,9 +5,9 @@
 // events to the same scripts used by Cursor, Claude, Codex, and Copilot.
 //
 // Install (see hooks/README.md):
-//   hooks/shared/agent-memory-common.sh
-//   hooks/shared/agent-memory-session.sh
-//   hooks/shared/agent-memory-sync.sh  → .opencode/hooks/
+//   hooks/agent-memory-hooks/agent-memory-common.sh
+//   hooks/agent-memory-hooks/agent-memory-session.sh
+//   hooks/agent-memory-hooks/agent-memory-sync.sh  → .opencode/hooks/
 //   this file → .opencode/plugin/agent-memory.ts
 
 import { execFileSync } from 'node:child_process';

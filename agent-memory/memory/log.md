@@ -18,13 +18,12 @@ happens — do not create a new heading for every checkpoint.
 
 - **Date** — `YYYY-MM-DD` (session start date).
 - **Session ID** — harness session/conversation ID when available (from
-  `AGENT_MEMORY_SESSION_ID` / `CURSOR_SESSION_ID`, or omit the bracket if
-  unknown).
+  `AGENT_MEMORY_SESSION_ID`, or omit the bracket if unknown).
 - **Type** — one of: `feat`, `fix`, `chore`, `review`, `docs`, `refactor`,
-  `test`, `perf`, `security`, `release`, `ingest`, `improve`. Hooks default to
-  `[chore]`; you refine when the session goal is clear.
+  `test`, `perf`, `security`, `release`, `ingest`, `improve`. Hooks do **not**
+  invent a type or summary — you add them when the session goal is clear.
 - **Summary** — one line describing the session's purpose (not a file count).
-  Hooks seed `session work`; you replace with a meaningful summary.
+  Hooks never write checkpoint lines or file counts in the heading.
 - **Bullets** — hooks append ``- `path/to/file` `` from `git` (once per file per
   session). You append semantic bullets (fixes, features, outcomes) during work
   and at checkpoints.

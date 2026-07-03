@@ -84,8 +84,8 @@ Hooks maintain the session **heading** and append **file-path bullets** from
 refine the heading type/summary.
 
 - **One heading per session** (date + session ID). Hooks open
-  `## [YYYY-MM-DD] [session-id] [chore] session work` on session start; you
-  change `[chore]` and the summary when the session goal is clear.
+  `## [YYYY-MM-DD] [session-id]` on session start (date only when ID is unknown);
+  you add `[type]` and a one-line summary when the session goal is clear.
 - Append your bullets under the same heading — do not open a new heading per
   checkpoint.
 - Session ID: `AGENT_MEMORY_SESSION_ID` (from sessionStart `env`), harness stdin
@@ -159,8 +159,9 @@ regression: it can appear as "requestable" instead of "always applied"), so the
 agent-memory block alone may never reach the model.
 
 **On Cursor:** run `/agent-memory init cursor` when `.cursor/` already exists to
-wire lifecycle hooks (recommended). `@import` in `AGENTS.md` is a no-op, and
-`AGENTS.md` may not auto-inject reliably. Hooks keep `active-work/` (Touched
+wire lifecycle hooks on first setup. When memory already exists, use
+`/agent-memory install hooks <harness>` for any supported harness. `@import` in
+`AGENTS.md` is a no-op, and `AGENTS.md` may not auto-inject reliably. Hooks keep `active-work/` (Touched
 files, Task stub), `log.md` (session heading + file bullets), and `current.md`
 _In progress_ on session start — you own semantic log text, Task meaning,
 `decisions.md`, _Done_, and `index.md`. See
