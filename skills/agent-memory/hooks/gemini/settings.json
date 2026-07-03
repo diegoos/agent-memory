@@ -1,0 +1,50 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_MEMORY_HOST=gemini .gemini/hooks/agent-memory-session.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "write_file|edit|shell|bash|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_MEMORY_EVENT=AfterTool .gemini/hooks/agent-memory-sync.sh",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_MEMORY_EVENT=AfterAgent .gemini/hooks/agent-memory-sync.sh",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "PreCompress": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_MEMORY_EVENT=PreCompress .gemini/hooks/agent-memory-sync.sh",
+            "timeout": 15000
+          }
+        ]
+      }
+    ]
+  }
+}
