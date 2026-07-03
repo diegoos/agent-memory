@@ -12,6 +12,37 @@ both in sync on version bumps.
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-07-03
+
+### Added
+
+- Gemini CLI is now a supported harness for lifecycle hooks.
+  - New `hooks/gemini/settings.json` wiring `SessionStart`, `AfterTool`,
+    `AfterAgent`, and `PreCompress`.
+  - Recognition of `GEMINI_PROJECT_DIR` / `GEMINI_SESSION_ID`.
+  - Dedicated host case in `agent-memory-session.sh` that emits strict JSON
+    (`{"context": "..."}`).
+
+### Changed
+
+- **Hooks directory reorganized**: canonical scripts moved from
+  `hooks/shared/` to `hooks/agent-memory-hooks/`.
+  All install instructions, snippets, and references updated.
+- **Significant performance improvement in hooks**: `postToolUse` no longer
+  runs `git`. It records the file path reported by the harness in stdin
+  (`tool_input.file_path` for `Write`/`Edit`). Full git reconciliation
+  (Touched files + log bullets) happens on `afterAgentResponse` / `preCompact`.
+- JSON parsing in hooks now prefers `jq` (spec-correct, handles escaping)
+  with a sed regex fallback for environments without `jq`. Also extracts
+  `tool_name` and file path.
+- Branch resolution is cached (`refresh_branch_cache`) so the git-free
+  postToolUse path can still produce correct `active-work/<branch>.md` names.
+- Removed the previous postToolUse debounce mechanism (no longer required).
+
+### Removed
+
+- Obsolete `should_skip_posttool` / `files_hash` helpers and related state keys.
+
 ## [0.0.7] - 2026-06-30
 
 ### Added

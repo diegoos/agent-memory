@@ -171,3 +171,34 @@ Format:
 - safe: `agent-memory/memory/.gitignore` — drop legacy `.cursor-hook-state`
   entry.
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.7`.
+
+## 0.0.8
+
+- sensitive: hooks scripts directory renamed from `hooks/shared/` to
+  `hooks/agent-memory-hooks/`. All three canonical scripts now live under the
+  new path. `install hooks`, `update`, and manual copy instructions updated.
+  Projects with manually copied old-path scripts must re-install from the new
+  location.
+- safe: `parse_hook_stdin` prefers `jq` when present (with sed fallback) for
+  robust extraction of `session_id`/`conversation_id`/`sessionId`, `cwd`,
+  `tool_name`, and `tool_input.file_path`.
+- safe: `postToolUse` is git-free for file edits — it records the path
+  supplied by the harness via stdin (`Write`/`Edit` tool_input). `Shell`
+  invocations are no-ops at this stage (reconciled later).
+- safe: branch name is cached at session start and full checkpoints
+  (`refresh_branch_cache`); `sanitize_branch` and postToolUse no longer run
+  `git branch --show-current`.
+- safe: new `add_touched_file` helper for incremental Touched files updates
+  from single file paths (used by the git-free postToolUse path).
+- safe: full Gemini CLI hooks support:
+  - new `hooks/gemini/settings.json` (SessionStart, AfterTool, AfterAgent,
+    PreCompress)
+  - `GEMINI_PROJECT_DIR` and `GEMINI_SESSION_ID` recognized
+  - dedicated `gemini` host handling in `agent-memory-session.sh` (strict
+    JSON output per Gemini CLI rules)
+- safe: removed postToolUse debounce helpers (`should_skip_posttool`,
+  `files_hash`, related state keys) — no longer needed.
+- safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.8`.
+- safe: documentation refreshed (`hooks/README.md`, `references/install-hooks.md`,
+  `init.md`, `SKILL.md` help text, harness snippets, etc.) for new directory
+  layout and Gemini support.
