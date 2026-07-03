@@ -1,7 +1,14 @@
 # agent-memory shared helpers — source from session/sync hooks only.
 # Deterministic, evidence-backed updates only (git + harness session ID).
 #
-# Expects: cwd, memory, state_file (set by caller after resolve_project_dir).
+# Hook-owned memory fields (the agent owns everything else — task meaning,
+# semantic log bullets, decisions.md, Done/Next, index.md — see hooks/README.md
+# "Safe write scope" and instructions.md):
+#   active-work/<branch>.md → Touched files (git), Task stub (branch name)
+#   log.md                  → per-session heading (sessionStart), file-path bullets
+#   current.md              → In progress list (sessionStart, from active-work/)
+#
+# Expects after agent_memory_init_context: cwd, memory, state_file globals.
 
 # Filled by parse_hook_stdin (optional).
 hook_stdin_session_id=""
@@ -11,26 +18,80 @@ hook_stdin_cwd=""
 # the same no-id session (logged_files_session was already __no_id__).
 agent_memory_no_id_continuing=0
 
+# Read harness stdin without blocking forever when fd 0 is open but idle (CLI).
+read_hook_stdin() {
+  local line rest=""
+  [ -t 0 ] && return 0
+  if IFS= read -r -t 1 line; then
+    rest="$line"
+    while IFS= read -r -t 1 line; do
+      rest+="$line"$'\n'
+      [ ${#rest} -gt 1048576 ] && break
+    done
+  fi
+  printf '%s' "$rest"
+}
+
+# Extract a quoted string value for a JSON field from a harness payload.
+# Returns first match (head -1). Field name must be regex-safe (alnum/_).
+json_string_field() {
+  printf '%s' "$1" | sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
+}
+
+# jq is preferred for JSON parsing (spec-correct: handles escapes, nesting,
+# unicode). Probe once per process; fall back to sed regex when jq is absent so
+# the hooks stay zero-dependency and portable.
+if [ -z "${_AMC_HAVE_JQ:-}" ]; then
+  if command -v jq >/dev/null 2>&1; then _AMC_HAVE_JQ=1; else _AMC_HAVE_JQ=0; fi
+fi
+
 parse_hook_stdin() {
   local input="${1:-}"
   hook_stdin_session_id=""
   hook_stdin_cwd=""
+  hook_stdin_tool_name=""
+  hook_stdin_tool_file=""
   [ -n "$input" ] || return 0
-  hook_stdin_session_id=$(printf '%s' "$input" | sed -n \
-    's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-  [ -z "$hook_stdin_session_id" ] && hook_stdin_session_id=$(printf '%s' "$input" | sed -n \
-    's/.*"conversation_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-  [ -z "$hook_stdin_session_id" ] && hook_stdin_session_id=$(printf '%s' "$input" | sed -n \
-    's/.*"sessionId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-  hook_stdin_cwd=$(printf '%s' "$input" | sed -n \
-    's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-  if [ -z "$hook_stdin_cwd" ]; then
-    hook_stdin_cwd=$(printf '%s' "$input" | sed -n \
-      's/.*"workspace_roots"[[:space:]]*:\[[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+  if [ "$_AMC_HAVE_JQ" -eq 1 ]; then
+    local parsed rest
+    parsed=$(printf '%s' "$input" | jq -r '
+      [ (.session_id // .conversation_id // .sessionId // ""),
+        (.cwd // (.workspace_roots[0] // "")),
+        (.tool_name // ""),
+        (.tool_input.file_path // "")
+      ] | @tsv')
+    hook_stdin_session_id=${parsed%%$'\t'*}
+    rest=${parsed#*$'\t'}; hook_stdin_cwd=${rest%%$'\t'*}
+    rest=${rest#*$'\t'}; hook_stdin_tool_name=${rest%%$'\t'*}
+    hook_stdin_tool_file=${rest#*$'\t'}
+  else
+    hook_stdin_session_id=$(json_string_field "$input" session_id)
+    [ -z "$hook_stdin_session_id" ] && hook_stdin_session_id=$(json_string_field "$input" conversation_id)
+    [ -z "$hook_stdin_session_id" ] && hook_stdin_session_id=$(json_string_field "$input" sessionId)
+    hook_stdin_cwd=$(json_string_field "$input" cwd)
+    if [ -z "$hook_stdin_cwd" ]; then
+      hook_stdin_cwd=$(printf '%s' "$input" | sed -n \
+        's/.*"workspace_roots"[[:space:]]*:\[[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+    fi
+    hook_stdin_tool_name=$(json_string_field "$input" tool_name)
+    hook_stdin_tool_file=$(json_string_field "$input" file_path)
   fi
 }
 
-# Harness project roots — see hooks/README.md (Cursor, Claude, Codex, git, OpenCode).
+# Shared entry point for sync.sh and session.sh: read harness stdin, parse it,
+# and resolve cwd/memory/state_file globals. Call once after sourcing common.sh.
+agent_memory_init_context() {
+  local hook_input=""
+  if [ ! -t 0 ]; then
+    hook_input=$(read_hook_stdin)
+  fi
+  parse_hook_stdin "$hook_input"
+  cwd=$(resolve_project_dir "$hook_stdin_cwd")
+  memory="$cwd/.agents/memory"
+  state_file="$memory/.hook-sync-state"
+}
+
+# Harness project roots — see hooks/README.md (Cursor, Claude, Codex, Gemini, git, OpenCode).
 resolve_project_dir() {
   local stdin_cwd="${1:-}"
   if [ -n "${AGENT_MEMORY_PROJECT_DIR:-}" ]; then printf '%s' "$AGENT_MEMORY_PROJECT_DIR"; return; fi
@@ -38,18 +99,23 @@ resolve_project_dir() {
   if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then printf '%s' "$CLAUDE_PROJECT_DIR"; return; fi
   if [ -n "${CODEX_PROJECT_DIR:-}" ]; then printf '%s' "$CODEX_PROJECT_DIR"; return; fi
   if [ -n "${GITHUB_WORKSPACE:-}" ]; then printf '%s' "$GITHUB_WORKSPACE"; return; fi
+  if [ -n "${GEMINI_PROJECT_DIR:-}" ]; then printf '%s' "$GEMINI_PROJECT_DIR"; return; fi
   if [ -n "$stdin_cwd" ]; then printf '%s' "$stdin_cwd"; return; fi
   printf '%s' "${PWD:-.}"
 }
 
 # Canonical: AGENT_MEMORY_SESSION_ID (from sessionStart env), then stdin JSON,
-# then .hook-sync-state (prior sessionStart; sync only). CURSOR_SESSION_ID is legacy.
+# then .hook-sync-state (prior sessionStart; sync only). CURSOR_SESSION_ID is
+# not set by Cursor natively (Cursor sends session_id via stdin JSON); kept as
+# an interop fallback for third-party hooks that export it via sessionStart env.
+# GEMINI_SESSION_ID is provided by Gemini CLI.
 # Second arg: allow_state_fallback (1=sync default, 0=sessionStart — no stale ID).
 resolve_session_id() {
   local stdin_sid="${1:-}"
   local allow_state_fallback="${2:-1}"
   if [ -n "${AGENT_MEMORY_SESSION_ID:-}" ]; then printf '%s' "$AGENT_MEMORY_SESSION_ID"; return; fi
   if [ -n "${CURSOR_SESSION_ID:-}" ]; then printf '%s' "$CURSOR_SESSION_ID"; return; fi
+  if [ -n "${GEMINI_SESSION_ID:-}" ]; then printf '%s' "$GEMINI_SESSION_ID"; return; fi
   if [ -n "$stdin_sid" ]; then printf '%s' "$stdin_sid"; return; fi
   if [ "$allow_state_fallback" = "1" ]; then
     read_state current_session_id ""
@@ -67,13 +133,12 @@ persist_session_id() {
 # __no_id__: no session ID bound; same no-id session keeps dedupe.
 NO_ID_SESSION_SENTINEL="__no_id__"
 
-# Log heading type tags — keep aligned with agent-memory/memory/log.md
-LOG_TYPE_TAGS='chore|feat|fix|docs|test|refactor|review|perf|security|release|ingest|improve'
-
-session_heading_exists_for() {
-  session_heading_exists "$1"
-}
-
+# Keep logged_files (per-session dedupe set of already-bulleted paths) bound to
+# the active session id (or __no_id__). Wipe it when the bound session changes,
+# so a new session re-bullets paths. id_upgrade_from preserves the prior bound
+# across a no-id→id promotion so a session that gains a real id mid-flight keeps
+# its dedupe set (see promote_session_log_heading). Sets agent_memory_no_id_continuing
+# so ensure_session_log_heading can reuse an existing same-day no-id heading.
 reset_logged_files_if_session_changed() {
   local sid=$1 context="${2:-sync}"
   local last
@@ -112,16 +177,42 @@ reset_logged_files_if_session_changed() {
   write_state logged_files_session "$NO_ID_SESSION_SENTINEL"
 }
 
-sanitize_branch() {
+# Resolve current branch from git and cache it in .hook-sync-state. Called at
+# full checkpoints (sessionStart/afterAgentResponse/preCompact) so postToolUse
+# can read the cached branch without spawning git. Caveat: a mid-session
+# `git checkout` makes the cache stale until the next full checkpoint refreshes
+# it; low impact (a stray bullet in the old branch's active-work, reconciled at
+# afterAgentResponse).
+refresh_branch_cache() {
+  [ -n "${cwd:-}" ] || return 0
   local b
   b=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
+  [ -n "$b" ] && write_state branch "$b"
+}
+
+sanitize_branch() {
+  local b="${1:-}"
+  if [ -z "$b" ]; then
+    b=$(read_state branch "")
+    [ -z "$b" ] && b=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
+  fi
   printf '%s' "$b" | tr -c 'A-Za-z0-9._-' '-'
 }
 
 read_state() {
   local key=$1 default=$2
   [ -f "$state_file" ] || { printf '%s' "$default"; return; }
-  awk -F= -v k="$key" '$1==k {print $2; found=1} END {if(!found) print ""}' "$state_file" | head -1
+  awk -v k="$key" '
+    {
+      pos = index($0, "=")
+      if (pos > 0 && substr($0, 1, pos - 1) == k) {
+        print substr($0, pos + 1)
+        found = 1
+        exit
+      }
+    }
+    END { if (!found) print "" }
+  ' "$state_file"
 }
 
 write_state() {
@@ -149,7 +240,7 @@ list_worktree_changes() {
     git -C "$cwd" diff --name-only 2>/dev/null || true
     git -C "$cwd" diff --cached --name-only 2>/dev/null || true
     git -C "$cwd" ls-files --others --exclude-standard 2>/dev/null || true
-  } | sort -u | grep -v '^\.agents/memory/' | grep -v '^$' || true
+  } | sort -u | grep -vE '^\.agents/memory/|^$' || true
 }
 
 list_non_memory_changes() {
@@ -163,7 +254,7 @@ list_non_memory_changes() {
         git -C "$cwd" show --pretty=format: --name-only "$current_head" 2>/dev/null || true
       fi
     fi
-  } | sort -u | grep -v '^\.agents/memory/' | grep -v '^$' || true
+  } | sort -u | grep -vE '^\.agents/memory/|^$' || true
 }
 
 branch_to_task_stub() {
@@ -207,16 +298,15 @@ branch_to_task_stub() {
 
 ensure_active_work() {
   local branch aw real
-  branch=$(sanitize_branch)
+  real=$(git -C "$cwd" branch --show-current 2>/dev/null || echo "local")
+  branch=$(sanitize_branch "$real")
   [ -n "$branch" ] || branch="local"
   aw="$memory/active-work/${branch}.md"
   if [ ! -f "$aw" ]; then
-    real=$(git -C "$cwd" branch --show-current 2>/dev/null || echo "local")
     if [ -f "$memory/active-work/TEMPLATE.md" ]; then
-      cp "$memory/active-work/TEMPLATE.md" "$aw"
-      sed -i.bak "s/<branch>/${real}/" "$aw" 2>/dev/null || \
-        sed -i '' "s/<branch>/${real}/" "$aw" 2>/dev/null || true
-      rm -f "${aw}.bak"
+      local content
+      content=$(cat "$memory/active-work/TEMPLATE.md")
+      printf '%s\n' "${content//<branch>/$real}" >"$aw"
     else
       cat >"$aw" <<EOF
 # Active Work — Branch: \`${real}\`
@@ -246,46 +336,61 @@ EOF
   printf '%s' "$aw"
 }
 
-update_touched_files() {
-  local aw=$1
-  local list_tmp
-  list_tmp=$(mktemp)
-  list_non_memory_changes >"$list_tmp"
-  [ -s "$list_tmp" ] || { rm -f "$list_tmp"; return 0; }
-
-  awk -v list="$list_tmp" '
+# Replace the bullets of a `## <header>` markdown section with the non-empty
+# lines from list_file (printed verbatim as bullets). Empty list → "- _none_".
+# Used by update_touched_files and refresh_current_in_progress.
+replace_section_bullets() {
+  local file=$1 header=$2 list_file=$3
+  awk -v list="$list_file" -v hdr="$header" '
     BEGIN {
-      while ((getline line < list) > 0) {
-        if (line != "") { arr[++n] = line }
-      }
+      while ((getline line < list) > 0) if (line != "") arr[++n] = line
       close(list)
-      count = n
     }
+    $0 ~ hdr { in_section = 1; print; next }
+    in_section && /^## / { if (!done) emit(); in_section = 0 }
+    in_section && /^- / { if (!done) { emit(); done = 1 } next }
+    { print }
+    END { if (in_section && !done) emit() }
+    function emit() {
+      if (n == 0) print "- _none_"
+      else for (i = 1; i <= n; i++) print arr[i]
+    }
+  ' "$file" >"${file}.tmp" && mv "${file}.tmp" "$file"
+}
+
+update_touched_files() {
+  local aw=$1 list_tmp=$2 bullets_tmp
+  [ -s "$list_tmp" ] || return 0
+  bullets_tmp=$(mktemp)
+  while IFS= read -r f || [ -n "$f" ]; do
+    [ -n "$f" ] || continue
+    printf '%s\n' "- \`$f\`" >>"$bullets_tmp"
+  done <"$list_tmp"
+  replace_section_bullets "$aw" '^## Touched files' "$bullets_tmp"
+  rm -f "$bullets_tmp"
+}
+
+# Append one file bullet to the Touched files section, idempotent. Replaces the
+# `- _none_` placeholder if present, else inserts as the first bullet. Used by
+# postToolUse (git-free) for a live preview; afterAgentResponse reconciles with
+# update_touched_files (full git list, which overwrites this).
+add_touched_file() {
+  local aw=$1 rel=$2 bullet="- \`$rel\`"
+  [ -n "$rel" ] || return 0
+  grep -qF -- "- \`$rel\`" "$aw" 2>/dev/null && return 0
+  awk -v bullet="$bullet" '
     /^## Touched files/ { in_section = 1; print; next }
-    in_section && /^## / {
-      if (!bullets_done) {
-        if (count == 0) print "- _none_"
-        else for (i = 1; i <= n; i++) print "- `" arr[i] "`"
-      }
-      in_section = 0
-    }
+    in_section && /^## / { if (!done) { print bullet; print ""; done = 1 } in_section = 0 }
     in_section && /^- / {
-      if (!bullets_done) {
-        if (count == 0) print "- _none_"
-        else for (i = 1; i <= n; i++) print "- `" arr[i] "`"
-        bullets_done = 1
+      if (!done) {
+        if ($0 ~ /^- _none_/) { print bullet; done = 1; next }
+        print bullet; done = 1
       }
-      next
+      print; next
     }
     { print }
-    END {
-      if (in_section && !bullets_done) {
-        if (count == 0) print "- _none_"
-        else for (i = 1; i <= n; i++) print "- `" arr[i] "`"
-      }
-    }
+    END { if (in_section && !done) print bullet }
   ' "$aw" >"${aw}.tmp" && mv "${aw}.tmp" "$aw"
-  rm -f "$list_tmp"
 }
 
 update_task_stub() {
@@ -326,9 +431,9 @@ session_log_heading_line() {
   date=$(today_date)
   sid="${1:-}"
   if [ -n "$sid" ]; then
-    printf '## [%s] [%s] [chore] session work' "$date" "$sid"
+    printf '## [%s] [%s]' "$date" "$sid"
   else
-    printf '## [%s] [chore] session work' "$date"
+    printf '## [%s]' "$date"
   fi
 }
 
@@ -338,14 +443,20 @@ session_heading_exists() {
   [ -f "$log" ] || return 1
   if [ -n "$sid" ]; then
     awk -v sid="$sid" '
-      $0 ~ "^## \\[[0-9]{4}-[0-9]{2}-[0-9]{2}\\] \\[" sid "\\]" { found = 1 }
+      function is_sid_heading(line) {
+        return line ~ "^## \\[[0-9]{4}-[0-9]{2}-[0-9]{2}\\] \\[" sid "\\]"
+      }
+      is_sid_heading($0) && $0 !~ /hook checkpoint/ { found = 1 }
       END { exit(found ? 0 : 1) }
     ' "$log"
   else
-    awk -v date="$date" -v types="$LOG_TYPE_TAGS" '
+    awk -v date="$date" '
       function is_no_id_heading(line) {
+        if (line !~ "^## \\[" date "\\]") return 0
+        if (line ~ /hook checkpoint/) return 0
         if (line ~ "^## \\[" date "\\] \\[[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-") return 0
-        return line ~ "^## \\[" date "\\] \\[(" types ")\\]"
+        if (line ~ "^## \\[" date "\\]$") return 1
+        return line ~ "^## \\[" date "\\] \\["
       }
       is_no_id_heading($0) { found = 1 }
       END { exit(found ? 0 : 1) }
@@ -353,19 +464,30 @@ session_heading_exists() {
   fi
 }
 
-# Any same-day session heading (UUID or type-tag stub) — for no-id reuse / bullet target.
+# Any same-day session heading — for no-id reuse on sessionStart.
 same_day_session_heading_exists_any() {
   local log="$memory/log.md" date
   date=$(today_date)
   [ -f "$log" ] || return 1
-  awk -v date="$date" -v types="$LOG_TYPE_TAGS" '
+  awk -v date="$date" '
     function is_session_heading(line) {
-      if (line ~ "^## \\[" date "\\] \\[[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-") return 1
-      return line ~ "^## \\[" date "\\] \\[(" types ")\\]"
+      if (line !~ "^## \\[" date "\\]") return 0
+      if (line ~ /hook checkpoint/) return 0
+      if (line ~ "^## \\[" date "\\]$") return 1
+      return line ~ "^## \\[" date "\\] \\["
     }
     is_session_heading($0) { found = 1 }
     END { exit(found ? 0 : 1) }
   ' "$log"
+}
+
+session_log_has_target_heading() {
+  local sid="${1:-}"
+  if [ -n "$sid" ]; then
+    session_heading_exists "$sid"
+  else
+    same_day_session_heading_exists_any
+  fi
 }
 
 strip_log_placeholder() {
@@ -401,46 +523,36 @@ promote_session_log_heading() {
     fi
     session_heading_exists "$sid" && return 0
   fi
-  if ! awk -v date="$date" -v types="$LOG_TYPE_TAGS" '
-    $0 ~ "^## \\[" date "\\] \\[(" types ")\\]" &&
-    $0 !~ "^## \\[" date "\\] \\[[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-" { found = 1 }
+  if ! awk -v date="$date" '
+    $0 ~ "^## \\[" date "\\]$" && $0 !~ /hook checkpoint/ { found = 1 }
     END { exit(found ? 0 : 1) }
   ' "$log"; then
     return 0
   fi
-  awk -v sid="$sid" -v date="$date" -v types="$LOG_TYPE_TAGS" '
-    $0 ~ "^## \\[" date "\\] \\[(" types ")\\]" &&
-    $0 !~ "^## \\[" date "\\] \\[[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-" && !promoted {
-      sub("^## \\[" date "\\] ", "## [" date "] [" sid "] ")
+  awk -v sid="$sid" -v date="$date" '
+    $0 ~ "^## \\[" date "\\]$" && !promoted {
+      print "## [" date "] [" sid "]"
       promoted = 1
-      print
       next
     }
     { print }
   ' "$log" >"${log}.tmp" && mv "${log}.tmp" "$log"
 }
 
+# sessionStart only — sync must not invent headings or summaries.
 ensure_session_log_heading() {
-  local log="$memory/log.md" line sid force_new="${2:-0}"
+  local log="$memory/log.md" line sid context="${2:-}"
   sid="${1:-}"
+  [ "$context" = "sessionStart" ] || return 0
   [ -n "$sid" ] && promote_session_log_heading "$sid"
   line=$(session_log_heading_line "$sid")
-  if [ -n "$force_new" ] && [ "$force_new" != "0" ]; then
-    if [ -n "$sid" ]; then
-      session_heading_exists "$sid" && return 0
-    elif [ "${agent_memory_no_id_continuing:-0}" = "1" ] \
-        && same_day_session_heading_exists_any; then
-      return 0
-    elif session_heading_exists ""; then
-      return 0
-    fi
-  elif [ -n "$sid" ]; then
+  if [ -n "$sid" ]; then
     session_heading_exists "$sid" && return 0
-  elif [ "$(read_state logged_files_session "")" = "$NO_ID_SESSION_SENTINEL" ] \
+  elif [ "${agent_memory_no_id_continuing:-0}" = "1" ] \
       && same_day_session_heading_exists_any; then
     return 0
-  else
-    session_heading_exists "" && return 0
+  elif session_heading_exists ""; then
+    return 0
   fi
   strip_log_placeholder
   if [ ! -f "$log" ]; then
@@ -451,47 +563,36 @@ ensure_session_log_heading() {
 }
 
 # Record separator–delimited logged paths for current session (logged_files).
+# logged set ($2) is read once by the caller and passed in to avoid N+1 read_state.
 file_already_logged() {
-  local f=$1 logged
-  logged=$(read_state logged_files "")
-  case "${logged}"$'\x1e' in
+  local f=$1 logged=$2
+  [ -n "$logged" ] || return 1
+  case $'\x1e'"${logged}"$'\x1e' in
     *$'\x1e'"$f"$'\x1e'*) return 0 ;;
-    "$f"$'\x1e'*) return 0 ;;
-    *$'\x1e'"$f") return 0 ;;
-    "$f") return 0 ;;
     *) return 1 ;;
   esac
 }
 
-mark_files_logged() {
-  local new=$1 logged
-  logged=$(read_state logged_files "")
-  if [ -z "$logged" ]; then
-    write_state logged_files "$new"
-  else
-    write_state logged_files "${logged}"$'\x1e'"${new}"
-  fi
-}
-
 append_log_file_bullets() {
-  local sid=$1
-  local log="$memory/log.md" list_tmp count pending_tmp bullets_tmp
-  list_tmp=$(mktemp)
+  local sid=$1 list_tmp=$2
+  local log="$memory/log.md" count pending_tmp bullets_tmp logged
   pending_tmp=$(mktemp)
-  list_non_memory_changes >"$list_tmp"
-  [ -s "$list_tmp" ] || { rm -f "$list_tmp" "$pending_tmp"; return 0; }
+  [ -s "$list_tmp" ] || { rm -f "$pending_tmp"; return 0; }
 
-  ensure_session_log_heading "$sid"
   reset_logged_files_if_session_changed "$sid"
+  session_log_has_target_heading "$sid" || {
+    rm -f "$pending_tmp"
+    return 0
+  }
 
+  logged=$(read_state logged_files "")
   count=0
   while IFS= read -r f || [ -n "$f" ]; do
     [ -n "$f" ] || continue
-    file_already_logged "$f" && continue
+    file_already_logged "$f" "$logged" && continue
     printf '%s\n' "$f" >>"$pending_tmp"
     count=$((count + 1))
   done <"$list_tmp"
-  rm -f "$list_tmp"
   [ "$count" -gt 0 ] || { rm -f "$pending_tmp"; return 0; }
 
   bullets_tmp=$(mktemp)
@@ -504,20 +605,28 @@ append_log_file_bullets() {
     printf '%s\n' "- changed ${count} files (see active-work Touched files)" >>"$bullets_tmp"
   fi
 
-  if awk -v sid="$sid" -v date="$(today_date)" -v types="$LOG_TYPE_TAGS" -v bullets="$bullets_tmp" '
+  if awk -v sid="$sid" -v date="$(today_date)" -v bullets="$bullets_tmp" '
     BEGIN {
       while ((getline b < bullets) > 0) bullet[++bn] = b
       close(bullets)
       if (sid != "") {
         heading_pat = "^## \\[[0-9]{4}-[0-9]{2}-[0-9]{2}\\] \\[" sid "\\]"
-      } else {
-        type_pat = "^## \\[" date "\\] \\[(" types ")\\]"
-        uuid_pat = "^## \\[" date "\\] \\[[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-"
       }
     }
+    function is_legacy_checkpoint(line) {
+      return line ~ /hook checkpoint/
+    }
     function is_target_heading(line) {
+      if (is_legacy_checkpoint(line)) return 0
       if (sid != "") return line ~ heading_pat
-      return line ~ uuid_pat || line ~ type_pat
+      # no-id: target any same-day non-legacy heading, INCLUDING a UUID heading.
+      # A no-id sync following a with-id session (state lost/cleared mid-
+      # session) continues logging under the prior UUID heading rather than
+      # fragmenting. This intentionally diverges from is_no_id_heading, which
+      # excludes UUID as a sessionStart creation gate.
+      if (line !~ "^## \\[" date "\\]") return 0
+      if (line ~ "^## \\[" date "\\]$") return 1
+      return line ~ "^## \\[" date "\\] \\["
     }
     {
       buf[++nr] = $0
@@ -533,21 +642,21 @@ append_log_file_bullets() {
           }
         }
       }
+      if (end_section == 0) exit 1
       for (i = 1; i <= nr; i++) {
         print buf[i]
-        if (i == end_section && end_section > 0) {
+        if (i == end_section) {
           for (j = 1; j <= bn; j++) print bullet[j]
         }
-      }
-      if (end_section == 0) {
-        for (j = 1; j <= bn; j++) print bullet[j]
       }
     }
   ' "$log" >"${log}.tmp" && mv "${log}.tmp" "$log"; then
     while IFS= read -r f || [ -n "$f" ]; do
       [ -n "$f" ] || continue
-      mark_files_logged "$f"
+      if [ -z "$logged" ]; then logged="$f"
+      else logged="$logged"$'\x1e'"$f"; fi
     done <"$pending_tmp"
+    write_state logged_files "$logged"
   fi
   rm -f "$bullets_tmp" "$pending_tmp"
 }
@@ -566,12 +675,11 @@ extract_active_work_summary() {
         exit
       }
     }
-    END { }
   ' "$aw"
 }
 
 refresh_current_in_progress() {
-  local current="$memory/current.md" tmp entries n=0
+  local current="$memory/current.md" tmp
   [ -f "$current" ] || return 0
 
   tmp=$(mktemp)
@@ -579,45 +687,16 @@ refresh_current_in_progress() {
     for aw in "$memory"/active-work/*.md; do
       [ -f "$aw" ] || continue
       [ "$(basename "$aw")" = "TEMPLATE.md" ] && continue
-      local base summary branch_line
+      local base summary
       base=$(basename "$aw")
       summary=$(extract_active_work_summary "$aw")
       if [ -z "$summary" ]; then
         summary=$(branch_to_task_stub "$(basename "$aw" .md)")
       fi
       printf -- '- [`active-work/%s`](./active-work/%s) — %s\n' "$base" "$base" "$summary"
-      n=$((n + 1))
     done
   } >"$tmp"
 
-  awk -v list="$tmp" -v n="$n" '
-    BEGIN {
-      while ((getline line < list) > 0) entries[++c] = line
-      close(list)
-    }
-    /^## In progress/ { in_section = 1; print; next }
-    in_section && /^## / {
-      if (!bullets_done) {
-        if (c == 0) print "- _none_"
-        else for (i = 1; i <= c; i++) print entries[i]
-      }
-      in_section = 0
-    }
-    in_section && /^- / {
-      if (!bullets_done) {
-        if (c == 0) print "- _none_"
-        else for (i = 1; i <= c; i++) print entries[i]
-        bullets_done = 1
-      }
-      next
-    }
-    { print }
-    END {
-      if (in_section && !bullets_done) {
-        if (c == 0) print "- _none_"
-        else for (i = 1; i <= c; i++) print entries[i]
-      }
-    }
-  ' "$current" >"${current}.tmp" && mv "${current}.tmp" "$current"
+  replace_section_bullets "$current" '^## In progress' "$tmp"
   rm -f "$tmp"
 }

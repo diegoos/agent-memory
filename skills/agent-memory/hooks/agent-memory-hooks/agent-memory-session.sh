@@ -4,31 +4,23 @@
 # On new session: refresh current.md In progress from active-work/ + log state.
 # No-op when .agents/memory/ is absent.
 #
-# Set AGENT_MEMORY_HOST: cursor | claude | codex | copilot | opencode
+# Set AGENT_MEMORY_HOST: cursor | claude | codex | copilot | opencode | gemini
 
 set -u
 
 host="${AGENT_MEMORY_HOST:-}"
 
-hook_input=""
-if [ ! -t 0 ]; then
-  hook_input=$(cat 2>/dev/null || true)
-fi
-
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 _common_sh="$script_dir/agent-memory-common.sh"
 if [ ! -f "$_common_sh" ]; then
-  printf 'agent-memory: missing agent-memory-common.sh beside %s; install all three hooks/shared/*.sh together (see skills/agent-memory/hooks/README.md)\n' \
+  printf 'agent-memory: missing agent-memory-common.sh beside %s; install all three hooks/agent-memory-hooks/*.sh together (see skills/agent-memory/hooks/README.md)\n' \
     "$(basename -- "$0")" >&2
   exit 0
 fi
 # shellcheck source=agent-memory-common.sh
 . "$_common_sh"
 
-parse_hook_stdin "$hook_input"
-cwd=$(resolve_project_dir "$hook_stdin_cwd")
-memory="$cwd/.agents/memory"
-state_file="$memory/.hook-sync-state"
+agent_memory_init_context
 
 [ -d "$memory" ] || exit 0
 
@@ -39,13 +31,14 @@ reset_logged_files_if_session_changed "$session_id" sessionStart
 
 # New session: ensure active-work, log heading, current.md in-progress list.
 if command -v git >/dev/null 2>&1 && git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
+  refresh_branch_cache
   aw=$(ensure_active_work)
   update_task_stub "$aw"
   ensure_session_log_heading "$session_id" sessionStart
   refresh_current_in_progress
 fi
 
-msg="This project uses Agent Memory in .agents/memory/. Before tasks, Read .agents/memory/instructions.md, index.md, current.md, and your branch active-work file. While you work: refine active-work Task/Progress, append semantic bullets under the current session heading in log.md, and record every architecture/design decision in decisions.md when you make or change one. Hooks keep Touched files, log file-change bullets, and current.md In progress in sync — you own task meaning, log summaries/types, and decisions.md. Session ID: AGENT_MEMORY_SESSION_ID when set. Run /agent-memory sync at checkpoints."
+msg="Agent Memory (.agents/memory/). Before tasks: read instructions.md, index.md, current.md, and your branch active-work file. As you work: refine active-work Task/Progress, append semantic bullets under the current session heading in log.md, and record every architecture/design decision in decisions.md. Hooks keep Touched files, log file-bullets, and current.md In progress synced — you own task meaning, log type/summary, and decisions.md. Run /agent-memory sync at checkpoints (end of task, before commit/compaction)."
 
 json_escape() {
   local s=$1
@@ -90,6 +83,12 @@ case "$host" in
   opencode)
     [ -n "$session_id" ] && export AGENT_MEMORY_SESSION_ID="$session_id"
     printf '%s\n' "$msg"
+    ;;
+  gemini)
+    # Gemini CLI requires strict JSON-only stdout for hooks (no stray text).
+    # We return the memory guidance as context. The deterministic work
+    # (heading, current.md, etc.) happens as side effects before this output.
+    printf '{"context":"%s"}\n' "$(json_escape "$msg")"
     ;;
   *)
     [ -n "$session_id" ] && export AGENT_MEMORY_SESSION_ID="$session_id"
