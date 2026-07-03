@@ -3,7 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Migration details for `/agent-memory update` live in
 [`agent-memory/UPDATE.md`](agent-memory/UPDATE.md) (machine-oriented `safe` /
@@ -11,6 +12,40 @@ Migration details for `/agent-memory update` live in
 both in sync on version bumps.
 
 ## [Unreleased]
+
+## [0.0.9] - 2026-07-03
+
+### Added
+
+- Per-harness **native instruction files** on `init`: Cursor
+  `.cursor/rules/agent-memory.mdc` (`alwaysApply: true`), Copilot
+  `.github/instructions/agent-memory.instructions.md`, plus existing agent files
+  for claude/codex/opencode/gemini.
+- **Auto-detection** when running `/agent-memory init` without a harness —
+  infers harness(es) from project markers; asks the user when inconclusive.
+- **Carrier-file resolution** — avoids duplicate blocks when
+  `CLAUDE.md`/`GEMINI.md` delegate to `AGENTS.md` via `@import` (claude +
+  opencode canary).
+- **Copilot coexistence** — skips dedicated `.instructions.md` when `AGENTS.md`
+  already serves codex/opencode/claude-via-delegation.
+- `lint` checks for potential double-injection and delegation-canary states.
+- Copilot `.instructions.md` uses `applyTo: "**"` frontmatter (always-on);
+  Cursor `.mdc` uses `alwaysApply: true`.
+- `init` enforces prerequisite harness dirs and auto-detects via `.claude/` /
+  `.gemini/` dirs too; `update` suggests `init` when the native context file is
+  missing but hooks are wired.
+
+### Changed
+
+- `init` and `update` use harness-native targets instead of wiring every root
+  agent file in auto mode.
+- `update` refreshes `.mdc` and Copilot `.instructions.md` blocks; offers
+  migration from legacy `AGENTS.md`-only installs.
+
+### Reverted
+
+- 0.0.6 decision to omit `.cursor/rules/agent-memory.mdc` — reintroduced as the
+  Cursor **context layer** (hooks remain the checkpoint layer).
 
 ## [0.0.8] - 2026-07-03
 
@@ -25,16 +60,16 @@ both in sync on version bumps.
 
 ### Changed
 
-- **Hooks directory reorganized**: canonical scripts moved from
-  `hooks/shared/` to `hooks/agent-memory-hooks/`.
-  All install instructions, snippets, and references updated.
-- **Significant performance improvement in hooks**: `postToolUse` no longer
-  runs `git`. It records the file path reported by the harness in stdin
-  (`tool_input.file_path` for `Write`/`Edit`). Full git reconciliation
-  (Touched files + log bullets) happens on `afterAgentResponse` / `preCompact`.
-- JSON parsing in hooks now prefers `jq` (spec-correct, handles escaping)
-  with a sed regex fallback for environments without `jq`. Also extracts
-  `tool_name` and file path.
+- **Hooks directory reorganized**: canonical scripts moved from `hooks/shared/`
+  to `hooks/agent-memory-hooks/`. All install instructions, snippets, and
+  references updated.
+- **Significant performance improvement in hooks**: `postToolUse` no longer runs
+  `git`. It records the file path reported by the harness in stdin
+  (`tool_input.file_path` for `Write`/`Edit`). Full git reconciliation (Touched
+  files + log bullets) happens on `afterAgentResponse` / `preCompact`.
+- JSON parsing in hooks now prefers `jq` (spec-correct, handles escaping) with a
+  sed regex fallback for environments without `jq`. Also extracts `tool_name`
+  and file path.
 - Branch resolution is cached (`refresh_branch_cache`) so the git-free
   postToolUse path can still produce correct `active-work/<branch>.md` names.
 - Removed the previous postToolUse debounce mechanism (no longer required).
@@ -47,8 +82,8 @@ both in sync on version bumps.
 
 ### Added
 
-- `hooks/shared/agent-memory-common.sh` — shared deterministic helpers sourced by
-  session and sync hooks.
+- `hooks/shared/agent-memory-common.sh` — shared deterministic helpers sourced
+  by session and sync hooks.
 - Per-session `log.md` headings with optional session ID; hooks append file-path
   bullets once per file per session.
 - Session-start refresh of `current.md` _In progress_ from open `active-work/`
@@ -73,9 +108,9 @@ both in sync on version bumps.
 
 ### Added
 
-- `init` harness targets (`init cursor`, `init claude`, `init codex`, `init
-  opencode`, `init copilot`, `init gemini`) and auto-detect mode; wires hooks
-  only into harness dirs that already exist.
+- `init` harness targets (`init cursor`, `init claude`, `init codex`,
+  `init opencode`, `init copilot`, `init gemini`) and auto-detect mode; wires
+  hooks only into harness dirs that already exist.
 - Shared lifecycle hooks: `hooks/shared/agent-memory-sync.sh` and
   `agent-memory-session.sh` — deterministic git checkpoint (Touched files +
   conservative `log.md` append; no extra LLM request).
@@ -137,9 +172,9 @@ both in sync on version bumps.
 
 ### Changed
 
-- Unified agent-file stub for `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` — explicit
-  always-load list plus `@.agents/memory/instructions.md` for `@import` harnesses
-  and plain-Markdown readers.
+- Unified agent-file stub for `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` —
+  explicit always-load list plus `@.agents/memory/instructions.md` for `@import`
+  harnesses and plain-Markdown readers.
 
 ## [0.0.2] - 2026-06-24
 

@@ -84,8 +84,9 @@ Hooks maintain the session **heading** and append **file-path bullets** from
 refine the heading type/summary.
 
 - **One heading per session** (date + session ID). Hooks open
-  `## [YYYY-MM-DD] [session-id]` on session start (date only when ID is unknown);
-  you add `[type]` and a one-line summary when the session goal is clear.
+  `## [YYYY-MM-DD] [session-id]` on session start (date only when ID is
+  unknown); you add `[type]` and a one-line summary when the session goal is
+  clear.
 - Append your bullets under the same heading — do not open a new heading per
   checkpoint.
 - Session ID: `AGENT_MEMORY_SESSION_ID` (from sessionStart `env`), harness stdin
@@ -155,25 +156,27 @@ scheme, or anything you would want the next agent to follow consistently.
 Some harnesses treat `AGENTS.md` as plain Markdown and do **not** honor
 `@import` — in Cursor, `@.agents/memory/instructions.md` in the agent-memory
 block is a no-op. `AGENTS.md` may also fail to auto-inject (known Cursor
-regression: it can appear as "requestable" instead of "always applied"), so the
-agent-memory block alone may never reach the model.
+regression: it can appear as "requestable" instead of "always applied"), so an
+`AGENTS.md`-only block may never reach the model.
 
-**On Cursor:** run `/agent-memory init cursor` when `.cursor/` already exists to
-wire lifecycle hooks on first setup. When memory already exists, use
-`/agent-memory install hooks <harness>` for any supported harness. `@import` in
-`AGENTS.md` is a no-op, and `AGENTS.md` may not auto-inject reliably. Hooks keep `active-work/` (Touched
-files, Task stub), `log.md` (session heading + file bullets), and `current.md`
-_In progress_ on session start — you own semantic log text, Task meaning,
-`decisions.md`, _Done_, and `index.md`. See
+**On Cursor:** run `/agent-memory init cursor` when `.cursor/` already exists.
+`init` creates `.cursor/rules/agent-memory.mdc` with `alwaysApply: true` — this
+is the **context layer** (always-on rules that inject the agent-memory
+workflow). Also wire lifecycle hooks (checkpoint layer): when memory already
+exists, use `/agent-memory install hooks cursor` or `init cursor` on first
+setup. Hooks keep `active-work/` (Touched files, Task stub), `log.md` (session
+heading + file bullets), and `current.md` _In progress_ on session start — you
+own semantic log text, Task meaning, `decisions.md`, _Done_, and `index.md`. See
 `skills/agent-memory/hooks/README.md`.
 
-The agent-memory block in `AGENTS.md` still spells out "Read
-`.agents/memory/instructions.md`" for harnesses that do load it — and remains
-the cross-tool stub for Claude Code, Codex, Gemini, etc. If you are on Cursor
-and have not yet Read `instructions.md` in the current session, Read it now
-before continuing. Harnesses that honor `@import` (Claude Code, Gemini CLI,
-Codex) get `instructions.md` auto-loaded and need no extra step beyond the
-block.
+**Context vs checkpoint:** `.mdc` puts the obligation to Read `instructions.md`
+into every session context; hooks run deterministic git checkpoints without an
+LLM. Both are recommended on Cursor — neither replaces the other.
+
+If you are on Cursor and have not yet Read `instructions.md` in the current
+session, Read it now before continuing. Harnesses that honor `@import` (Claude
+Code, Gemini CLI, Codex) get `instructions.md` auto-loaded via their agent files
+and need no `.mdc`.
 
 ## Multi-developer rules
 

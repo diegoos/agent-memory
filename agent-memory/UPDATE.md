@@ -147,8 +147,8 @@ Format:
   sync and session hooks (session ID, log headings, active-work/current.md
   refresh). `init` must copy all three shared scripts together.
 - safe: refactor `agent-memory-sync.sh` and `agent-memory-session.sh` to source
-  `agent-memory-common.sh`; session hook refreshes `current.md` _In progress_
-  on session start.
+  `agent-memory-common.sh`; session hook refreshes `current.md` _In progress_ on
+  session start.
 - safe: hooks append file-path bullets under per-session `log.md` headings
   (session ID when available); no-id sessions and session-ID promotion from
   type-tag headings.
@@ -182,23 +182,78 @@ Format:
 - safe: `parse_hook_stdin` prefers `jq` when present (with sed fallback) for
   robust extraction of `session_id`/`conversation_id`/`sessionId`, `cwd`,
   `tool_name`, and `tool_input.file_path`.
-- safe: `postToolUse` is git-free for file edits — it records the path
-  supplied by the harness via stdin (`Write`/`Edit` tool_input). `Shell`
-  invocations are no-ops at this stage (reconciled later).
+- safe: `postToolUse` is git-free for file edits — it records the path supplied
+  by the harness via stdin (`Write`/`Edit` tool_input). `Shell` invocations are
+  no-ops at this stage (reconciled later).
 - safe: branch name is cached at session start and full checkpoints
   (`refresh_branch_cache`); `sanitize_branch` and postToolUse no longer run
   `git branch --show-current`.
-- safe: new `add_touched_file` helper for incremental Touched files updates
-  from single file paths (used by the git-free postToolUse path).
+- safe: new `add_touched_file` helper for incremental Touched files updates from
+  single file paths (used by the git-free postToolUse path).
 - safe: full Gemini CLI hooks support:
   - new `hooks/gemini/settings.json` (SessionStart, AfterTool, AfterAgent,
     PreCompress)
   - `GEMINI_PROJECT_DIR` and `GEMINI_SESSION_ID` recognized
-  - dedicated `gemini` host handling in `agent-memory-session.sh` (strict
-    JSON output per Gemini CLI rules)
+  - dedicated `gemini` host handling in `agent-memory-session.sh` (strict JSON
+    output per Gemini CLI rules)
 - safe: removed postToolUse debounce helpers (`should_skip_posttool`,
   `files_hash`, related state keys) — no longer needed.
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.8`.
-- safe: documentation refreshed (`hooks/README.md`, `references/install-hooks.md`,
-  `init.md`, `SKILL.md` help text, harness snippets, etc.) for new directory
-  layout and Gemini support.
+- safe: documentation refreshed (`hooks/README.md`,
+  `references/install-hooks.md`, `init.md`, `SKILL.md` help text, harness
+  snippets, etc.) for new directory layout and Gemini support.
+
+## 0.0.9
+
+- safe: `init` writes the agent-memory block into each harness's **native
+  instruction file** — Cursor `.cursor/rules/agent-memory.mdc`
+  (`alwaysApply: true`), Copilot
+  `.github/instructions/agent-memory.instructions.md`, claude/codex/opencode/
+  gemini via their agent files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`).
+- safe: `init` without `<harness>` **auto-detects** harnesses from project file
+  markers (`CLAUDE.md`, `GEMINI.md`, `.cursor/rules/`, Copilot markers,
+  `AGENTS.md` + `.codex/` or `.opencode/`); asks the user when detection is
+  inconclusive.
+- safe: **carrier-file resolution** — when `CLAUDE.md`/`GEMINI.md` delegates via
+  `@AGENTS.md`, write the block once in `AGENTS.md` (claude+opencode canary);
+  skip the delegating file.
+- safe: **Copilot coexistence** — when `AGENTS.md` is already a carrier for
+  codex/opencode/claude-via-delegation, skip creating
+  `.github/instructions/agent-memory.instructions.md` (Copilot loads `AGENTS.md`
+  too).
+- safe: `update` refreshes blocks in `.cursor/rules/agent-memory.mdc` and
+  `.github/instructions/agent-memory.instructions.md` (body only; preserve
+  frontmatter — `alwaysApply: true` for Cursor, `applyTo: "**"` for Copilot).
+- safe: Copilot `.instructions.md` requires `applyTo: "**"` frontmatter to be
+  always-on (path-specific files apply only to files matching `applyTo`);
+  without it the block may never reach the model. Documented in `agent-block.md`
+  and wired by `init`.
+- safe: `init` enforces **prerequisite harness dirs** for cursor/copilot natives
+  (`.cursor/`, `.github/`) — does not create harness roots by default; stops and
+  asks the user, creating the root only on explicit request. Subdirectories
+  (`.cursor/rules/`, `.github/instructions/`) may be created inside an existing
+  (or explicitly created) harness dir.
+- safe: auto-detection recognizes `.claude/` and `.gemini/` (dirs) as secondary
+  markers alongside `CLAUDE.md` / `GEMINI.md`.
+- safe: `update` report suggests `init <harness>` when hooks are wired but the
+  native instruction file is missing (e.g. `.cursor/hooks/` present,
+  `.cursor/rules/agent-memory.mdc` absent).
+- safe: `lint` instruction-wiring checks run from the **project root** (not
+  `.agents/memory/`); `test -o` replaced with `|| test` for POSIX portability.
+- safe: root `README.md`, `agent-memory/README.md`, and `hooks/README.md`
+  updated for per-harness natives, auto-detection, and the Cursor/Copilot
+  context-vs-checkpoint layers.
+- safe: `references/init.md`, `references/update.md`,
+  `references/agent-block.md`, `references/lint.md`, `SKILL.md` (0.0.9,
+  allowed-tools, write boundary), and help text aligned with per-harness natives
+  and auto-detection.
+- sensitive: `update` may **move** the block from `AGENTS.md` to cursor/copilot
+  natives for older installs (when `AGENTS.md` is not a shared carrier); show
+  diff and confirm.
+- sensitive: `update` may **remove** duplicate blocks from
+  `CLAUDE.md`/`GEMINI.md` that delegate via `@AGENTS.md` when `AGENTS.md`
+  already has the block (delegation canary cleanup); show diff and confirm.
+- sensitive: reverts 0.0.6 "Cursor hooks-only, no `.mdc`" — `.mdc` reintroduced
+  as the **context layer** (always-on rules); hooks remain the **checkpoint
+  layer**. `instructions.md` _Plain-Markdown harnesses_ updated.
+- safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.9`.

@@ -40,14 +40,15 @@ repository (see `SKILL.md` → Repository source).
 3. **Prerequisite dir.** If the harness prerequisite directory does not exist,
    stop — tell the user to create it first (e.g. `mkdir .opencode` after
    enabling OpenCode in the project). **Never create** `.cursor/`, `.claude/`,
-   `.codex/`, `.opencode/`, or `.github/`.
+   `.codex/`, `.opencode/`, or `.github/` unless the user explicitly requests
+   it; on explicit confirmation, create the dir (and any needed subdir) and
+   continue.
 
 4. **Obtain repository.** Load hook sources from the agent-memory repository
    (local clone, shallow `git clone`, or `WebFetch` — see `SKILL.md`).
 
 5. **Install shared scripts (always).** Copy **all three** files from
    `hooks/agent-memory-hooks/` into the harness hooks directory:
-
    - `agent-memory-common.sh`
    - `agent-memory-sync.sh`
    - `agent-memory-session.sh`

@@ -13,8 +13,8 @@ npx skills add diegoos/agent-memory --skill agent-memory
 Then, in your agent:
 
 ```text
-/agent-memory init              # auto-detect: wire agent files + harness dirs that exist
-/agent-memory init cursor       # Cursor only (.cursor/ must exist — wires hooks)
+/agent-memory init              # auto-detect harnesses from project markers
+/agent-memory init cursor       # Cursor only (.cursor/ must exist)
 /agent-memory init claude       # Claude Code only
 /agent-memory init codex        # Codex only
 /agent-memory init opencode     # OpenCode only
@@ -22,14 +22,19 @@ Then, in your agent:
 /agent-memory init gemini       # Gemini only
 /agent-memory bootstrap         # optional: analyze the project and fill the memory
 /agent-memory install hooks <harness>  # install or refresh hooks (memory must exist)
-/agent-memory update            # migrate memory + refresh installed harness hooks
+/agent-memory update            # update agent-memory + refresh instruction blocks + installed harness hooks
 /agent-memory sync              # at checkpoints: keep current.md / active-work / log.md / index.md fresh
 ```
 
-Without a harness name, `init` wires `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`
-that already exist, and installs harness-specific hooks only into directories
-that already exist (e.g. `.cursor/hooks/` when `.cursor/` is present — it never
-creates `.cursor/` for you). Use `init <harness>` when you know which agent you
+Without a harness name, `init` **auto-detects** harnesses from project markers
+(`CLAUDE.md`, `GEMINI.md`, `.cursor/rules/`, Copilot markers, `.claude/`,
+`.gemini/`, `AGENTS.md` + `.codex/` or `.opencode/`) and wires each harness's
+**native instruction file** — `.cursor/rules/agent-memory.mdc` for Cursor,
+`.github/instructions/agent-memory.instructions.md` for Copilot, or the
+harness's agent file (`AGENTS.md`/`CLAUDE.md`/`GEMINI.md`) for the rest. It asks
+you when detection is inconclusive. It does not create `.cursor/`, `.claude/`,
+`.github/`, etc. by default — those must already exist, unless you explicitly
+ask `init` to create them. Use `init <harness>` when you know which agent you
 use.
 
 ## Why
@@ -77,14 +82,14 @@ workflow is in [`instructions.md`](./agent-memory/memory/instructions.md).
 [`/agent-memory`](./skills/agent-memory) is a **manual-only** Agent Skill (it
 never auto-triggers) with six subcommands:
 
-| Command                   | Does                                                                             |
-| ------------------------- | -------------------------------------------------------------------------------- |
-| `/agent-memory help`      | List the commands and how to use them.                                           |
-| `/agent-memory init`      | Create `.agents/memory/`; `init` auto-detects or `init <harness>` for one agent. |
-| `/agent-memory update`    | Migrate an existing memory to the latest structure; never touches your content.  |
-| `/agent-memory bootstrap` | Analyze the project (up to 3 subagents) and populate the memory.                 |
-| `/agent-memory sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state.      |
-| `/agent-memory lint`      | Check for broken links, orphan files, stale per-branch files, consistency.       |
+| Command                   | Does                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `/agent-memory help`      | List the commands and how to use them.                                                                                    |
+| `/agent-memory init`      | Create `.agents/memory/`; auto-detect harnesses and wire each native instruction file, or `init <harness>` for one agent. |
+| `/agent-memory update`    | Migrate an existing memory to the latest structure; never touches your content.                                           |
+| `/agent-memory bootstrap` | Analyze the project (up to 3 subagents) and populate the memory.                                                          |
+| `/agent-memory sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state.                                               |
+| `/agent-memory lint`      | Check for broken links, orphan files, stale per-branch files, consistency.                                                |
 
 ## Hooks
 
@@ -101,10 +106,17 @@ Semantic content stays **agent-owned** (or `/agent-memory sync`): log
 summary/type and bullets, `decisions.md`, active-work Progress/Blockers/Notes,
 `current.md` _Done_ / _Next steps_, and lazy files.
 
-**Supported harnesses:** Cursor (it is recommended to use hooks), Claude Code,
-Codex, Copilot, OpenCode (Bun plugin spawns the same shell scripts), plus an
-optional git `pre-commit` hook. Wire with `/agent-memory init <harness>` when
-the harness directory already exists.
+**Supported harnesses:** Cursor, Claude Code, Codex, Copilot, OpenCode (Bun
+plugin spawns the same shell scripts), plus an optional git `pre-commit` hook.
+Wire with `/agent-memory init <harness>` when the harness directory already
+exists.
+
+**Cursor** uses two complementary layers: `.cursor/rules/agent-memory.mdc`
+(`alwaysApply: true`) injects the agent-memory workflow into every session
+context, and lifecycle hooks run deterministic git checkpoints. `init cursor`
+wires both when `.cursor/` exists. **Copilot** uses
+`.github/instructions/agent-memory.instructions.md` (`applyTo: "**"`, always-on)
+as its context layer, plus hooks under `.github/hooks/`.
 
 Full install steps, event matrix, and harness-agnostic session/project-dir
 resolution:
@@ -151,7 +163,10 @@ invisible in rendered Markdown). It tells the agent to **Read**
 `instructions.md` and to **write** the memory as it works, and adds `@import`,
 so harnesses that follow the AGENTS.md `@import` convention (Claude Code, Gemini
 CLI, Codex) auto-load `instructions.md`. For Cursor, run
-`/agent-memory init cursor` when `.cursor/` exists to wire hooks.
+`/agent-memory init cursor` when `.cursor/` exists — it wires
+`.cursor/rules/agent-memory.mdc` (context layer) plus hooks. For Copilot, run
+`/agent-memory init copilot` to wire
+`.github/instructions/agent-memory.instructions.md` plus hooks.
 
 ## Repository layout
 

@@ -1,10 +1,21 @@
 # The agent-memory block
 
-The exact block `init` writes into the root agent files (`AGENTS.md`,
-`CLAUDE.md`, `GEMINI.md`, or a host-specific agent `*.md`) and `update`
+The exact block `init` writes into harness instruction files and `update`
 refreshes in place. **Single source of truth** for the block content — both
 `init` and `update` read it from here; never duplicate the block text in those
 references.
+
+**Write targets** (body identical everywhere; see `references/init.md` for
+carrier resolution and which file receives the block):
+
+| Harness  | File                                                                     |
+| -------- | ------------------------------------------------------------------------ |
+| cursor   | `.cursor/rules/agent-memory.mdc` (with `alwaysApply: true` frontmatter)  |
+| copilot  | `.github/instructions/agent-memory.instructions.md`                      |
+| claude   | `CLAUDE.md` (or `AGENTS.md` when `CLAUDE.md` delegates via `@AGENTS.md`) |
+| codex    | `AGENTS.md`                                                              |
+| opencode | `AGENTS.md`                                                              |
+| gemini   | `GEMINI.md` (or delegated carrier — same rules as claude)                |
 
 ## The block
 
@@ -36,6 +47,36 @@ checkpoints (end of task, before commit, before compaction, end of session), run
 <!-- </agent-memory> -->
 ```
 
+## Cursor `.mdc` wrapper
+
+For Cursor, prepend this frontmatter to the block above (body unchanged):
+
+```yaml
+---
+description: Agent Memory workspace memory workflow
+alwaysApply: true
+---
+```
+
+`update` compares only the delimited body; preserve frontmatter when refreshing.
+
+## Copilot `.instructions.md` wrapper
+
+For Copilot, prepend this frontmatter to the block above (body unchanged):
+
+```yaml
+---
+applyTo: '**'
+---
+```
+
+Copilot path-specific files under `.github/instructions/**/*.instructions.md`
+are applied only to files matching an `applyTo` glob. `**` makes the block
+**always-on** (every file, every session) — required so the agent receives the
+agent-memory workflow before any task. Without `applyTo`, the file may not apply
+at all. `update` compares only the delimited body; preserve frontmatter when
+refreshing.
+
 ## Why the delimiters
 
 `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` mark the block so
@@ -47,12 +88,13 @@ outside the delimiters.
 ## Why both the read list and `@import`
 
 - The explicit "Read `.agents/memory/instructions.md`" line makes the agent load
-  the method file directly. This is the load path harnesses that treat
-  `AGENTS.md` as plain Markdown (Cursor, plain-text readers) rely on — they do
-  **not** honor `@import`, so the obligation to read `instructions.md` must be
-  spelled out, or the agent never learns the maintain-the-memory workflow and
-  the memory stops being updated. On **Cursor**, also wire lifecycle hooks via
-  `init cursor` — see `instructions.md` → _Plain-Markdown harnesses_.
+  the method file directly. This is the load path for harnesses that treat agent
+  files as plain Markdown or load context via rules — **Cursor** receives the
+  block through `.cursor/rules/agent-memory.mdc` (`alwaysApply: true`);
+  `@import` in `AGENTS.md` is a no-op there. The "Read …" line is the active
+  path on Cursor. Also wire lifecycle hooks via `init cursor` — see
+  `instructions.md` → _Plain-Markdown harnesses_ (hooks = checkpoint; `.mdc` =
+  context).
 - The `@.agents/memory/instructions.md` line is honored by harnesses that follow
   the AGENTS.md `@import` convention (Claude Code, Gemini CLI, Codex),
   auto-loading `instructions.md`.
@@ -63,8 +105,10 @@ simply gets `instructions.md` once.
 ## How to compare
 
 `update` decides whether to refresh by comparing the block currently in the
-agent file (text between the delimiters, inclusive) against the block above,
-byte-for-byte. Identical → nothing to do. Different → propose the unified diff
-and confirm before replacing (sensitive). Legacy installs may still use plain
-`<agent-memory>` … `</agent-memory>` tags (0.0.4–0.0.5); `update` treats those
-as the same block and replaces them with the comment-delimited canonical form.
+instruction file (text between the delimiters, inclusive) against the block
+above, byte-for-byte. Identical → nothing to do. Different → propose the unified
+diff and confirm before replacing (sensitive). Legacy installs may still use
+plain `<agent-memory>` … `</agent-memory>` tags (0.0.4–0.0.5); `update` treats
+those as the same block and replaces them with the comment-delimited canonical
+form. For `.cursor/rules/agent-memory.mdc`, compare the delimited body only —
+ignore YAML frontmatter.

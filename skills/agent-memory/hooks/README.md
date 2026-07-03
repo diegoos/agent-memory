@@ -30,8 +30,11 @@ Copy the shared scripts plus host config (paths from repo root):
 
 Or run `/agent-memory init <harness>` when the harness directory already exists.
 
-**Cursor:** hooks are the recommended integration — `@import` in `AGENTS.md` is
-a no-op and `AGENTS.md` may not auto-inject. See root `README.md`.
+**Cursor:** `init cursor` wires two layers — `.cursor/rules/agent-memory.mdc`
+(`alwaysApply: true`) as the **context layer** (always-on rules) and lifecycle
+hooks as the **checkpoint layer**. `@import` in `AGENTS.md` is a no-op and
+`AGENTS.md` may not auto-inject, so the `.mdc` is the reliable context path. See
+root `README.md`.
 
 ## Events (all hosts)
 
