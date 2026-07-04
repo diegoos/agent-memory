@@ -13,6 +13,36 @@ both in sync on version bumps.
 
 ## [Unreleased]
 
+## [0.0.10] - 2026-07-04
+
+### Fixed
+
+- Hook checkpoint regression from 0.0.8: incomplete `active-work` _Touched
+  files_, stray path-only `log.md` bullets after summary lines, and loss of
+  session paths when the working tree was clean at end-of-turn.
+- First no-id sync clearing `session_touched_files` right after merge.
+- Gemini `AfterTool` misrouted to full checkpoint instead of post-tool
+  accumulate.
+
+### Added
+
+- Session-cumulative `session_touched_files` in `.hook-sync-state`; full
+  checkpoints flush accumulated paths even with an empty git delta.
+- Cursor **`afterFileEdit`** hook wiring (agent edits use top-level `file_path`,
+  not `postToolUse`).
+- `log_summary_mode` — no individual path bullets after a `changed N files…`
+  summary in the same session.
+- `AGENTS.md` **Known issues** section documenting the 0.0.8 regression and
+  consumer upgrade path.
+
+### Changed
+
+- `postToolUse` / `afterFileEdit` update _Touched files_ only — no `log.md`
+  file bullets until a full checkpoint.
+- Shared hook stdin parser: `tool_input.file_path`, `tool_input.path`, top-level
+  `file_path`.
+- Branch switch clears session path accumulation.
+
 ## [0.0.9] - 2026-07-03
 
 ### Added

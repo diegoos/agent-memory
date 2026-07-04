@@ -257,3 +257,35 @@ Format:
   as the **context layer** (always-on rules); hooks remain the **checkpoint
   layer**. `instructions.md` _Plain-Markdown harnesses_ updated.
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.9`.
+
+## 0.0.10
+
+- safe: **session-cumulative _Touched files_** — hooks accumulate paths in
+  `.hook-sync-state` (`session_touched_files`) for the active session instead of
+  replacing the section with each git delta; full checkpoints flush even when
+  the working tree is clean.
+- safe: **`postToolUse` / `afterFileEdit` no longer write `log.md` bullets** —
+  file-path bullets are appended only on full checkpoints
+  (`afterAgentResponse`, `preCompact`, `precommit`, etc.); semantic bullets
+  remain agent-owned (`/agent-memory sync`).
+- safe: after a summary bullet (`changed N files…`), suppress further
+  individual path bullets in the same session (`log_summary_mode`).
+- safe: shared stdin parser accepts `tool_input.file_path`, `tool_input.path`
+  (Copilot), and top-level `file_path` (Cursor `afterFileEdit`).
+- safe: **Gemini event mapping** — `AfterTool` → post-tool accumulate;
+  `AfterAgent` / `PreCompress` → full git checkpoint (was misrouted to
+  end-of-turn default).
+- safe: **branch switch** clears session path accumulation when the cached branch
+  changes mid-session.
+- safe: fix first no-id sync clearing `session_touched_files` immediately after
+  merge (regression from 0.0.8 path-state reset).
+- safe: `hooks/cursor/hooks.json` adds **`afterFileEdit`** (Cursor agent edits
+  fire this hook with top-level `file_path`; `postToolUse` matches `Write|Shell`
+  only per Cursor docs).
+- safe: `hooks/README.md`, `references/install-hooks.md`, `instructions.md`, and
+  `AGENTS.md` (Known issues) updated for hook checkpoint behavior and consumer
+  upgrade path.
+- sensitive: **`update` / `install hooks cursor`** must merge `afterFileEdit` into
+  the project's `.cursor/hooks.json` when refreshing Cursor hooks — show diff
+  and confirm if the user has custom hook entries.
+- safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.10`.
