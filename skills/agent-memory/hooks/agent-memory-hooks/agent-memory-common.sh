@@ -4,8 +4,9 @@
 # Hook-owned memory fields (the agent owns everything else — task meaning,
 # semantic log bullets, decisions.md, Done/Next, index.md — see hooks/README.md
 # "Safe write scope" and instructions.md):
-#   active-work/<branch>.md → Touched files (git), Task stub (branch name)
+#   active-work/<branch>.md → Touched files (session-cumulative git + stdin paths)
 #   log.md                  → per-session heading (sessionStart), file-path bullets
+#                             (full checkpoints only — not postToolUse/afterFileEdit)
 #   current.md              → In progress list (sessionStart, from active-work/)
 #
 # Expects after agent_memory_init_context: cwd, memory, state_file globals.
@@ -58,7 +59,7 @@ parse_hook_stdin() {
       [ (.session_id // .conversation_id // .sessionId // ""),
         (.cwd // (.workspace_roots[0] // "")),
         (.tool_name // ""),
-        (.tool_input.file_path // "")
+        (.tool_input.file_path // .tool_input.path // .file_path // "")
       ] | @tsv')
     hook_stdin_session_id=${parsed%%$'\t'*}
     rest=${parsed#*$'\t'}; hook_stdin_cwd=${rest%%$'\t'*}
@@ -75,6 +76,11 @@ parse_hook_stdin() {
     fi
     hook_stdin_tool_name=$(json_string_field "$input" tool_name)
     hook_stdin_tool_file=$(json_string_field "$input" file_path)
+    if [ -z "$hook_stdin_tool_file" ]; then
+      hook_stdin_tool_file=$(printf '%s' "$input" | sed -n \
+        's/.*"tool_input"[[:space:]]*:[[:space:]]*{[^}]*"path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+        | head -1)
+    fi
   fi
 }
 
@@ -133,12 +139,20 @@ persist_session_id() {
 # __no_id__: no session ID bound; same no-id session keeps dedupe.
 NO_ID_SESSION_SENTINEL="__no_id__"
 
+# Clear per-session checkpoint path sets (log dedupe + active-work accumulation).
+_clear_session_path_state() {
+  write_state logged_files ""
+  write_state session_touched_files ""
+  write_state log_summary_mode ""
+}
+
 # Keep logged_files (per-session dedupe set of already-bulleted paths) bound to
 # the active session id (or __no_id__). Wipe it when the bound session changes,
 # so a new session re-bullets paths. id_upgrade_from preserves the prior bound
 # across a no-id→id promotion so a session that gains a real id mid-flight keeps
 # its dedupe set (see promote_session_log_heading). Sets agent_memory_no_id_continuing
 # so ensure_session_log_heading can reuse an existing same-day no-id heading.
+# Also resets session_touched_files and log_summary_mode on session change.
 reset_logged_files_if_session_changed() {
   local sid=$1 context="${2:-sync}"
   local last
@@ -158,7 +172,7 @@ reset_logged_files_if_session_changed() {
         return 0
       fi
     fi
-    write_state logged_files ""
+    _clear_session_path_state
     write_state logged_files_session "$sid"
     return 0
   fi
@@ -168,12 +182,16 @@ reset_logged_files_if_session_changed() {
       return 0
     fi
     agent_memory_no_id_continuing=0
-    write_state logged_files ""
+    _clear_session_path_state
     write_state logged_files_session "$NO_ID_SESSION_SENTINEL"
     return 0
   fi
   [ "$last" = "$NO_ID_SESSION_SENTINEL" ] && return 0
-  write_state logged_files ""
+  if [ -z "$last" ]; then
+    write_state logged_files_session "$NO_ID_SESSION_SENTINEL"
+    return 0
+  fi
+  _clear_session_path_state
   write_state logged_files_session "$NO_ID_SESSION_SENTINEL"
 }
 
@@ -185,9 +203,14 @@ reset_logged_files_if_session_changed() {
 # afterAgentResponse).
 refresh_branch_cache() {
   [ -n "${cwd:-}" ] || return 0
-  local b
+  local b last
   b=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
-  [ -n "$b" ] && write_state branch "$b"
+  [ -n "$b" ] || return 0
+  last=$(read_state branch "")
+  write_state branch "$b"
+  if [ -n "$last" ] && [ "$last" != "$b" ]; then
+    _clear_session_path_state
+  fi
 }
 
 sanitize_branch() {
@@ -358,39 +381,63 @@ replace_section_bullets() {
   ' "$file" >"${file}.tmp" && mv "${file}.tmp" "$file"
 }
 
-update_touched_files() {
-  local aw=$1 list_tmp=$2 bullets_tmp
+# Merge repo-relative paths into session_touched_files (RS-delimited, like logged_files).
+merge_paths_into_session_touched() {
+  local list_tmp=$1 accumulated
   [ -s "$list_tmp" ] || return 0
+  accumulated=$(read_state session_touched_files "")
+  while IFS= read -r f || [ -n "$f" ]; do
+    [ -n "$f" ] || continue
+    file_already_logged "$f" "$accumulated" && continue
+    if [ -z "$accumulated" ]; then accumulated="$f"
+    else accumulated="$accumulated"$'\x1e'"$f"; fi
+  done <"$list_tmp"
+  write_state session_touched_files "$accumulated"
+}
+
+# Sorted unique paths accumulated for the current session (stdout, one per line).
+read_session_touched_paths_sorted() {
+  local accumulated
+  accumulated=$(read_state session_touched_files "")
+  [ -n "$accumulated" ] || return 0
+  printf '%s\n' "$accumulated" | tr $'\x1e' '\n' | sort -u | grep -v '^$' || true
+}
+
+# Write the session-cumulative touched list to active-work (replaces section bullets).
+write_active_work_touched_from_session() {
+  local aw=$1 bullets_tmp paths_tmp
+  paths_tmp=$(mktemp)
+  read_session_touched_paths_sorted >"$paths_tmp"
+  if [ ! -s "$paths_tmp" ]; then
+    rm -f "$paths_tmp"
+    return 0
+  fi
   bullets_tmp=$(mktemp)
   while IFS= read -r f || [ -n "$f" ]; do
     [ -n "$f" ] || continue
     printf '%s\n' "- \`$f\`" >>"$bullets_tmp"
-  done <"$list_tmp"
+  done <"$paths_tmp"
   replace_section_bullets "$aw" '^## Touched files' "$bullets_tmp"
-  rm -f "$bullets_tmp"
+  rm -f "$paths_tmp" "$bullets_tmp"
 }
 
-# Append one file bullet to the Touched files section, idempotent. Replaces the
-# `- _none_` placeholder if present, else inserts as the first bullet. Used by
-# postToolUse (git-free) for a live preview; afterAgentResponse reconciles with
-# update_touched_files (full git list, which overwrites this).
+update_touched_files() {
+  local aw=$1 list_tmp=$2
+  [ -s "$list_tmp" ] || return 0
+  merge_paths_into_session_touched "$list_tmp"
+  write_active_work_touched_from_session "$aw"
+}
+
+# Merge one path into session state and refresh active-work. Used by postToolUse /
+# afterFileEdit (git-free). Does not write log.md bullets — full checkpoints only.
 add_touched_file() {
-  local aw=$1 rel=$2 bullet="- \`$rel\`"
+  local aw=$1 rel=$2 single
   [ -n "$rel" ] || return 0
-  grep -qF -- "- \`$rel\`" "$aw" 2>/dev/null && return 0
-  awk -v bullet="$bullet" '
-    /^## Touched files/ { in_section = 1; print; next }
-    in_section && /^## / { if (!done) { print bullet; print ""; done = 1 } in_section = 0 }
-    in_section && /^- / {
-      if (!done) {
-        if ($0 ~ /^- _none_/) { print bullet; done = 1; next }
-        print bullet; done = 1
-      }
-      print; next
-    }
-    { print }
-    END { if (in_section && !done) print bullet }
-  ' "$aw" >"${aw}.tmp" && mv "${aw}.tmp" "$aw"
+  single=$(mktemp)
+  printf '%s\n' "$rel" >"$single"
+  merge_paths_into_session_touched "$single"
+  rm -f "$single"
+  write_active_work_touched_from_session "$aw"
 }
 
 update_task_stub() {
@@ -595,6 +642,17 @@ append_log_file_bullets() {
   done <"$list_tmp"
   [ "$count" -gt 0 ] || { rm -f "$pending_tmp"; return 0; }
 
+  if [ "$(read_state log_summary_mode "")" = "1" ] && [ "$count" -le 8 ]; then
+    while IFS= read -r f || [ -n "$f" ]; do
+      [ -n "$f" ] || continue
+      if [ -z "$logged" ]; then logged="$f"
+      else logged="$logged"$'\x1e'"$f"; fi
+    done <"$pending_tmp"
+    write_state logged_files "$logged"
+    rm -f "$pending_tmp"
+    return 0
+  fi
+
   bullets_tmp=$(mktemp)
   if [ "$count" -le 8 ]; then
     while IFS= read -r f || [ -n "$f" ]; do
@@ -603,6 +661,7 @@ append_log_file_bullets() {
     done <"$pending_tmp"
   else
     printf '%s\n' "- changed ${count} files (see active-work Touched files)" >>"$bullets_tmp"
+    write_state log_summary_mode "1"
   fi
 
   if awk -v sid="$sid" -v date="$(today_date)" -v bullets="$bullets_tmp" '

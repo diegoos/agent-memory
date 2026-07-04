@@ -164,9 +164,10 @@ regression: it can appear as "requestable" instead of "always applied"), so an
 is the **context layer** (always-on rules that inject the agent-memory
 workflow). Also wire lifecycle hooks (checkpoint layer): when memory already
 exists, use `/agent-memory install hooks cursor` or `init cursor` on first
-setup. Hooks keep `active-work/` (Touched files, Task stub), `log.md` (session
-heading + file bullets), and `current.md` _In progress_ on session start — you
-own semantic log text, Task meaning, `decisions.md`, _Done_, and `index.md`. See
+setup. Hooks keep `active-work/` (session-cumulative _Touched files_, Task
+stub), `log.md` (session heading; file-path bullets on full checkpoints only),
+and `current.md` _In progress_ on session start — you own **semantic** log text,
+Task meaning, `decisions.md`, _Done_, and `index.md`. See
 `skills/agent-memory/hooks/README.md`.
 
 **Context vs checkpoint:** `.mdc` puts the obligation to Read `instructions.md`

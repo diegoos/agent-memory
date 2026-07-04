@@ -3,22 +3,22 @@
 #
 # Evidence-backed updates from git + session ID — no LLM, no invented semantics.
 # Maintains: active-work (Touched files, Task stub), log.md (session heading +
-# file-change bullets). current.md is refreshed on sessionStart only.
+# file-change bullets on full checkpoints). current.md is refreshed on sessionStart only.
 #
 # Reads harness stdin JSON when present (session_id, cwd, tool_name,
-# tool_input.file_path — Claude, Cursor, Copilot, Codex, Gemini). Session ID also from
-# AGENT_MEMORY_SESSION_ID env or state.
+# tool_input.file_path / tool_input.path / file_path — Claude, Cursor, Copilot,
+# Codex, Gemini). Session ID also from AGENT_MEMORY_SESSION_ID env or state.
 #
 # Set AGENT_MEMORY_EVENT (any host naming):
-#   postToolUse | PostToolUse        — after Write/Edit; logs the stdin file_path
-#                                       (no git; Shell is a no-op here)
-#   afterAgentResponse | Stop | agentStop — end of assistant turn; full git
-#                                       reconciliation (Touched files, log bullets)
-#   preCompact | PreCompact | precommit — before compaction or git commit; same
-#                                       as afterAgentResponse
+#   postToolUse | PostToolUse | AfterTool | afterFileEdit
+#       — accumulate touched paths from stdin (git-free; no log.md bullets)
+#   afterAgentResponse | Stop | agentStop | AfterAgent — end of turn; full git
+#       reconciliation (session-cumulative Touched files, log bullets)
+#   preCompact | PreCompact | precommit | PreCompress — before compaction or
+#       git commit; same as afterAgentResponse
 #
 # Git runs only at afterAgentResponse/preCompact (+ sessionStart in session.sh);
-# postToolUse is git-free, using the branch cache and the stdin file path.
+# postToolUse/afterFileEdit use the branch cache and stdin file path only.
 #
 # Install per host — see hooks/README.md.
 
@@ -36,9 +36,15 @@ fi
 
 raw_event="${AGENT_MEMORY_EVENT:-afterAgentResponse}"
 case "$raw_event" in
-  postToolUse|PostToolUse|posttool) event=postToolUse ;;
-  afterAgentResponse|Stop|stop|agentStop|afterresponse) event=afterAgentResponse ;;
-  preCompact|PreCompact|precompact|precommit) event=preCompact ;;
+  postToolUse|PostToolUse|posttool|AfterTool|aftertool|afterFileEdit|afterfileedit)
+    event=postToolUse
+    ;;
+  afterAgentResponse|Stop|stop|agentStop|afterresponse|AfterAgent|afteragent)
+    event=afterAgentResponse
+    ;;
+  preCompact|PreCompact|precompact|precommit|PreCompress|precompress)
+    event=preCompact
+    ;;
   *) event=afterAgentResponse ;;
 esac
 
@@ -58,49 +64,53 @@ mark_head_processed() {
   write_state last_processed_head "$current_head"
 }
 
+# Normalize harness file path to a repo-relative path, or return non-zero to skip.
+normalize_repo_rel_path() {
+  local rel=$1
+  case "$rel" in
+    "$cwd"/*) rel=${rel#"$cwd"/} ;;
+    /*) return 1 ;;
+  esac
+  case "$rel" in
+    .agents/memory/*) return 1 ;;
+  esac
+  [ -n "$rel" ] || return 1
+  printf '%s' "$rel"
+}
 
-run_checkpoint() {
-  local list_file=$1 aw
-  [ -s "$list_file" ] || return 0
+# Git-free: merge stdin path into session touched set; no log.md bullets.
+run_posttool_checkpoint() {
+  local rel=$1 aw
+  rel=$(normalize_repo_rel_path "$rel") || return 0
   aw=$(ensure_active_work)
-  update_touched_files "$aw" "$list_file"
+  add_touched_file "$aw" "$rel"
   update_task_stub "$aw"
-  append_log_file_bullets "$session_id" "$list_file"
+}
+
+run_full_checkpoint() {
+  local list_file=$1 aw
+  aw=$(ensure_active_work)
+  update_task_stub "$aw"
+  if [ -s "$list_file" ]; then
+    update_touched_files "$aw" "$list_file"
+    append_log_file_bullets "$session_id" "$list_file"
+  else
+    write_active_work_touched_from_session "$aw"
+  fi
 }
 
 case "$event" in
   postToolUse)
-    # Git-free: log the file from the harness stdin (Write/Edit tool_input.
-    # file_path) for a live preview; Shell (no file_path) is a no-op. The full
-    # git reconciliation runs at afterAgentResponse/preCompact (catches shell-
-    # created files, deletions, and refreshes Touched files). Branch comes from
-    # the state cache populated at sessionStart/afterAgentResponse.
     agent_memory_include_commit_files=0
     [ -n "$hook_stdin_tool_file" ] || exit 0
-    rel="$hook_stdin_tool_file"
-    case "$rel" in
-      "$cwd"/*) rel=${rel#"$cwd"/} ;;   # absolute under cwd → repo-relative
-      /*) exit 0 ;;                       # absolute outside cwd → not tracked
-    esac
-    case "$rel" in
-      .agents/memory/*) exit 0 ;;         # memory files aren't logged
-    esac
-    [ -n "$rel" ] || exit 0
-    aw=$(ensure_active_work)
-    add_touched_file "$aw" "$rel"
-    update_task_stub "$aw"
-    single=$(mktemp)
-    printf '%s\n' "$rel" >"$single"
-    append_log_file_bullets "$session_id" "$single"
-    rm -f "$single"
+    run_posttool_checkpoint "$hook_stdin_tool_file"
     ;;
   afterAgentResponse|preCompact)
     agent_memory_include_commit_files=1
     refresh_branch_cache
     list_tmp=$(mktemp)
     list_non_memory_changes >"$list_tmp"
-    [ -s "$list_tmp" ] || { rm -f "$list_tmp"; mark_head_processed; exit 0; }
-    run_checkpoint "$list_tmp"
+    run_full_checkpoint "$list_tmp"
     rm -f "$list_tmp"
     mark_head_processed
     ;;

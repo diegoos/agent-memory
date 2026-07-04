@@ -67,14 +67,14 @@ repository (see `SKILL.md` → Repository source).
 6. **Merge harness config (idempotent).** Add or update agent-memory entries
    only — do not remove unrelated hooks the user may have configured.
 
-   | Harness    | Action                                                                                                                                             |
-   | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-   | `cursor`   | Merge [`hooks/cursor/hooks.json`](../hooks/cursor/hooks.json) into `.cursor/hooks.json` (create file if missing).                                  |
-   | `claude`   | Merge [`hooks/claude-code/settings.json`](../hooks/claude-code/settings.json) into `.claude/settings.json`.                                        |
-   | `codex`    | Merge [`hooks/codex/hooks.json`](../hooks/codex/hooks.json) into `.codex/hooks.json`. Remind user to run `/hooks` in Codex TUI to trust hooks.     |
-   | `opencode` | Copy [`hooks/opencode/agent-memory.ts`](../hooks/opencode/agent-memory.ts) → `.opencode/plugin/agent-memory.ts` (overwrite canonical plugin).      |
-   | `copilot`  | Copy [`hooks/copilot/agent-memory.json`](../hooks/copilot/agent-memory.json) → `.github/hooks/agent-memory.json` if missing; merge if file exists. |
-   | `gemini`   | Merge [`hooks/gemini/settings.json`](../hooks/gemini/settings.json) into `.gemini/settings.json`.                                                  |
+   | Harness    | Action                                                                                                                                                                                              |
+   | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `cursor`   | Merge [`hooks/cursor/hooks.json`](../hooks/cursor/hooks.json) into `.cursor/hooks.json` (create file if missing). Must include **`afterFileEdit`** (agent edits) alongside `postToolUse` (`Write`). |
+   | `claude`   | Merge [`hooks/claude-code/settings.json`](../hooks/claude-code/settings.json) into `.claude/settings.json`.                                                                                         |
+   | `codex`    | Merge [`hooks/codex/hooks.json`](../hooks/codex/hooks.json) into `.codex/hooks.json`. Remind user to run `/hooks` in Codex TUI to trust hooks.                                                      |
+   | `opencode` | Copy [`hooks/opencode/agent-memory.ts`](../hooks/opencode/agent-memory.ts) → `.opencode/plugin/agent-memory.ts` (overwrite canonical plugin).                                                       |
+   | `copilot`  | Copy [`hooks/copilot/agent-memory.json`](../hooks/copilot/agent-memory.json) → `.github/hooks/agent-memory.json` if missing; merge if file exists.                                                  |
+   | `gemini`   | Merge [`hooks/gemini/settings.json`](../hooks/gemini/settings.json) into `.gemini/settings.json`.                                                                                                   |
 
 7. **Report.** List: harness, scripts copied, config merged or skipped (and
    why), and any harness-specific reminders (Codex `/hooks`, Cursor hooks

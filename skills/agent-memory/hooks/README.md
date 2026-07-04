@@ -5,9 +5,11 @@ Optional hooks that keep agent-memory current during real work. They run a
 
 - **`sessionStart` / NewSession** — session ID, `current.md` _In progress_ from
   `active-work/`, ensure active-work file + `log.md` session heading
-- **`postToolUse` / end-of-turn / compact / pre-commit** — refresh
-  `active-work/<branch>.md` (_Touched files_, Task stub) and append new file
-  bullets under the current `log.md` session heading
+- **`postToolUse` / `afterFileEdit` (Cursor)** — accumulate _Touched files_ from
+  harness stdin paths (git-free; no `log.md` bullets)
+- **`afterAgentResponse` / end-of-turn / compact / pre-commit** — full git
+  reconciliation: session-cumulative _Touched files_ + new file bullets under
+  the current `log.md` session heading
 
 **Still manual (agent or `/agent-memory sync`):** semantic `log.md` bullets and
 summary/type, `decisions.md` (required when decisions change), active-work
@@ -38,13 +40,27 @@ root `README.md`.
 
 ## Events (all hosts)
 
-| Checkpoint        | Cursor                        | Claude / Codex | Copilot        | OpenCode       |
-| ----------------- | ----------------------------- | -------------- | -------------- | -------------- |
-| Session start     | `sessionStart`                | `SessionStart` | `sessionStart` | —              |
-| After Write/Shell | `postToolUse`                 | `PostToolUse`  | `postToolUse`  | —              |
-| End of turn       | `afterAgentResponse`          | `Stop`         | `agentStop`    | `session.idle` |
-| Before compact    | `preCompact`                  | `PreCompact`   | `preCompact`   | `compacting`   |
-| Git commit        | `precommit` (pre-commit hook) | same           | same           | same           |
+| Checkpoint     | Cursor                        | Claude / Codex | Copilot        | Gemini CLI     | OpenCode       |
+| -------------- | ----------------------------- | -------------- | -------------- | -------------- | -------------- |
+| Session start  | `sessionStart`                | `SessionStart` | `sessionStart` | `SessionStart` | —              |
+| After Write    | `postToolUse` (`Write`)       | `PostToolUse`  | `postToolUse`  | `AfterTool`    | —              |
+| After Edit     | `afterFileEdit`               | `PostToolUse`  | `postToolUse`  | `AfterTool`    | —              |
+| End of turn    | `afterAgentResponse`          | `Stop`         | `agentStop`    | `AfterAgent`   | `session.idle` |
+| Before compact | `preCompact`                  | `PreCompact`   | `preCompact`   | `PreCompress`  | `compacting`   |
+| Git commit     | `precommit` (pre-commit hook) | same           | same           | same           | same           |
+
+**Cursor `postToolUse` matchers** (per
+[Cursor hooks docs](https://cursor.com/docs/hooks)): `Write`, `Shell`. Agent
+**edits** (StrReplace) fire **`afterFileEdit`** instead — top-level `file_path`
+on stdin, not `tool_input.file_path`.
+
+**Copilot / Gemini matchers:** `edit`, `write`, `apply_patch` (Copilot);
+`write_file`, `edit`, `shell`, `bash`, `apply_patch` (Gemini). Copilot may send
+`tool_input.path` instead of `file_path` — parsed by shared helpers.
+
+**Codex:** `PostToolUse` matches `Bash|apply_patch` only; file paths from
+`apply_patch` may be absent on stdin — end-of-turn git reconciliation covers
+gaps.
 
 **Not used on Cursor:** `stop` + `followup_message` (always starts another LLM
 turn).
@@ -151,15 +167,15 @@ chmod +x .git/hooks/pre-commit .git/hooks/agent-memory-*.sh
 
 | Field                         | Hook updates?                                |
 | ----------------------------- | -------------------------------------------- |
-| `active-work` → Touched files | Yes (from `git`)                             |
+| `active-work` → Touched files | Yes (session-cumulative; git + stdin paths)  |
 | `active-work` → Task stub     | Yes (from branch name when placeholder)      |
 | `log.md` → session heading    | Yes (on session start)                       |
-| `log.md` → file bullets       | Yes (new paths per session, from `git`)      |
-| `log.md` → semantic bullets   | **No** — agent                               |
+| `log.md` → file bullets       | Yes (full checkpoints only — from `git`)     |
+| `log.md` → semantic bullets   | **No** — agent or `/agent-memory sync`       |
 | `current.md` → In progress    | Yes (on session start from `active-work/`)   |
 | `current.md` → Done / Next    | **No** — agent or `/agent-memory sync`       |
 | `decisions.md`                | **No** — agent (required on decision change) |
-| `.hook-sync-state`            | Yes (session ID, logged files, debounce)     |
+| `.hook-sync-state`            | Yes (session ID, logged/touched paths, etc.) |
 
 ### Log format
 
@@ -168,9 +184,14 @@ One heading per session; hooks + agent append bullets:
 ```md
 ## [2026-06-30] [effad5d5-…] [chore] session work
 
-- `lib/rate-limit.ts`
+- changed 12 files (see active-work Touched files)
 - fixed rate-limit edge case in auth middleware
 ```
+
+When more than eight new paths land in one full checkpoint, hooks write the
+summary line above instead of individual ``- `path` `` bullets. Semantic context
+always comes from the agent. After a summary, later small batches in the same
+session do not append stray path-only bullets.
 
 Session ID from `AGENT_MEMORY_SESSION_ID` (set by `agent-memory-session.sh` when
 the harness sends `session_id` on stdin). See `instructions.md` and `log.md`.

@@ -39,13 +39,58 @@ CHANGELOG.md          # release history (Keep a Changelog + SemVer)
   and the matching `references/<command>.md` when the user invokes a subcommand.
 - **Hooks** — shared scripts in `skills/agent-memory/hooks/agent-memory-hooks/`
   (`common`, `sync`, `session`); per-host config in `hooks/<harness>/`.
-  Deterministic checkpoint: `active-work/`, `log.md` file bullets, `current.md`
-  _In progress_ on session start — no LLM loops (`followup_message` on Cursor
-  `stop` is intentionally unused).
+  Deterministic checkpoint: session-cumulative `active-work/` _Touched files_,
+  `log.md` file bullets on full checkpoints only, `current.md` _In progress_ on
+  session start — no LLM loops (`followup_message` on Cursor `stop` is
+  intentionally unused). See [Known issues](#known-issues) for hook upgrade
+  notes.
 - **Markdown** — `markdownlint` with 100-char line length
   (`.markdownlint.json`).
 - **Commits** — English, Conventional Commits; do not push unless asked.
 - **Content Language** — English.
+
+## Known issues
+
+### Hook checkpoint regression (0.0.8 → fixed in tree)
+
+**Symptom (consumer projects on hooks before this fix):** `log.md` shows a
+`changed N files (see active-work Touched files)` summary plus stray
+``- `path` `` bullets with no semantic context; `active-work` _Touched files_ is
+incomplete (e.g. only files written via `Write`, not edits).
+`/agent-memory sync --auto` semantic bullets are unaffected — they come from the
+agent, not hooks.
+
+**Root cause:**
+
+1. **0.0.8 perf change** — `postToolUse` stopped running `git` and only read
+   `tool_input.file_path` from stdin. Full git reconciliation moved to
+   end-of-turn only. If the working tree was clean at end-of-turn, `active-work`
+   was not refreshed.
+2. **Cursor wiring gap** — Cursor agent **edits** fire `afterFileEdit`
+   (top-level `file_path`), not `postToolUse`. The Cursor snippet only matched
+   `Write|Shell`, so most edits were never captured between turns.
+3. **Replace vs accumulate** — each checkpoint replaced _Touched files_ with the
+   current git delta instead of merging session paths; a later small delta could
+   shrink a list that `/agent-memory sync` had just filled.
+4. **Log noise** — `postToolUse` appended individual path bullets even after a
+   summary line for the same session.
+
+**Fix (canonical sources in this repo):**
+
+- Session-cumulative `session_touched_files` in `.hook-sync-state`; full
+  checkpoints flush even when git returns no new paths.
+- Cursor: add `afterFileEdit` hook; `postToolUse` no longer writes `log.md`.
+- Shared stdin parser: `tool_input.file_path`, `tool_input.path`, top-level
+  `file_path` (Cursor `afterFileEdit`, Copilot).
+- Gemini: map `AfterTool` → post-tool accumulate, `AfterAgent` → full
+  checkpoint.
+- After a summary bullet, suppress further individual path bullets in the same
+  session.
+
+**Consumer upgrade:** re-copy the three scripts from
+`skills/agent-memory/hooks/agent-memory-hooks/` and merge host config
+(especially `.cursor/hooks.json` — must include `afterFileEdit`). Or run
+`/agent-memory install hooks <harness>` / `/agent-memory update`.
 
 ## Dogfooding
 
