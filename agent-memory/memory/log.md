@@ -29,7 +29,9 @@ happens — do not create a new heading for every checkpoint.
   and at checkpoints.
 
 To continue an existing session, **append bullets** under its heading; only open
-a new heading for a new session (new conversation / new session ID).
+a new heading for a new session (new conversation / new session ID). **OpenCode:**
+when `ses_*` IDs change within the same calendar day, keep appending under the
+day's bound heading — do not start a new section per idle event.
 
 ---
 

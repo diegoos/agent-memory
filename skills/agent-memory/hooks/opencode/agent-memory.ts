@@ -4,6 +4,10 @@
 // OpenCode has no native sessionStart hook JSON; this plugin bridges plugin
 // events to the same scripts used by Cursor, Claude, Codex, and Copilot.
 //
+// OpenCode rotates `ses_*` session IDs across idle/compaction within a work day.
+// The shell helpers coalesce log headings (one per calendar day); this plugin
+// skips redundant sessionStart runs once a heading is bound in .hook-sync-state.
+//
 // Install (see hooks/README.md):
 //   hooks/agent-memory-hooks/agent-memory-common.sh
 //   hooks/agent-memory-hooks/agent-memory-session.sh
@@ -17,9 +21,42 @@ import * as path from 'node:path';
 const HOOKS_DIR = '.opencode/hooks';
 const SESSION_SCRIPT = `${HOOKS_DIR}/agent-memory-session.sh`;
 const SYNC_SCRIPT = `${HOOKS_DIR}/agent-memory-sync.sh`;
+const STATE_FILE = path.join('.agents', 'memory', '.hook-sync-state');
 
 function hasMemory(): boolean {
   return fs.existsSync(path.join(process.cwd(), '.agents', 'memory'));
+}
+
+function readHookStateValue(key: string): string | undefined {
+  try {
+    const statePath = path.join(process.cwd(), STATE_FILE);
+    if (!fs.existsSync(statePath)) return undefined;
+    for (const line of fs.readFileSync(statePath, 'utf8').split('\n')) {
+      const eq = line.indexOf('=');
+      if (eq > 0 && line.slice(0, eq) === key) {
+        const val = line.slice(eq + 1);
+        return val.length > 0 ? val : undefined;
+      }
+    }
+  } catch {
+    /* fail open */
+  }
+  return undefined;
+}
+
+function opencodeLogHeadingBoundToday(): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  const bound = readHookStateValue('opencode_log_heading_id');
+  const stateDate = readHookStateValue('opencode_log_date');
+  if (stateDate !== today || !bound) return false;
+  try {
+    const logPath = path.join(process.cwd(), '.agents', 'memory', 'log.md');
+    if (!fs.existsSync(logPath)) return false;
+    const log = fs.readFileSync(logPath, 'utf8');
+    return log.includes(`## [${today}] [${bound}]`);
+  } catch {
+    return false;
+  }
 }
 
 function extractSessionId(input: unknown): string | undefined {
@@ -121,7 +158,27 @@ function extractOpenCodeSessionScope(input: unknown): string | undefined {
   return undefined;
 }
 
+function markSessionInitialized(
+  sessionId?: string,
+  conversationId?: string,
+  scopeId?: string
+): void {
+  if (conversationId) sessionInitializedFor.add(`conv:${conversationId}`);
+  if (sessionId) sessionInitializedFor.add(sessionId);
+  if (scopeId) sessionInitializedFor.add(`scope:${scopeId}`);
+  sessionInitializedFor.add(NO_SESSION_ID_KEY);
+}
+
 function ensureSessionStart(sessionId?: string, input?: unknown): void {
+  if (opencodeLogHeadingBoundToday()) {
+    markSessionInitialized(
+      sessionId,
+      extractConversationId(input) ?? activeConversationId,
+      extractOpenCodeSessionScope(input)
+    );
+    return;
+  }
+
   const conversationId = extractConversationId(input) ?? activeConversationId;
   const freshConversationId = extractConversationId(input);
   const scopeId = extractOpenCodeSessionScope(input);
@@ -150,8 +207,7 @@ function ensureSessionStart(sessionId?: string, input?: unknown): void {
         conversationId
       )
     ) {
-      sessionInitializedFor.add(convKey);
-      if (sessionId) sessionInitializedFor.add(sessionId);
+      markSessionInitialized(sessionId, conversationId, scopeId);
     }
     return;
   }
@@ -159,7 +215,7 @@ function ensureSessionStart(sessionId?: string, input?: unknown): void {
   if (sessionId) {
     if (sessionInitializedFor.has(sessionId)) return;
     if (runScript(SESSION_SCRIPT, 'sessionStart', 'opencode', sessionId)) {
-      sessionInitializedFor.add(sessionId);
+      markSessionInitialized(sessionId, undefined, scopeId);
     }
     return;
   }
@@ -167,14 +223,22 @@ function ensureSessionStart(sessionId?: string, input?: unknown): void {
   const scopeKey = scopeId ? `scope:${scopeId}` : NO_SESSION_ID_KEY;
   if (sessionInitializedFor.has(scopeKey)) return;
   if (runScript(SESSION_SCRIPT, 'sessionStart', 'opencode', undefined)) {
-    sessionInitializedFor.add(scopeKey);
+    markSessionInitialized(undefined, undefined, scopeId);
   }
 }
 
-function runSync(event: string, sessionId?: string, input?: unknown): void {
+function runSync(
+  event: string,
+  sessionId?: string,
+  input?: unknown,
+  options?: { sessionStart?: boolean }
+): void {
   if (!hasMemory()) return;
   const conversationId = extractConversationId(input);
-  ensureSessionStart(sessionId, input);
+  const withSessionStart = options?.sessionStart !== false;
+  if (withSessionStart) {
+    ensureSessionStart(sessionId, input);
+  }
   runScript(SYNC_SCRIPT, event, 'opencode', sessionId, conversationId);
 }
 
@@ -184,9 +248,10 @@ export const agentMemoryPlugin = async () => {
   return {
     'experimental.session.compacting': async (input: unknown) => {
       const sessionId = extractSessionId(input);
-      runSync('PreCompact', sessionId, input);
+      // Compaction continues the same work day — no new log heading.
+      runSync('PreCompact', sessionId, input, { sessionStart: false });
     },
-    event: async (input: { event: { type: string } }) => {
+    event: async (input: { event: { type: string; sessionID?: string } }) => {
       if (input?.event?.type === 'session.idle') {
         const sessionId = extractSessionId(input);
         runSync('Stop', sessionId, input);

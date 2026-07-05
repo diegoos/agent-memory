@@ -157,6 +157,7 @@ reset_logged_files_if_session_changed() {
   local sid=$1 context="${2:-sync}"
   local last
   agent_memory_no_id_continuing=0
+  sid=$(normalize_session_id_for_checkpoint "$sid")
   last=$(read_state logged_files_session "")
   if [ -n "$sid" ]; then
     [ "$sid" = "$last" ] && return 0
@@ -473,6 +474,139 @@ today_date() {
   date +%Y-%m-%d
 }
 
+# OpenCode rotates ses_* IDs across idle/compaction events within one work day.
+# One log heading per calendar day; later ses_* IDs map to the bound heading id.
+opencode_refresh_log_day() {
+  [ "${AGENT_MEMORY_HOST:-}" = "opencode" ] || return 0
+  local today last
+  today=$(today_date)
+  last=$(read_state opencode_log_date "")
+  [ "$today" = "$last" ] && return 0
+  write_state opencode_log_date "$today"
+  write_state opencode_log_heading_id ""
+}
+
+# First ## [YYYY-MM-DD] [ses_*] heading on stdout, or empty.
+find_opencode_log_heading_same_day() {
+  local log="$memory/log.md" date
+  date=$(today_date)
+  [ -f "$log" ] || return 0
+  grep -E "^## \\[${date}\\] \\[ses_" "$log" 2>/dev/null \
+    | head -1 \
+    | sed -n 's/^## \[[0-9-]*\] \[\(ses_[^]]*\)\].*/\1/p'
+}
+
+# Map a raw harness session id to the log heading id (OpenCode coalescence).
+# Read-only — does not bind state or create headings (see ensure_log_heading_for_checkpoint).
+normalize_session_id_for_checkpoint() {
+  local sid="${1:-}"
+  if [ "${AGENT_MEMORY_HOST:-}" = "opencode" ] && [ -n "$sid" ]; then
+    opencode_refresh_log_day
+    local bound existing
+    bound=$(read_state opencode_log_heading_id "")
+    if [ -n "$bound" ] && session_heading_exists "$bound"; then
+      printf '%s' "$bound"
+      return
+    fi
+    existing=$(find_opencode_log_heading_same_day)
+    if [ -n "$existing" ]; then
+      printf '%s' "$existing"
+      return
+    fi
+  fi
+  printf '%s' "$sid"
+}
+
+_opencode_bind_log_heading() {
+  local id="${1:-}"
+  [ "${AGENT_MEMORY_HOST:-}" = "opencode" ] || return 0
+  [ -n "$id" ] || return 0
+  case "$id" in
+    ses_*)
+      write_state opencode_log_heading_id "$id"
+      write_state opencode_log_date "$(today_date)"
+      ;;
+  esac
+}
+
+# Create or resolve the log heading before a checkpoint append. Prints the heading id.
+ensure_log_heading_for_checkpoint() {
+  local sid="${1:-}" resolved log="$memory/log.md" line today
+  [ -n "$sid" ] || return 0
+  opencode_refresh_log_day
+  resolved=$(normalize_session_id_for_checkpoint "$sid")
+  if session_heading_exists "$resolved"; then
+    _opencode_bind_log_heading "$resolved"
+    if [ "${AGENT_MEMORY_HOST:-}" = "opencode" ]; then
+      prune_empty_opencode_session_headings "$resolved"
+    fi
+    printf '%s' "$resolved"
+    return 0
+  fi
+  if [ "${AGENT_MEMORY_HOST:-}" = "opencode" ]; then
+    case "$resolved" in
+      ses_*)
+        today=$(today_date)
+        local existing
+        existing=$(find_opencode_log_heading_same_day)
+        if [ -n "$existing" ]; then
+          _opencode_bind_log_heading "$existing"
+          prune_empty_opencode_session_headings "$existing"
+          printf '%s' "$existing"
+          return 0
+        fi
+        ;;
+    esac
+  fi
+  promote_session_log_heading "$resolved"
+  line=$(session_log_heading_line "$resolved")
+  strip_log_placeholder
+  if [ ! -f "$log" ]; then
+    printf '# Log\n\n%s\n' "$line" >"$log"
+  else
+    printf '\n%s\n' "$line" >>"$log"
+  fi
+  _opencode_bind_log_heading "$resolved"
+  printf '%s' "$resolved"
+}
+
+# Drop same-day empty OpenCode ses_* headings except the kept id (no bullets).
+prune_empty_opencode_session_headings() {
+  local keep="${1:-}" date log="$memory/log.md"
+  [ "${AGENT_MEMORY_HOST:-}" = "opencode" ] || return 0
+  [ -n "$keep" ] || return 0
+  [ -f "$log" ] || return 0
+  date=$(today_date)
+  awk -v date="$date" -v keep="$keep" '
+    function is_ses_heading(line,    id) {
+      if (line !~ "^## \\[" date "\\] \\[ses_") return 0
+      if (match(line, /\[ses_[^]]+\]/)) {
+        id = substr(line, RSTART + 1, RLENGTH - 2)
+        return id
+      }
+      return 0
+    }
+    {
+      lines[++n] = $0
+    }
+    END {
+      drop[0] = 0
+      for (i = 1; i <= n; i++) {
+        id = is_ses_heading(lines[i])
+        if (!id) continue
+        if (id == keep) continue
+        empty = 1
+        for (j = i + 1; j <= n; j++) {
+          if (lines[j] ~ /^## /) break
+          if (lines[j] ~ /^- /) { empty = 0; break }
+        }
+        if (empty) drop[i] = 1
+      }
+      for (i = 1; i <= n; i++) if (!drop[i]) print lines[i]
+    }
+  ' "$log" >"${log}.tmp" && mv "${log}.tmp" "$log"
+}
+
 session_log_heading_line() {
   local date sid
   date=$(today_date)
@@ -530,6 +664,7 @@ same_day_session_heading_exists_any() {
 
 session_log_has_target_heading() {
   local sid="${1:-}"
+  sid=$(normalize_session_id_for_checkpoint "$sid")
   if [ -n "$sid" ]; then
     session_heading_exists "$sid"
   else
@@ -586,27 +721,27 @@ promote_session_log_heading() {
   ' "$log" >"${log}.tmp" && mv "${log}.tmp" "$log"
 }
 
-# sessionStart only — sync must not invent headings or summaries.
+# sessionStart only — full checkpoints call ensure_log_heading_for_checkpoint directly.
 ensure_session_log_heading() {
-  local log="$memory/log.md" line sid context="${2:-}"
-  sid="${1:-}"
+  local sid="${1:-}" context="${2:-}" line log="$memory/log.md"
   [ "$context" = "sessionStart" ] || return 0
-  [ -n "$sid" ] && promote_session_log_heading "$sid"
-  line=$(session_log_heading_line "$sid")
   if [ -n "$sid" ]; then
-    session_heading_exists "$sid" && return 0
-  elif [ "${agent_memory_no_id_continuing:-0}" = "1" ] \
+    ensure_log_heading_for_checkpoint "$sid" >/dev/null
+    return 0
+  fi
+  if [ "${agent_memory_no_id_continuing:-0}" = "1" ] \
       && same_day_session_heading_exists_any; then
     return 0
   elif session_heading_exists ""; then
     return 0
   fi
   strip_log_placeholder
+  line=$(session_log_heading_line "")
   if [ ! -f "$log" ]; then
     printf '# Log\n\n%s\n' "$line" >"$log"
-    return 0
+  else
+    printf '\n%s\n' "$line" >>"$log"
   fi
-  printf '\n%s\n' "$line" >>"$log"
 }
 
 # Record separator–delimited logged paths for current session (logged_files).

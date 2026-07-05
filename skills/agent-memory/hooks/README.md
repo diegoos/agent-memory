@@ -20,15 +20,15 @@ links, `architecture.md`, `patterns.md`, `vision.md` (ask user if uncertain).
 
 Copy the shared scripts plus host config (paths from repo root):
 
-| Host            | Scripts                                                     | Config                                  |
-| --------------- | ----------------------------------------------------------- | --------------------------------------- |
-| **Any agent**   | `hooks/shared/*.sh` → `.git/hooks/` (with `git/pre-commit`) | `hooks/git/pre-commit`                  |
-| **Cursor**      | → `.cursor/hooks/`                                          | merge `hooks/cursor/hooks.json`         |
-| **Claude Code** | → `.claude/hooks/`                                          | merge `hooks/claude-code/settings.json` |
-| **Codex**       | → `.codex/hooks/`                                           | merge `hooks/codex/hooks.json`          |
-| **Copilot**     | → `.github/hooks/`                                          | `hooks/copilot/agent-memory.json`       |
-| **OpenCode**    | plugin → `.opencode/hooks/*.sh`                             | `.opencode/plugin/agent-memory.ts`      |
-| **Gemini CLI**  | → `.gemini/hooks/`                                          | merge `.gemini/settings.json`           |
+| Host            | Scripts                                                                 | Config                                  |
+| --------------- | ----------------------------------------------------------------------- | --------------------------------------- |
+| **Any agent**   | `hooks/agent-memory-hooks/*.sh` → `.git/hooks/` (with `git/pre-commit`) | `hooks/git/pre-commit`                  |
+| **Cursor**      | → `.cursor/hooks/`                                                      | merge `hooks/cursor/hooks.json`         |
+| **Claude Code** | → `.claude/hooks/`                                                      | merge `hooks/claude-code/settings.json` |
+| **Codex**       | → `.codex/hooks/`                                                       | merge `hooks/codex/hooks.json`          |
+| **Copilot**     | → `.github/hooks/`                                                      | `hooks/copilot/agent-memory.json`       |
+| **OpenCode**    | plugin → `.opencode/hooks/*.sh`                                         | `.opencode/plugin/agent-memory.ts`      |
+| **Gemini CLI**  | → `.gemini/hooks/`                                                      | merge `.gemini/settings.json`           |
 
 Or run `/agent-memory init <harness>` when the harness directory already exists.
 
@@ -69,7 +69,7 @@ turn).
 
 ```text
 hooks/
-├── shared/
+├── agent-memory-hooks/
 │   ├── agent-memory-common.sh    # shared helpers (sourced by sync + session)
 │   ├── agent-memory-sync.sh      # checkpoint after tools / end of turn
 │   └── agent-memory-session.sh   # sessionStart / NewSession
@@ -90,17 +90,17 @@ hooks/
 
 ## Install (per project)
 
-Copy **all three** files from `hooks/shared/` into the harness hooks directory
-(`agent-memory-common.sh` must sit beside the other two — sync/session source
-it). **Never copy only sync + session** — partial installs fail at runtime
-(sync/session print a stderr hint and exit 0 so the harness is not blocked).
-Re-copy all three on `/agent-memory update` when hook scripts change.
+Copy **all three** files from `hooks/agent-memory-hooks/` into the harness hooks
+directory (`agent-memory-common.sh` must sit beside the other two — sync/session
+source it). **Never copy only sync + session** — partial installs fail at
+runtime (sync/session print a stderr hint and exit 0 so the harness is not
+blocked). Re-copy all three on `/agent-memory update` when hook scripts change.
 
 ### Cursor (recommended)
 
 ```bash
 mkdir -p .cursor/hooks
-cp skills/agent-memory/hooks/shared/agent-memory-*.sh .cursor/hooks/
+cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .cursor/hooks/
 chmod +x .cursor/hooks/agent-memory-*.sh
 # merge hooks/cursor/hooks.json into .cursor/hooks.json
 ```
@@ -109,7 +109,7 @@ chmod +x .cursor/hooks/agent-memory-*.sh
 
 ```bash
 mkdir -p .claude/hooks
-cp skills/agent-memory/hooks/shared/agent-memory-*.sh .claude/hooks/
+cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .claude/hooks/
 chmod +x .claude/hooks/agent-memory-*.sh
 # merge hooks/claude-code/settings.json into .claude/settings.json
 ```
@@ -118,7 +118,7 @@ chmod +x .claude/hooks/agent-memory-*.sh
 
 ```bash
 mkdir -p .codex/hooks
-cp skills/agent-memory/hooks/shared/agent-memory-*.sh .codex/hooks/
+cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .codex/hooks/
 chmod +x .codex/hooks/agent-memory-*.sh
 # merge hooks/codex/hooks.json into .codex/hooks.json
 # then run /hooks in the Codex TUI to trust project hooks
@@ -128,7 +128,7 @@ chmod +x .codex/hooks/agent-memory-*.sh
 
 ```bash
 mkdir -p .github/hooks
-cp skills/agent-memory/hooks/shared/agent-memory-*.sh .github/hooks/
+cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .github/hooks/
 chmod +x .github/hooks/agent-memory-*.sh
 cp skills/agent-memory/hooks/copilot/agent-memory.json .github/hooks/agent-memory.json
 ```
@@ -137,7 +137,7 @@ cp skills/agent-memory/hooks/copilot/agent-memory.json .github/hooks/agent-memor
 
 ```bash
 mkdir -p .opencode/hooks .opencode/plugin
-cp skills/agent-memory/hooks/shared/agent-memory-*.sh .opencode/hooks/
+cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .opencode/hooks/
 chmod +x .opencode/hooks/agent-memory-*.sh
 cp skills/agent-memory/hooks/opencode/agent-memory.ts .opencode/plugin/agent-memory.ts
 ```
@@ -150,7 +150,7 @@ below.
 
 ```bash
 cp skills/agent-memory/hooks/git/pre-commit .git/hooks/pre-commit
-cp skills/agent-memory/hooks/shared/agent-memory-*.sh .git/hooks/
+cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .git/hooks/
 chmod +x .git/hooks/pre-commit .git/hooks/agent-memory-*.sh
 ```
 
@@ -165,11 +165,15 @@ chmod +x .git/hooks/pre-commit .git/hooks/agent-memory-*.sh
 
 ## Safe write scope
 
+Canonical **memory contract** (hooks vs agent, all harnesses): `instructions.md`
+→ _Harness parity — memory contract_. The table below is a summary; do not drift
+from the contract.
+
 | Field                         | Hook updates?                                |
 | ----------------------------- | -------------------------------------------- |
 | `active-work` → Touched files | Yes (session-cumulative; git + stdin paths)  |
 | `active-work` → Task stub     | Yes (from branch name when placeholder)      |
-| `log.md` → session heading    | Yes (on session start)                       |
+| `log.md` → session heading    | Yes (session start or first checkpoint)      |
 | `log.md` → file bullets       | Yes (full checkpoints only — from `git`)     |
 | `log.md` → semantic bullets   | **No** — agent or `/agent-memory sync`       |
 | `current.md` → In progress    | Yes (on session start from `active-work/`)   |
@@ -236,11 +240,17 @@ OpenCode does **not** use `hooks.json`. The Bun plugin
 (`.opencode/plugin/agent-memory.ts`) is a thin adapter that spawns the same
 shell scripts:
 
-| OpenCode plugin event             | Spawns                          | Maps to      |
-| --------------------------------- | ------------------------------- | ------------ |
-| First sync/compaction (once)      | `agent-memory-session.sh`       | sessionStart |
-| `session.idle`                    | `agent-memory-sync.sh` (`Stop`) | end of turn  |
-| `experimental.session.compacting` | `agent-memory-sync.sh`          | `PreCompact` |
+| OpenCode plugin event             | Spawns                      | Maps to      |
+| --------------------------------- | --------------------------- | ------------ |
+| First `session.idle` of the day   | `agent-memory-session.sh`   | sessionStart |
+| `session.idle` (later same day)   | `agent-memory-sync.sh` only | end of turn  |
+| `experimental.session.compacting` | `agent-memory-sync.sh` only | `PreCompact` |
+
+**OpenCode log headings:** OpenCode emits a new `ses_*` session ID on many idle
+and compaction events. Shell helpers bind **one `log.md` heading per calendar
+day** (`opencode_log_heading_id` in `.hook-sync-state`) instead of one heading
+per `ses_*`. Empty duplicate `ses_*` headings are pruned on sessionStart.
+Semantic bullets remain agent-owned (`/agent-memory sync`).
 
 Logic lives in the shared `.sh` files; the plugin only passes
 `AGENT_MEMORY_PROJECT_DIR`, `AGENT_MEMORY_SESSION_ID`, and stdin JSON. Install

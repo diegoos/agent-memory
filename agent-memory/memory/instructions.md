@@ -75,17 +75,102 @@ early_ steps — it refreshes `current.md`, your branch's active-work file,
 writing. Use `/agent-memory sync --auto` at routine checkpoints to apply all
 proposed diffs without the per-file prompt, keeping the flush low-friction.
 
+### Harness parity — memory contract
+
+All supported harnesses (Cursor, Claude Code, Codex, Copilot, Gemini CLI,
+OpenCode) target the **same memory shape**. Shared hook scripts
+(`skills/ agent-memory/hooks/agent-memory-hooks/`) define **what** is written;
+harness config only defines **when** checkpoints run. If outcomes differ, treat
+it as a bug — not a harness feature.
+
+**Two layers (every harness):**
+
+| Layer          | Role                                 | Mechanism                          |
+| -------------- | ------------------------------------ | ---------------------------------- |
+| **Context**    | Obligation to read and update memory | Native instruction file (`.mdc`,   |
+|                |                                      | `*.instructions.md`, agent `*.md`) |
+| **Checkpoint** | Deterministic git + session sync     | Lifecycle hooks or OpenCode plugin |
+
+**Hooks write (identical outcome everywhere hooks are installed):**
+
+| Target                           | Content                                             | When                      |
+| -------------------------------- | --------------------------------------------------- | ------------------------- |
+| `active-work/` → _Touched files_ | Session-cumulative repo paths (`git` + stdin on     | Between-turn + end-of-    |
+|                                  | harnesses with post-tool events)                    | turn checkpoints          |
+| `active-work/` → _Task_ stub     | Branch-name placeholder when still generic          | Same checkpoints          |
+| `log.md` → session heading       | `## [YYYY-MM-DD] [session-id]` (see OpenCode below) | Session start / first     |
+|                                  |                                                     | checkpoint of the period  |
+| `log.md` → file-path bullets     | ``- `path` `` or `changed N files…` summary (>8)    | **Full checkpoints only** |
+|                                  | — evidence from `git`, never semantic text          | (end-of-turn, compact,    |
+|                                  |                                                     | pre-commit)               |
+| `current.md` → _In progress_     | Links to open `active-work/*.md` + one-line goal    | Session start             |
+| `.hook-sync-state`               | Session IDs, dedupe sets (not committed)            | Internal                  |
+
+Hooks **never** write: semantic `log.md` bullets, `[type]` / summary in
+headings, `decisions.md`, `active-work` _Progress_ / _Blockers_ / _Notes_,
+`current.md` _Done_ / _Next steps_, lazy file bodies, or `index.md` link prose.
+
+**Agent (or `/agent-memory sync`) writes — same on every harness:**
+
+| Target         | Content                                                   |
+| -------------- | --------------------------------------------------------- |
+| `log.md`       | Semantic bullets; `[type]` and session summary in         |
+|                | heading when the goal is clear                            |
+| `active-work/` | **Task** (meaning), **Progress**, **Blockers**, **Notes** |
+| `decisions.md` | ADR entries on every design/architecture change           |
+| `current.md`   | _Done_, _Next steps_ (when evidence exists), milestone    |
+| `index.md`     | Lazy and domain/feature links                             |
+| Lazy files     | Bodies when triggers fire (`architecture.md`, etc.)       |
+
+`/agent-memory sync` refreshes `current.md`, active-work, `log.md`, and
+`index.md` from `git` — it does **not** replace the agent's obligation to update
+`decisions.md` or lazy-file bodies.
+
+**Evidence vs meaning (always split this way):**
+
+```md
+## [2026-07-05] [abc-123] [feat] interview list page
+
+- changed 12 files (see active-work Touched files) ← hook (git evidence)
+- `src/app/tag/entrevista/page.tsx` ← hook (≤8 new paths)
+- added canonical /tag/entrevista/ route ← agent (semantic)
+- recorded URL decision in decisions.md ← agent (semantic)
+```
+
+**Harness timing (same writes, different schedule):**
+
+| Checkpoint     | Cursor             | Claude / Codex | Copilot / Gemini | OpenCode          |
+| -------------- | ------------------ | -------------- | ---------------- | ----------------- |
+| Session start  | native             | native         | native           | first idle / sync |
+| Mid-turn paths | postToolUse +      | PostToolUse    | postToolUse      | — (git at idle)   |
+|                | afterFileEdit      |                |                  |                   |
+| End of turn    | afterAgentResponse | Stop           | agentStop        | session.idle      |
+| Before compact | preCompact         | PreCompact     | preCompact       | compacting        |
+
+**OpenCode heading rule:** `ses_*` IDs rotate often. Hooks coalesce to **one
+`log.md` heading per calendar day** (bound in `.hook-sync-state` as
+`opencode_log_heading_id`). Bullets and semantic text still append under that
+single heading — same contract, different session-key granularity.
+
+**Without hooks:** run `/agent-memory sync` at the same checkpoints; the agent
+must supply both evidence (from `git`) and semantic bullets manually.
+
+See `skills/agent-memory/hooks/README.md` for per-host wiring. Do not duplicate
+this contract elsewhere — link to this section.
+
 ### Obligations by file
 
 #### `log.md` — session log (hooks + agent)
 
-Hooks maintain the session **heading** and append **file-path bullets** from
-`git` (evidence only). You add semantic bullets (fixes, features, outcomes) and
-refine the heading type/summary.
+See **Harness parity — memory contract** above. Hooks maintain the session
+**heading** and append **file-path bullets** from `git` (evidence only). You add
+semantic bullets (fixes, features, outcomes) and refine the heading
+type/summary.
 
-- **One heading per session** (date + session ID). Hooks open
-  `## [YYYY-MM-DD] [session-id]` on session start (date only when ID is
-  unknown); you add `[type]` and a one-line summary when the session goal is
+- **One heading per session** (date + session ID). OpenCode: **one heading per
+  calendar day** when `ses_*` IDs rotate (same bullets, coalesced key).
+- Hooks open `## [YYYY-MM-DD] [session-id]` on session start or first
+  checkpoint; you add `[type]` and a one-line summary when the session goal is
   clear.
 - Append your bullets under the same heading — do not open a new heading per
   checkpoint.
@@ -232,6 +317,19 @@ branches=$(git branch --format='%(refname:short)' | sed 's#[^A-Za-z0-9._-]#-#g')
 [ -n "$branches" ] && find active-work -name '*.md' ! -name 'TEMPLATE.md' 2>/dev/null | while read -r f; do
   printf '%s\n' "$branches" | grep -qx "$(basename "$f" .md)" || echo "stale: $f"
 done
+```
+
+## Git commit rules for the memory
+
+When doing a commit, the hooks automatically update the memory, so after all
+commits are done, create a new commit at the end of the sessions with a message
+following the repository commit message rules, with limit of 50 characters for
+the commit title.
+
+Example:
+
+```text
+chore(memory): update memory on [CONCISE DESCRIPTION OF THE CHANGES]
 ```
 
 ## When in doubt

@@ -26,6 +26,8 @@ CHANGELOG.md          # release history (Keep a Changelog + SemVer)
 - **Single sources of truth** — do not duplicate or drift:
   - Agent-memory block text: `skills/agent-memory/references/agent-block.md`
   - Installed memory shape: `agent-memory/memory/`
+  - **Harness parity (hooks vs agent):** `agent-memory/memory/instructions.md` →
+    _Harness parity — memory contract_ (canonical; link, do not copy)
   - Migrations: `agent-memory/UPDATE.md`
   - Release history: `CHANGELOG.md` ([Keep a Changelog][kac], [SemVer][semver])
 - **Version bumps** — only when requested: add a `## <version>` section to
@@ -91,6 +93,23 @@ agent, not hooks.
 `skills/agent-memory/hooks/agent-memory-hooks/` and merge host config
 (especially `.cursor/hooks.json` — must include `afterFileEdit`). Or run
 `/agent-memory install hooks <harness>` / `/agent-memory update`.
+
+### OpenCode empty `log.md` headings (fixed in tree)
+
+**Symptom:** multiple same-day headings like `## [YYYY-MM-DD] [ses_…]` with no
+bullets — one per OpenCode `session.idle` / compaction event.
+
+**Root cause:** OpenCode rotates `ses_*` session IDs frequently; the plugin
+synthesized `sessionStart` on every idle/compaction and each ID created a new
+heading. `session.idle` carries only `sessionID` (no stable conversation id).
+
+**Fix:** bind **one log heading per calendar day** (`opencode_log_heading_id` in
+`.hook-sync-state`); map later `ses_*` IDs to that heading; prune empty
+duplicate headings; plugin skips redundant `sessionStart` only when the bound
+heading **exists in `log.md`**; compaction runs sync only (no new heading).
+Checkpoints call `ensure_log_heading_for_checkpoint` before appending bullets
+(state binding alone is insufficient). Re-copy
+`.opencode/plugin/agent-memory.ts` and the three `.opencode/hooks/*.sh` scripts.
 
 ## Dogfooding
 

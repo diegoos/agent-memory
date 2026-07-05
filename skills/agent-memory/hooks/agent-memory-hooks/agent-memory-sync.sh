@@ -55,6 +55,7 @@ command -v git >/dev/null 2>&1 || exit 0
 git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
 session_id=$(resolve_session_id "$hook_stdin_session_id")
+log_session_id=$(normalize_session_id_for_checkpoint "$session_id")
 persist_session_id "$session_id"
 
 mark_head_processed() {
@@ -88,12 +89,13 @@ run_posttool_checkpoint() {
 }
 
 run_full_checkpoint() {
-  local list_file=$1 aw
+  local list_file=$1 aw resolved_sid
   aw=$(ensure_active_work)
   update_task_stub "$aw"
+  resolved_sid=$(ensure_log_heading_for_checkpoint "$log_session_id")
   if [ -s "$list_file" ]; then
     update_touched_files "$aw" "$list_file"
-    append_log_file_bullets "$session_id" "$list_file"
+    append_log_file_bullets "$resolved_sid" "$list_file"
   else
     write_active_work_touched_from_session "$aw"
   fi

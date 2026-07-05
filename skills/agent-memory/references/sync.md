@@ -29,7 +29,9 @@ except replacing placeholder lines inside the four target files.
 
 Hooks maintain `log.md` session headings and file-path bullets from `git`; sync
 adds semantic bullets, refines summaries/types, and aligns `decisions.md`
-indirectly (sync still does not write `decisions.md` — the agent must).
+indirectly (sync still does not write `decisions.md` — the agent must). The
+split is the same on every harness — see `instructions.md` → _Harness parity —
+memory contract_.
 
 ## Steps
 
@@ -65,10 +67,10 @@ indirectly (sync still does not write `decisions.md` — the agent must).
    `<last-log-date>` comes from the newest `## [YYYY-MM-DD]` in `log.md`. If
    empty, use the repo's first commit or `HEAD~20` as a sane default.
 
-   `<last-log-sha>` is `last_processed_head` from `.agents/memory/.hook-sync-state`
-   (written by hooks after each checkpoint). If empty, skip the
-   `git diff --name-only <last-log-sha>..HEAD` line — there is no prior
-   processed commit to diff from.
+   `<last-log-sha>` is `last_processed_head` from
+   `.agents/memory/.hook-sync-state` (written by hooks after each checkpoint).
+   If empty, skip the `git diff --name-only <last-log-sha>..HEAD` line — there
+   is no prior processed commit to diff from.
 
 5. **Vision gate (unless `--auto`).** If `vision.md` does not exist or looks
    stale/ambiguous and docs do not clarify product purpose, **ask the user**
