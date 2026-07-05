@@ -289,3 +289,30 @@ Format:
   the project's `.cursor/hooks.json` when refreshing Cursor hooks — show diff
   and confirm if the user has custom hook entries.
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.10`.
+
+## 0.0.11
+
+- safe: **OpenCode log heading coalescence** — one `log.md` heading per calendar
+  day when `ses_*` IDs rotate; `opencode_log_heading_id` in `.hook-sync-state`
+  maps later IDs to the bound heading.
+- safe: **`ensure_log_heading_for_checkpoint`** — creates the session heading in
+  `log.md` before appending bullets or binding state (state-only binding no
+  longer leaves orphan headings).
+- safe: **`normalize_session_id_for_checkpoint`** — read-only ID resolution; does
+  not write `.hook-sync-state` without a corresponding heading.
+- safe: **`prune_empty_opencode_session_headings`** — removes duplicate empty
+  same-day `ses_*` headings when binding the canonical day heading.
+- safe: OpenCode plugin — skip redundant `sessionStart` when the bound heading
+  **exists in `log.md`**; compaction runs sync only (no synthetic session start).
+- safe: `hooks/README.md` — canonical paths under `agent-memory-hooks/`; link to
+  harness parity contract (do not duplicate the contract text).
+- safe: `references/sync.md` — links to _Harness parity — memory contract_ in
+  `instructions.md`.
+- safe: root `AGENTS.md` — harness parity single source of truth; OpenCode empty
+  heading fix documented for this repo's dogfooding.
+- sensitive: `agent-memory/memory/instructions.md` — new _Harness parity — memory
+  contract_ section (hooks vs agent writes, evidence vs meaning split, harness
+  timing table, OpenCode heading rule). `update` must show the diff and confirm.
+- sensitive: `agent-memory/memory/log.md` — OpenCode coalescence note under the
+  per-session heading rules. `update` must show the diff and confirm.
+- safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.11`.

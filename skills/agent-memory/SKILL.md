@@ -20,7 +20,7 @@ description: >-
   this skill must be invoked on demand only.
 metadata:
   invocation: manual
-  version: '0.0.10'
+  version: '0.0.11'
 compatibility: >-
   Requires network access for WebFetch when installing from a remote
   agent-memory repository URL.

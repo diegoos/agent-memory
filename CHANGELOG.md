@@ -13,6 +13,31 @@ both in sync on version bumps.
 
 ## [Unreleased]
 
+## [0.0.11] - 2026-07-05
+
+### Fixed
+
+- OpenCode empty `log.md` headings when `ses_*` IDs rotate on idle/compaction —
+  coalesce to one heading per calendar day, prune duplicate empty headings, and
+  ensure headings exist in the file before binding state or appending bullets.
+
+### Added
+
+- **Harness parity — memory contract** in `instructions.md` — canonical split
+  between hook evidence (paths, headings, _Touched files_) and agent meaning
+  (semantic bullets, Task/Progress, `decisions.md`); harness timing table; same
+  memory shape on every harness.
+- `ensure_log_heading_for_checkpoint`, read-only session ID normalization, and
+  OpenCode heading prune helpers in shared hook scripts.
+
+### Changed
+
+- OpenCode plugin skips redundant `sessionStart` when the day's bound heading
+  already exists in `log.md`; compaction triggers sync only.
+- `hooks/README.md` documents `agent-memory-hooks/` paths and links to the
+  contract; `sync.md` references it instead of duplicating rules.
+- `AGENTS.md` points to the contract as single source of truth.
+
 ## [0.0.10] - 2026-07-04
 
 ### Fixed
