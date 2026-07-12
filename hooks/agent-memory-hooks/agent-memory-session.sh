@@ -13,14 +13,14 @@ host="${AGENT_MEMORY_HOST:-}"
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 _common_sh="$script_dir/agent-memory-common.sh"
 if [ ! -f "$_common_sh" ]; then
-  printf 'agent-memory: missing agent-memory-common.sh beside %s; install all three hooks/agent-memory-hooks/*.sh together (see skills/agent-memory/hooks/README.md)\n' \
+  printf 'agent-memory: missing agent-memory-common.sh beside %s; install all three hooks/agent-memory-hooks/*.sh together (see hooks/README.md)\n' \
     "$(basename -- "$0")" >&2
   exit 0
 fi
 # shellcheck source=agent-memory-common.sh
 . "$_common_sh"
 
-agent_memory_init_context
+agent_memory_init_context || exit 0
 
 [ -d "$memory" ] || exit 0
 

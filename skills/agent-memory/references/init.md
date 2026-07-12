@@ -1,8 +1,9 @@
 # `/agent-memory init`
 
 Create the agent-memory structure in the target project and wire it into the
-harness-specific instruction file(s) and lifecycle hooks. Idempotent: never
-duplicate or overwrite existing memory or harness files.
+harness-specific instruction file(s). Prints user-run instructions for lifecycle
+hooks (does not install hooks). Idempotent: never duplicate or overwrite
+existing memory or harness instruction files.
 
 ## Invocation
 
@@ -37,14 +38,14 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
    `/agent-memory install hooks <harness>` to refresh hooks. Do not overwrite
    anything.
 
-2. **Copy the skeleton.** Obtain the repository (see `SKILL.md` → Repository
-   source) and copy its `agent-memory/memory/` directory into the project as
+2. **Copy the skeleton.** Read this skill's `vendor/memory/` (see `SKILL.md` →
+   Repository source) and copy that directory into the project as
    `.agents/memory/` (the entire directory, including `active-work/TEMPLATE.md`
-   and `.gitignore` for hook-local state files).
+   and `.gitignore` for hook-local state files). Do not clone or fetch remotely.
 
 3. **Write the version anchor.** Create `.agents/memory/.version` containing the
-   latest version — the newest version section in the repository's
-   `agent-memory/UPDATE.md`, e.g. `0.0.11`.
+   latest version — the newest version section in this skill's
+   `vendor/UPDATE.md`, e.g. `0.0.12`.
 
 4. **Parse the harness target.** From the invocation, read optional `<harness>`.
    Normalize aliases (`claude-code` → `claude`, `github` → `copilot`). If
@@ -138,18 +139,22 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
    first). Do not remove a block from `AGENTS.md` when it serves codex,
    opencode, or claude via delegation.
 
-6. **Wire harness-specific config.** Follow
+6. **Print hook-install instructions.** Follow
    [`references/install-hooks.md`](./install-hooks.md) for each harness that
    applies (targeted: that harness only; auto: every detected harness whose
-   prerequisite dir exists). In `init`, run the install-hooks steps **without**
-   the memory guard (step 1 of that reference).
+   prerequisite dir exists). In `init`, run those steps **without** the memory
+   guard (step 1 of that reference). **Do not** copy hook scripts or merge
+   harness hook configs — only print the user-run `npx` / shell commands. Note:
+   the skill never creates harness roots; the user-run installer **does** create
+   them if missing when the user runs the printed command.
 
 7. **Report.** List: mode (auto or targeted harness), detected harness(es),
    skeleton created, carrier file(s) wired or skipped (and why — delegation,
-   copilot coexistence, idempotency), orphan-block offers, harness extras
-   installed or skipped (especially missing harness dirs), and suggest
+   copilot coexistence, idempotency), orphan-block offers, hook-install
+   commands printed (or skipped for missing harness dirs), and suggest
    `bootstrap` / `sync` next steps. For Cursor, note that **hooks are the
-   recommended checkpoint integration** and **`.mdc` is the context layer**.
+   recommended checkpoint integration** (user-installed) and **`.mdc` is the
+   context layer**.
 
 ## Auto-detection (`init` without `<harness>`)
 
@@ -198,8 +203,8 @@ distinct carriers → write the block in each file that is an effective carrier.
   codebase, the user runs `/agent-memory bootstrap`. If product vision is
   unclear, ask the user before writing `vision.md` (same rule as `bootstrap` /
   `sync`).
-- Optional git `pre-commit` hook is **not** wired by `init` — see
-  [`hooks/README.md`](../hooks/README.md).
+- Optional git `pre-commit` hook is **not** wired by `init` — see the
+  [hooks README](https://github.com/diegoos/agent-memory/blob/v0.0.12/hooks/README.md).
 - **Context vs checkpoint:** native instruction files (`.mdc`, agent `*.md`,
   `.instructions.md`) inject the agent-memory workflow into the model context.
   Lifecycle hooks (see `install-hooks.md`) run deterministic git checkpoints —

@@ -60,9 +60,9 @@ workflow and the multi-developer rules.
 
 ### Recommended — via the skill
 
-Install the `agent-memory` skill (in
-[`../skills/agent-memory`](../skills/agent-memory)) into your agent's skills
-directory, then run:
+Install the `agent-memory` skill
+([skills.sh](https://www.skills.sh/diegoos/agent-memory/agent-memory) /
+[`SKILL.md`](../SKILL.md)) into your agent's skills directory, then run:
 
 ```text
 /agent-memory init              # auto-detect harnesses from project markers
@@ -73,8 +73,8 @@ directory, then run:
 /agent-memory init copilot      # Copilot only
 /agent-memory init gemini       # Gemini only
 /agent-memory bootstrap         # optional: analyze the project and fill the memory
-/agent-memory install hooks <harness>  # install or refresh hooks (memory must exist)
-/agent-memory update            # update agent-memory + refresh instruction blocks + installed harness hooks
+/agent-memory install hooks <harness>  # print how to install/refresh hooks
+/agent-memory update            # update scaffolding + refresh instruction blocks
 /agent-memory sync              # keep current.md / active-work / log.md / index.md fresh
 ```
 
@@ -86,15 +86,16 @@ creates `.cursor/`, `.claude/`, `.github/`, etc. by default — those must alrea
 exist, unless you explicitly ask `init` to create them. Use `init <harness>`
 when you know which agent you use.
 
-The skill installs from this repository's canonical skeleton (`memory/`) and
-also handles `sync`, `update`, `lint`, and `help`. See its
-[`SKILL.md`](../skills/agent-memory/SKILL.md).
+The skill installs from the vendored skeleton next to this file (`memory/`) and
+also handles `sync`, `update`, `lint`, and `help`. See [`SKILL.md`](../SKILL.md).
+Hooks are **user-installed** (the skill only prints commands) — see the
+[hooks README](https://github.com/diegoos/agent-memory/blob/v0.0.12/hooks/README.md).
 
 ### Manual
 
 ```bash
 mkdir -p .agents
-cp -R agent-memory/memory .agents/memory
+cp -R memory .agents/memory
 ```
 
 Commit `.agents/memory/` to Git, then attach the Memory to your agent file(s) by
@@ -103,7 +104,7 @@ pasting the canonical agent-memory block into `AGENTS.md`, `CLAUDE.md`,
 source of truth (`.agents/memory/instructions.md`); the block only points to it.
 
 The block is the **single source of truth** at
-[`../skills/agent-memory/references/agent-block.md`](../skills/agent-memory/references/agent-block.md)
+[`../references/agent-block.md`](../references/agent-block.md)
 — copy it verbatim from there. It is wrapped in `<!-- <agent-memory> -->` …
 `<!-- </agent-memory> -->` HTML comments so `/agent-memory update` can refresh
 **only** that block later (comments are invisible in rendered Markdown); it
@@ -111,23 +112,21 @@ tells the agent to **Read** `instructions.md` and to **write** the memory as it
 works, and adds `@import`, so harnesses that follow the AGENTS.md `@import`
 convention (Claude Code, Gemini CLI, Codex) auto-load `instructions.md`. On
 Cursor, run `init cursor` when `.cursor/` exists — it wires
-`.cursor/rules/agent-memory.mdc` (context layer) plus hooks. On Copilot, run
-`init copilot` to wire `.github/instructions/agent-memory.instructions.md`
-(context layer) plus hooks. See _Plain-Markdown harnesses_ in
-`memory/instructions.md`.
+`.cursor/rules/agent-memory.mdc` (context layer); install hooks separately. On
+Copilot, run `init copilot` then the hooks installer. See
+_Plain-Markdown harnesses_ in `memory/instructions.md`.
 
 ## Keeping the memory current
 
 The memory rots if agents only read it. The agent-memory block tells them to
 write it too, and `/agent-memory sync` is the executable flush at checkpoints.
 
-**On Cursor:** `init cursor` wires two complementary layers —
-`.cursor/rules/agent-memory.mdc` (`alwaysApply: true`) as the **context layer**
-(always-on rules that inject the agent-memory workflow into every session) and
-lifecycle hooks as the **checkpoint layer** (deterministic git checkpoints). Run
-it when `.cursor/` already exists. See
-[`../skills/agent-memory/hooks/`](../skills/agent-memory/hooks/).
+**On Cursor:** `init cursor` wires the **context layer** —
+`.cursor/rules/agent-memory.mdc` (`alwaysApply: true`). Install lifecycle hooks
+separately as the **checkpoint layer**. Run `init` when `.cursor/` already
+exists. See the
+[hooks README](https://github.com/diegoos/agent-memory/blob/v0.0.12/hooks/README.md).
 
-Lifecycle hooks (Cursor, Claude Code, Codex, OpenCode, Copilot, plus git
-`pre-commit`) run a deterministic git checkpoint between turns — see
-[`../skills/agent-memory/hooks/`](../skills/agent-memory/hooks/).
+Lifecycle hooks (Cursor, Claude Code, Codex, OpenCode, Copilot, Gemini, plus git
+`pre-commit`) run a deterministic git checkpoint between turns — same
+[hooks README](https://github.com/diegoos/agent-memory/blob/v0.0.12/hooks/README.md).

@@ -1,11 +1,12 @@
 # `/agent-memory update`
 
-Migrate an existing `.agents/memory/` to the latest structure from the
-agent-memory repository — **without ever altering the project's memory
-content.** It also refreshes the memory **block** inside harness instruction
-files, **only** between the `<!-- <agent-memory> -->` …
-`<!-- </agent-memory> -->` delimiters (or legacy plain `<agent-memory>` …
-`</agent-memory>` tags, which `update` migrates to the comment form).
+Migrate an existing `.agents/memory/` to the latest structure from this skill's
+`vendor/` — **without ever altering the project's memory content.** It also
+refreshes the memory **block** inside harness instruction files, **only**
+between the `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` delimiters
+(or legacy plain `<agent-memory>` … `</agent-memory>` tags, which `update`
+migrates to the comment form). Hook refresh is **instructions only** (user-run
+installer).
 
 ## Boundary (read before doing anything)
 
@@ -43,26 +44,29 @@ carrier rules):
    `/agent-memory init`.
 
 2. **Read versions.** Installed = `.agents/memory/.version`. Latest = the newest
-   version section in the repository's `agent-memory/UPDATE.md`. If equal, still
-   run step 5 (refresh instruction blocks) before reporting "already up to
-   date".
+   version section in this skill's `vendor/UPDATE.md`. If equal, still run step 5
+   (refresh instruction blocks) before reporting "already up to date".
 
-3. **Select migrations.** Read the repository's `agent-memory/UPDATE.md` (see
-   `SKILL.md` → Repository source) and collect every entry with a version
-   greater than the installed version, up to the latest. Each change is tagged
-   `safe` or `sensitive`.
+3. **Select migrations.** Read this skill's `vendor/UPDATE.md` (see `SKILL.md` →
+   Repository source) and collect every entry with a version greater than the
+   installed version, up to the latest. Each change is tagged `safe` or
+   `sensitive`. **Skip** any item marked **superseded** (e.g. a later version
+   says it supersedes an earlier sensitive step) — do not apply superseded
+   migrations.
 
 4. **Apply, conservatively:**
    - **Automatic (no prompt):**
      - Create new core files that are missing.
    - **Always confirm with a diff before applying:**
-     - `instructions.md` when the installed copy differs from the repository's
-       current `agent-memory/memory/instructions.md` (identical → nothing to
-       do).
+     - `instructions.md` when the installed copy differs from the skill's
+       current `vendor/memory/instructions.md` (identical → nothing to do).
      - Any change to a file that can hold user content — including `index.md`
        (merge structural sections, **preserve the user's Domains/Features
        lists**).
      - Any rename, move, or deletion.
+   - **Skip superseded items** — e.g. do **not** agent-merge `.cursor/hooks.json`
+     for `afterFileEdit` when `UPDATE.md` marks that 0.0.10 sensitive step as
+     superseded (hooks refresh is user-run installer only).
    - Present each sensitive change as a unified diff and ask the user to
      approve, skip, or abort. Apply only what is approved.
 
@@ -103,14 +107,13 @@ carrier rules):
    byte-identical to the canonical block, report "instruction blocks already
    current" and move on.
 
-6. **Refresh installed hooks.** Follow
+6. **Instruct hook refresh.** Follow
    [`references/install-hooks.md`](./install-hooks.md) → **Detecting installed
-   harnesses** and run steps 4–6 for each harness that is already installed.
-   This is **safe** — overwrite canonical shared scripts and merge harness
-   config idempotently (agent-memory entries only). Run even when the installed
-   version already equals the latest (hook scripts may have changed without a
-   memory migration). Report which harnesses were refreshed and which were
-   skipped.
+   harnesses** and for each installed harness print the user-run refresh
+   commands (step 4 of that reference). **Do not** copy scripts or merge
+   configs. Run even when the installed version already equals the latest (hook
+   scripts may have changed without a memory migration). Report which harnesses
+   need a user refresh and which were skipped.
 
 7. **Finalize.** Update `.agents/memory/.version` to the latest. Append one
    entry to `log.md`:
@@ -119,8 +122,8 @@ carrier rules):
 8. **Report.** Summarize what was applied automatically, what was confirmed, and
    what was skipped — including which instruction files had their block
    refreshed, which had a legacy section migrated, delegation-canary removals
-   offered/applied, which files were left untouched, and which harness hooks
-   were refreshed.
+   offered/applied, which files were left untouched, and which harness hook
+   refresh commands were printed.
 
    For Cursor, note that `.cursor/rules/agent-memory.mdc` is the **context
    layer** (always-on rules) and hooks are the **checkpoint layer** — both are
@@ -137,6 +140,6 @@ carrier rules):
 - The block refresh edits only between the agent-memory delimiters (comment form
   or legacy plain tags). If no delimiters are found, do **not** guess where the
   block starts — treat it as the legacy-section case above, or skip and report.
-- The skeleton source of truth is the repository's `agent-memory/memory/`;
-  `UPDATE.md` only describes _how_ to migrate between versions, not the file
-  contents.
+- The skeleton source of truth is this skill's `vendor/memory/`;
+  `vendor/UPDATE.md` only describes _how_ to migrate between versions, not the
+  file contents.

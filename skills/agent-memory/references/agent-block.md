@@ -92,8 +92,9 @@ outside the delimiters.
   files as plain Markdown or load context via rules — **Cursor** receives the
   block through `.cursor/rules/agent-memory.mdc` (`alwaysApply: true`);
   `@import` in `AGENTS.md` is a no-op there. The "Read …" line is the active
-  path on Cursor. Also wire lifecycle hooks via `init cursor` — see
-  `instructions.md` → _Plain-Markdown harnesses_ (hooks = checkpoint; `.mdc` =
+  path on Cursor. For hooks (checkpoint layer), print user-run install commands
+  from `/agent-memory install hooks <harness>` — the skill never installs hooks;
+  see `instructions.md` → _Plain-Markdown harnesses_ (hooks = checkpoint; `.mdc` =
   context).
 - The `@.agents/memory/instructions.md` line is honored by harnesses that follow
   the AGENTS.md `@import` convention (Claude Code, Gemini CLI, Codex),

@@ -78,8 +78,8 @@ proposed diffs without the per-file prompt, keeping the flush low-friction.
 ### Harness parity — memory contract
 
 All supported harnesses (Cursor, Claude Code, Codex, Copilot, Gemini CLI,
-OpenCode) target the **same memory shape**. Shared hook scripts
-(`skills/ agent-memory/hooks/agent-memory-hooks/`) define **what** is written;
+OpenCode) target the **same memory shape**. Shared hook scripts in the
+agent-memory repo (`hooks/agent-memory-hooks/`) define **what** is written;
 harness config only defines **when** checkpoints run. If outcomes differ, treat
 it as a bug — not a harness feature.
 
@@ -155,8 +155,9 @@ single heading — same contract, different session-key granularity.
 **Without hooks:** run `/agent-memory sync` at the same checkpoints; the agent
 must supply both evidence (from `git`) and semantic bullets manually.
 
-See `skills/agent-memory/hooks/README.md` for per-host wiring. Do not duplicate
-this contract elsewhere — link to this section.
+See the [hooks README](https://github.com/diegoos/agent-memory/blob/v0.0.12/hooks/README.md)
+for per-host wiring. Do not duplicate this contract elsewhere — link to this
+section.
 
 ### Obligations by file
 
@@ -247,13 +248,14 @@ regression: it can appear as "requestable" instead of "always applied"), so an
 **On Cursor:** run `/agent-memory init cursor` when `.cursor/` already exists.
 `init` creates `.cursor/rules/agent-memory.mdc` with `alwaysApply: true` — this
 is the **context layer** (always-on rules that inject the agent-memory
-workflow). Also wire lifecycle hooks (checkpoint layer): when memory already
-exists, use `/agent-memory install hooks cursor` or `init cursor` on first
-setup. Hooks keep `active-work/` (session-cumulative _Touched files_, Task
-stub), `log.md` (session heading; file-path bullets on full checkpoints only),
-and `current.md` _In progress_ on session start — you own **semantic** log text,
-Task meaning, `decisions.md`, _Done_, and `index.md`. See
-`skills/agent-memory/hooks/README.md`.
+workflow). Install lifecycle hooks (checkpoint layer) with the user-run
+installer — `/agent-memory install hooks cursor` **prints** the `npx` / shell
+commands; run them yourself (or use `init cursor` for the printed instructions
+on first setup). Hooks keep `active-work/` (session-cumulative _Touched files_,
+Task stub), `log.md` (session heading; file-path bullets on full checkpoints
+only), and `current.md` _In progress_ on session start — you own **semantic**
+log text, Task meaning, `decisions.md`, _Done_, and `index.md`. See the
+[hooks README](https://github.com/diegoos/agent-memory/blob/v0.0.12/hooks/README.md).
 
 **Context vs checkpoint:** `.mdc` puts the obligation to Read `instructions.md`
 into every session context; hooks run deterministic git checkpoints without an
@@ -321,10 +323,11 @@ done
 
 ## Git commit rules for the memory
 
-When doing a commit, the hooks automatically update the memory, so after all
-commits are done, create a new commit at the end of the sessions with a message
-following the repository commit message rules, with limit of 50 characters for
-the commit title.
+The pre-commit hook runs an **evidence** checkpoint (touched files, file-path
+`log.md` bullets from `git`). Run **`/agent-memory sync`** before committing so
+semantic memory (progress, decisions, log meaning) stays current. Commit memory
+changes with the rest of the repo, using the project's commit message rules (50
+characters for the title when practical).
 
 Example:
 
