@@ -1,185 +1,149 @@
 # Agent Memory
 
-A small, project-local **Workspace Memory** that keeps AI coding agents — Claude
-Code, Cursor, Codex, OpenCode, Gemini, and others — **on the same page** across
-sessions, tools, and teammates, with no external infrastructure.
+**Agent Memory** is a project-local **Workspace Memory** for AI coding agents.
+It is a small set of versioned Markdown files in `.agents/memory/` — the shared
+source of truth between humans and agents — so work continues across sessions,
+tools, and teammates **without chat history** and **without external
+infrastructure** (no server, vector DB, or embeddings).
+
+Agents **read and write** that memory. A manual skill (`/agent-memory`)
+bootstraps and maintains it; optional lifecycle hooks add deterministic git
+checkpoints while you work.
+
+Supported harnesses: Cursor, Claude Code, Codex, OpenCode, Copilot, Gemini CLI.
+
+## Why
+
+- **Project memory, not chat memory.** Files in Git beat paste-from-yesterday
+  chats. Anyone (human or agent) can pick up from `.agents/memory/` alone.
+- **Plain Markdown.** Searchable with `grep`, reviewable in PRs, no new runtime.
+- **Progressive disclosure.** Always-load files stay short; detail lives in
+  on-demand files (`architecture.md`, `domains/*`, …).
+- **Inspired by Karpathy's [llm-wiki][llm-wiki]** (index, log, lint, small
+  cross-linked files), adapted from source ingestion to _project_ memory.
+
+## How it works
+
+Memory lives at `.agents/memory/` and separates **durable knowledge** from
+**operational state**:
+
+| File                      | Role                                                           |
+| ------------------------- | -------------------------------------------------------------- |
+| `instructions.md`         | Method: how agents read and maintain the memory.               |
+| `index.md`                | Map + loading policy (always-load vs on-demand).               |
+| `current.md`              | Shared project state (done / in progress / next).              |
+| `active-work/<branch>.md` | Per-branch scratchpad (no merge conflicts across branches).    |
+| `decisions.md`            | Decisions and **why**.                                         |
+| `log.md`                  | Chronological activity log (append at the bottom).             |
+
+Lazy files (`vision.md`, `architecture.md`, `patterns.md`, `mistakes.md`,
+`known-issues.md`, `domains/*`, `features/*`) appear only when there is real
+content.
+
+**Workflow:** before a task, agents read `index.md`, `current.md`, and their
+branch's `active-work` file; while working they keep those current; at
+checkpoints they flush with `/agent-memory sync`.
+
+Full method:
+[`skills/agent-memory/vendor/README.md`](./skills/agent-memory/vendor/README.md)
+and
+[`instructions.md`](./skills/agent-memory/vendor/memory/instructions.md).
 
 ## Quick start
 
 ```bash
+# Skill (primary)
 npx skills add diegoos/agent-memory --skill agent-memory
 ```
 
-Then, in your agent:
+In your agent:
 
 ```text
-/agent-memory init              # auto-detect harnesses from project markers
-/agent-memory init cursor       # Cursor only (.cursor/ must exist)
-/agent-memory init claude       # Claude Code only
-/agent-memory init codex        # Codex only
-/agent-memory init opencode     # OpenCode only
-/agent-memory init copilot      # Copilot only
-/agent-memory init gemini       # Gemini only
-/agent-memory bootstrap         # optional: analyze the project and fill the memory
-/agent-memory install hooks <harness>  # install or refresh hooks (memory must exist)
-/agent-memory update            # update agent-memory + refresh instruction blocks + installed harness hooks
-/agent-memory sync              # at checkpoints: keep current.md / active-work / log.md / index.md fresh
+/agent-memory init                 # auto-detect harnesses, or: init cursor
+/agent-memory bootstrap            # optional: populate memory from the repo
+/agent-memory install hooks cursor # print hook-install commands (skill never runs them)
 ```
 
-Without a harness name, `init` **auto-detects** harnesses from project markers
-(`CLAUDE.md`, `GEMINI.md`, `.cursor/rules/`, Copilot markers, `.claude/`,
-`.gemini/`, `AGENTS.md` + `.codex/` or `.opencode/`) and wires each harness's
-**native instruction file** — `.cursor/rules/agent-memory.mdc` for Cursor,
-`.github/instructions/agent-memory.instructions.md` for Copilot, or the
-harness's agent file (`AGENTS.md`/`CLAUDE.md`/`GEMINI.md`) for the rest. It asks
-you when detection is inconclusive. It does not create `.cursor/`, `.claude/`,
-`.github/`, etc. by default — those must already exist, unless you explicitly
-ask `init` to create them. Use `init <harness>` when you know which agent you
-use.
+Install lifecycle hooks with the pinned `npx` CLI (same release tag):
 
-## Why
+```bash
+npx --yes github:diegoos/agent-memory#v0.0.12 -- install hooks cursor
+# or from a checkout: bash hooks/install-hooks.sh cursor
+```
 
-- **Project memory, not chat memory.** A versioned set of small Markdown files
-  in `.agents/memory/` is the shared source of truth between humans and agents.
-  Any agent can pick up the work from the files alone, without chat history.
-- **No external tooling.** No vector database, no server, no CLI, no embeddings
-  — just Markdown in your repo and `grep`. It runs inside whatever agent you
-  already use.
-- **Concise but context-rich.** Tokens cost, so entries are short and
-  high-signal, and agents load only what a task needs (progressive disclosure).
-- **Based on Karpathy's [llm-wiki][llm-wiki]** discipline (an index, a
-  chronological log, periodic linting, small cross-referenced files), adapted
-  from source ingestion to _project memory_.
-
-[llm-wiki]: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
-
-## How it works
-
-The memory lives at `.agents/memory/` and separates **permanent knowledge** from
-**operational state**:
-
-| File                      | Role                                                            |
-| ------------------------- | --------------------------------------------------------------- |
-| `instructions.md`         | The method: how agents read and maintain the memory.            |
-| `index.md`                | Map of the memory + loading policy (always-load vs on-demand).  |
-| `current.md`              | Shared, durable project state.                                  |
-| `active-work/<branch>.md` | Per-branch ephemeral scratchpad (no merge conflicts).           |
-| `decisions.md`            | Important decisions and **why** (the reasoning).                |
-| `log.md`                  | Chronological activity log (append at the bottom, `grep`-able). |
-
-Other files (`vision.md`, `architecture.md`, `patterns.md`, `mistakes.md`,
-`known-issues.md`, `domains/*`, `features/*`) are created **on demand**, only
-when there is real content. See
-[`agent-memory/README.md`](./agent-memory/README.md) for the full method.
-
-Agents **read AND write** the memory: before a task they read `index.md`,
-`current.md`, and their branch's `active-work` file; as they work they keep
-those current; at checkpoints they flush with `/agent-memory sync`. The full
-workflow is in [`instructions.md`](./agent-memory/memory/instructions.md).
+`init` wires each harness's **native instruction file** (for example Cursor
+`.cursor/rules/agent-memory.mdc`, Copilot
+`.github/instructions/agent-memory.instructions.md`, or `AGENTS.md` /
+`CLAUDE.md` / `GEMINI.md`). It does **not** create harness roots (`.cursor/`,
+`.claude/`, …) unless you ask — and it never copies hook scripts. Use
+`init <harness>` when you already know the agent.
 
 ## The skill
 
-[`/agent-memory`](./skills/agent-memory) is a **manual-only** Agent Skill (it
-never auto-triggers) with six subcommands:
+[`/agent-memory`](./skills/agent-memory) is **manual-only** (never auto-triggers):
 
-| Command                   | Does                                                                                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `/agent-memory help`      | List the commands and how to use them.                                                                                    |
-| `/agent-memory init`      | Create `.agents/memory/`; auto-detect harnesses and wire each native instruction file, or `init <harness>` for one agent. |
-| `/agent-memory update`    | Migrate an existing memory to the latest structure; never touches your content.                                           |
-| `/agent-memory bootstrap` | Analyze the project (up to 3 subagents) and populate the memory.                                                          |
-| `/agent-memory sync`      | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state.                                               |
-| `/agent-memory lint`      | Check for broken links, orphan files, stale per-branch files, consistency.                                                |
+| Command                       | Does                                                              |
+| ----------------------------- | ----------------------------------------------------------------- |
+| `/agent-memory help`          | List commands.                                                    |
+| `/agent-memory init`          | Create `.agents/memory/`; wire native instruction file(s).        |
+| `/agent-memory install hooks` | Print how to install/refresh hooks (user-run installer).          |
+| `/agent-memory update`        | Migrate scaffolding; never overwrites your content blindly.       |
+| `/agent-memory bootstrap`     | Analyze the project and populate the memory.                      |
+| `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md`.       |
+| `/agent-memory lint`          | Broken links, orphans, stale per-branch files, consistency.       |
 
 ## Hooks
 
 Optional lifecycle hooks keep `.agents/memory/` current **during** agent work
-with deterministic git checkpoints — no LLM call, no `followup_message` loops.
+with deterministic checkpoints (no LLM loops): session binding, _Touched files_,
+`log.md` path bullets on full checkpoints, `current.md` _In progress_ on session
+start.
 
-On **session start**, hooks bind the session ID, refresh `current.md` _In
-progress_ from `active-work/`, and open the `log.md` session heading. After
-writes and at end-of-turn / compaction / pre-commit, they update
-`active-work/<branch>.md` (_Touched files_, Task stub from the branch name) and
-append file-path bullets under the current `log.md` heading.
+**Semantic** content stays agent-owned (or `/agent-memory sync`): decisions,
+progress notes, log summary/type, lazy files.
 
-Semantic content stays **agent-owned** (or `/agent-memory sync`): log
-summary/type and bullets, `decisions.md`, active-work Progress/Blockers/Notes,
-`current.md` _Done_ / _Next steps_, and lazy files.
+Install steps, event matrix, and project-dir resolution:
+[`hooks/README.md`](./hooks/README.md).
 
-**Supported harnesses:** Cursor, Claude Code, Codex, Copilot, OpenCode (Bun
-plugin spawns the same shell scripts), plus an optional git `pre-commit` hook.
-Wire with `/agent-memory init <harness>` when the harness directory already
-exists.
+## Other install options
 
-**Cursor** uses two complementary layers: `.cursor/rules/agent-memory.mdc`
-(`alwaysApply: true`) injects the agent-memory workflow into every session
-context, and lifecycle hooks run deterministic git checkpoints. `init cursor`
-wires both when `.cursor/` exists. **Copilot** uses
-`.github/instructions/agent-memory.instructions.md` (`applyTo: "**"`, always-on)
-as its context layer, plus hooks under `.github/hooks/`.
-
-Full install steps, event matrix, and harness-agnostic session/project-dir
-resolution:
-[`skills/agent-memory/hooks/README.md`](./skills/agent-memory/hooks/README.md).
-
-## Keeping the memory current
-
-The memory only helps if agents keep it current. The agent-memory block that
-`init` wires into your agent file tells them to **read and write** it — and to
-run `/agent-memory sync` at checkpoints (end of a task, before a commit, before
-compaction).
-
-## Install
-
-### Recommended — via the skill
+**Skill via pinned `npx`** (alternative to `skills add` — reviewed tag + vendored
+skeleton; can also install skill + hooks in one shot):
 
 ```bash
-npx skills add diegoos/agent-memory --skill agent-memory
+npx --yes github:diegoos/agent-memory#v0.0.12 -- install skill
+# or skill + hooks for one harness:
+# npx --yes github:diegoos/agent-memory#v0.0.12 -- install cursor
 ```
 
-Then run `init` (and optionally `bootstrap`) as in _Quick start_. The skill
-pulls the canonical skeleton from this repository, so it stays in sync, and also
-handles `sync`, `update`, `lint`, and `help`. See its
-[`SKILL.md`](./skills/agent-memory/SKILL.md).
-
-### Manual
+**Manual skeleton** (no skill CLI):
 
 ```bash
-git clone https://github.com/diegoos/agent-memory /tmp/agent-memory
+git clone --branch v0.0.12 --depth 1 \
+  https://github.com/diegoos/agent-memory /tmp/agent-memory
 mkdir -p .agents
-cp -R /tmp/agent-memory/agent-memory/memory .agents/memory
+cp -R /tmp/agent-memory/skills/agent-memory/vendor/memory .agents/memory
 ```
 
-Commit `.agents/memory/` to Git, then wire it into your agent instructions file
-(`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or any agent file) by pasting the
-canonical agent-memory block.
-
-The block is the **single source of truth** at
+Then paste the agent-memory block from
 [`skills/agent-memory/references/agent-block.md`](./skills/agent-memory/references/agent-block.md)
-— copy it verbatim from there (don't retype it here, so it never drifts). It is
-wrapped in `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` HTML comments
-so `/agent-memory update` can refresh **only** that block later (comments are
-invisible in rendered Markdown). It tells the agent to **Read**
-`instructions.md` and to **write** the memory as it works, and adds `@import`,
-so harnesses that follow the AGENTS.md `@import` convention (Claude Code, Gemini
-CLI, Codex) auto-load `instructions.md`. For Cursor, run
-`/agent-memory init cursor` when `.cursor/` exists — it wires
-`.cursor/rules/agent-memory.mdc` (context layer) plus hooks. For Copilot, run
-`/agent-memory init copilot` to wire
-`.github/instructions/agent-memory.instructions.md` plus hooks.
+into your agent instructions file (keep the
+`<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` markers so `update` can
+refresh only that block).
 
 ## Repository layout
 
 ```text
 agent-memory/
-├── agent-memory/        # the method: canonical memory skeleton + docs
-│   ├── README.md
-│   ├── UPDATE.md        # migration log (drives `/agent-memory update`)
-│   └── memory/          # the skeleton installed to .agents/memory/
-└── skills/
-    └── agent-memory/    # the manual-only skill (SKILL.md + references/ + hooks/)
+├── bin/agent-memory.js         # npx CLI
+├── package.json
+├── hooks/                      # installer + harness configs (outside the skill)
+└── skills/agent-memory/        # SKILL.md + vendor/ + references/
+    └── vendor/                 # SoT: memory skeleton + UPDATE.md + method README
 ```
 
 ## License
 
-MIT. See `LICENSE`.
+MIT. See [LICENSE](./LICENSE).
+
+[llm-wiki]: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
