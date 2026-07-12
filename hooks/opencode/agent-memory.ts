@@ -45,7 +45,7 @@ function readHookStateValue(key: string): string | undefined {
 }
 
 function opencodeLogHeadingBoundToday(): boolean {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocalDate();
   const bound = readHookStateValue('opencode_log_heading_id');
   const stateDate = readHookStateValue('opencode_log_date');
   if (stateDate !== today || !bound) return false;
@@ -96,6 +96,67 @@ function extractConversationId(input: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * Env keys forwarded to hook scripts (avoid leaking full parent env).
+ * Keep in sync with bin/agent-memory.js ENV_ALLOWLIST_EXACT.
+ */
+const ENV_ALLOWLIST_EXACT = new Set([
+  'PATH',
+  'HOME',
+  'USER',
+  'SHELL',
+  'TMPDIR',
+  'TMP',
+  'TEMP',
+  'LANG',
+  'TZ',
+  // Windows
+  'SystemRoot',
+  'SYSTEMROOT',
+  'windir',
+  'WINDIR',
+  'USERPROFILE',
+  'HOMEDRIVE',
+  'HOMEPATH',
+  'ComSpec',
+  'COMSPEC',
+  'PATHEXT',
+  // Git / XDG
+  'XDG_CONFIG_HOME',
+  'XDG_DATA_HOME',
+  'GIT_CONFIG_GLOBAL',
+  'GIT_CONFIG_SYSTEM',
+  'GIT_CONFIG',
+]);
+
+/** Local calendar date (YYYY-MM-DD), aligned with shell `date +%Y-%m-%d`. */
+function todayLocalDate(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function buildChildEnv(
+  host: string,
+  event: string,
+  sessionId?: string
+): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {};
+  for (const key of Object.keys(process.env)) {
+    if (ENV_ALLOWLIST_EXACT.has(key) || key.startsWith('LC_')) {
+      const val = process.env[key];
+      if (val !== undefined) env[key] = val;
+    }
+  }
+  env.AGENT_MEMORY_HOST = host;
+  env.AGENT_MEMORY_EVENT = event;
+  env.AGENT_MEMORY_PROJECT_DIR = process.cwd();
+  if (sessionId) env.AGENT_MEMORY_SESSION_ID = sessionId;
+  return env;
+}
+
 function runScript(
   script: string,
   event: string,
@@ -103,7 +164,8 @@ function runScript(
   sessionId?: string,
   conversationId?: string
 ): boolean {
-  const scriptPath = path.join(process.cwd(), script);
+  const cwd = process.cwd();
+  const scriptPath = path.join(cwd, script);
   if (!fs.existsSync(scriptPath)) return false;
   const payload: Record<string, string> = {};
   if (sessionId) payload.session_id = sessionId;
@@ -112,13 +174,8 @@ function runScript(
     Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined;
   try {
     execFileSync('bash', [scriptPath], {
-      env: {
-        ...process.env,
-        AGENT_MEMORY_HOST: host,
-        AGENT_MEMORY_EVENT: event,
-        AGENT_MEMORY_PROJECT_DIR: process.cwd(),
-        ...(sessionId ? { AGENT_MEMORY_SESSION_ID: sessionId } : {}),
-      },
+      cwd,
+      env: buildChildEnv(host, event, sessionId),
       input: stdinPayload,
       stdio: ['pipe', 'ignore', 'ignore'],
       timeout: 15_000,

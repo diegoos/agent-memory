@@ -84,16 +84,88 @@ parse_hook_stdin() {
   fi
 }
 
+# Resolve to an absolute path (realpath when available).
+agent_memory_resolve_realpath() {
+  local p=$1
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$p" 2>/dev/null || return 1
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$p" 2>/dev/null || return 1
+  else
+    printf '%s\n' "$(cd "$(dirname "$p")" 2>/dev/null && pwd)/$(basename "$p")"
+  fi
+}
+
+# True when child is root or a path under root.
+agent_memory_path_under_root() {
+  local child=$1 root=$2
+  case "$child" in
+    "$root" | "$root"/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Refuse if path is a symlink (memory trust boundary).
+agent_memory_refuse_symlink_file() {
+  local path=$1
+  if [ -L "$path" ]; then
+    printf 'agent-memory: refused symlink memory path: %s\n' "$path" >&2
+    return 1
+  fi
+  return 0
+}
+
+# Walk memory root → path; refuse if any existing component is a symlink.
+agent_memory_refuse_symlink_parents_under_memory() {
+  local dest=$1 cur rest part mem="$memory"
+  case "$dest" in
+    "$mem" | "$mem"/*) ;;
+    *) return 0 ;;
+  esac
+  agent_memory_refuse_symlink_file "$dest" || return 1
+  cur="$mem"
+  rest="${dest#"$mem"/}"
+  [ "$rest" = "$dest" ] && [ "$dest" != "$mem" ] && return 0
+  while [ -n "$rest" ]; do
+    if [ "${rest#*/}" != "$rest" ]; then
+      part="${rest%%/*}"
+      rest="${rest#*/}"
+    else
+      part="$rest"
+      rest=""
+    fi
+    cur="$cur/$part"
+    if { [ -e "$cur" ] || [ -L "$cur" ]; } && [ -L "$cur" ]; then
+      printf 'agent-memory: refused symlink in memory path: %s\n' "$cur" >&2
+      return 1
+    fi
+  done
+  return 0
+}
+
+# Guard before read/write of a path under $memory.
+agent_memory_guard_memory_path() {
+  agent_memory_refuse_symlink_parents_under_memory "$1"
+}
+
 # Shared entry point for sync.sh and session.sh: read harness stdin, parse it,
 # and resolve cwd/memory/state_file globals. Call once after sourcing common.sh.
 agent_memory_init_context() {
-  local hook_input=""
+  local hook_input="" cwd_real mem_real
   if [ ! -t 0 ]; then
     hook_input=$(read_hook_stdin)
   fi
   parse_hook_stdin "$hook_input"
   cwd=$(resolve_project_dir "$hook_stdin_cwd")
   memory="$cwd/.agents/memory"
+  if [ -d "$memory" ] || [ -L "$memory" ]; then
+    cwd_real=$(agent_memory_resolve_realpath "$cwd") || return 1
+    mem_real=$(agent_memory_resolve_realpath "$memory") || return 1
+    if ! agent_memory_path_under_root "$mem_real" "$cwd_real"; then
+      printf 'agent-memory: memory path escapes project: %s\n' "$memory" >&2
+      return 1
+    fi
+  fi
   state_file="$memory/.hook-sync-state"
 }
 
@@ -225,6 +297,11 @@ sanitize_branch() {
 
 read_state() {
   local key=$1 default=$2
+  if [ -L "${state_file:-}" ]; then
+    printf 'agent-memory: read_state refused symlink state file: %s\n' "$state_file" >&2
+    printf '%s' "$default"
+    return 1
+  fi
   [ -f "$state_file" ] || { printf '%s' "$default"; return; }
   awk -v k="$key" '
     {
@@ -241,7 +318,30 @@ read_state() {
 
 write_state() {
   local key=$1 val=$2
-  local tmp
+  local tmp cur
+  # Reject controls that would break key=value lines or forge extra keys.
+  case "$key" in
+    '' | *[!A-Za-z0-9_]* | *$'\n'* | *$'\r'*)
+      printf 'agent-memory: write_state refused invalid key: %s\n' "$key" >&2
+      return 1
+      ;;
+  esac
+  # Values may use RS (\x1e) as a multi-path delimiter (session_touched_files,
+  # logged_files). Individual paths must not contain \x1e — see normalize_repo_rel_path.
+  case "$val" in
+    *$'\n'* | *$'\r'*)
+      printf 'agent-memory: write_state refused newline in %s\n' "$key" >&2
+      return 1
+      ;;
+  esac
+  if [ -L "${state_file:-}" ]; then
+    printf 'agent-memory: write_state refused symlink state file: %s\n' "$state_file" >&2
+    return 1
+  fi
+  cur=$(read_state "$key" "")
+  if [ -f "$state_file" ] && [ "$cur" = "$val" ]; then
+    return 0
+  fi
   tmp=$(mktemp)
   if [ -f "$state_file" ]; then
     while IFS= read -r line || [ -n "$line" ]; do
@@ -322,12 +422,20 @@ branch_to_task_stub() {
 
 ensure_active_work() {
   local branch aw real
-  real=$(git -C "$cwd" branch --show-current 2>/dev/null || echo "local")
+  # Prefer branch cache (refreshed at full checkpoints) so postToolUse /
+  # afterFileEdit skip an extra git spawn on every edit.
+  real=$(read_state branch "")
+  if [ -z "$real" ]; then
+    real=$(git -C "$cwd" branch --show-current 2>/dev/null || echo "local")
+  fi
+  [ -n "$real" ] || real="local"
   branch=$(sanitize_branch "$real")
   [ -n "$branch" ] || branch="local"
   aw="$memory/active-work/${branch}.md"
+  agent_memory_guard_memory_path "$aw" || return 1
   if [ ! -f "$aw" ]; then
     if [ -f "$memory/active-work/TEMPLATE.md" ]; then
+      agent_memory_guard_memory_path "$memory/active-work/TEMPLATE.md" || return 1
       local content
       content=$(cat "$memory/active-work/TEMPLATE.md")
       printf '%s\n' "${content//<branch>/$real}" >"$aw"
@@ -365,6 +473,7 @@ EOF
 # Used by update_touched_files and refresh_current_in_progress.
 replace_section_bullets() {
   local file=$1 header=$2 list_file=$3
+  agent_memory_guard_memory_path "$file" || return 1
   awk -v list="$list_file" -v hdr="$header" '
     BEGIN {
       while ((getline line < list) > 0) if (line != "") arr[++n] = line
@@ -432,8 +541,10 @@ update_touched_files() {
 # Merge one path into session state and refresh active-work. Used by postToolUse /
 # afterFileEdit (git-free). Does not write log.md bullets — full checkpoints only.
 add_touched_file() {
-  local aw=$1 rel=$2 single
+  local aw=$1 rel=$2 single accumulated
   [ -n "$rel" ] || return 0
+  accumulated=$(read_state session_touched_files "")
+  file_already_logged "$rel" "$accumulated" && return 0
   single=$(mktemp)
   printf '%s\n' "$rel" >"$single"
   merge_paths_into_session_touched "$single"
@@ -443,6 +554,7 @@ add_touched_file() {
 
 update_task_stub() {
   local aw=$1 branch stub
+  agent_memory_guard_memory_path "$aw" || return 1
   branch=$(sanitize_branch)
   [ -n "$branch" ] || branch="local"
   stub=$(branch_to_task_stub "$branch")
@@ -491,6 +603,7 @@ find_opencode_log_heading_same_day() {
   local log="$memory/log.md" date
   date=$(today_date)
   [ -f "$log" ] || return 0
+  agent_memory_guard_memory_path "$log" || return 1
   grep -E "^## \\[${date}\\] \\[ses_" "$log" 2>/dev/null \
     | head -1 \
     | sed -n 's/^## \[[0-9-]*\] \[\(ses_[^]]*\)\].*/\1/p'
@@ -533,6 +646,7 @@ _opencode_bind_log_heading() {
 ensure_log_heading_for_checkpoint() {
   local sid="${1:-}" resolved log="$memory/log.md" line today
   [ -n "$sid" ] || return 0
+  agent_memory_guard_memory_path "$log" || return 1
   opencode_refresh_log_day
   resolved=$(normalize_session_id_for_checkpoint "$sid")
   if session_heading_exists "$resolved"; then
@@ -576,6 +690,7 @@ prune_empty_opencode_session_headings() {
   [ "${AGENT_MEMORY_HOST:-}" = "opencode" ] || return 0
   [ -n "$keep" ] || return 0
   [ -f "$log" ] || return 0
+  agent_memory_guard_memory_path "$log" || return 1
   date=$(today_date)
   awk -v date="$date" -v keep="$keep" '
     function is_ses_heading(line,    id) {
@@ -622,6 +737,7 @@ session_heading_exists() {
   local log="$memory/log.md" sid="${1:-}" date
   date=$(today_date)
   [ -f "$log" ] || return 1
+  agent_memory_guard_memory_path "$log" || return 1
   if [ -n "$sid" ]; then
     awk -v sid="$sid" '
       function is_sid_heading(line) {
@@ -650,6 +766,7 @@ same_day_session_heading_exists_any() {
   local log="$memory/log.md" date
   date=$(today_date)
   [ -f "$log" ] || return 1
+  agent_memory_guard_memory_path "$log" || return 1
   awk -v date="$date" '
     function is_session_heading(line) {
       if (line !~ "^## \\[" date "\\]") return 0
@@ -675,6 +792,7 @@ session_log_has_target_heading() {
 strip_log_placeholder() {
   local log="$memory/log.md"
   [ -f "$log" ] || return 0
+  agent_memory_guard_memory_path "$log" || return 1
   awk '
     /^_No entries yet\._$/ { next }
     { print }
@@ -686,6 +804,7 @@ promote_session_log_heading() {
   local log="$memory/log.md" date prev_bound
   [ -n "$sid" ] || return 0
   [ -f "$log" ] || return 0
+  agent_memory_guard_memory_path "$log" || return 1
   date=$(today_date)
   session_heading_exists "$sid" && return 0
   prev_bound=$(read_state logged_files_session "")
@@ -725,6 +844,7 @@ promote_session_log_heading() {
 ensure_session_log_heading() {
   local sid="${1:-}" context="${2:-}" line log="$memory/log.md"
   [ "$context" = "sessionStart" ] || return 0
+  agent_memory_guard_memory_path "$log" || return 1
   if [ -n "$sid" ]; then
     ensure_log_heading_for_checkpoint "$sid" >/dev/null
     return 0
@@ -758,6 +878,7 @@ file_already_logged() {
 append_log_file_bullets() {
   local sid=$1 list_tmp=$2
   local log="$memory/log.md" count pending_tmp bullets_tmp logged
+  agent_memory_guard_memory_path "$log" || return 1
   pending_tmp=$(mktemp)
   [ -s "$list_tmp" ] || { rm -f "$pending_tmp"; return 0; }
 
@@ -857,6 +978,7 @@ append_log_file_bullets() {
 
 extract_active_work_summary() {
   local aw=$1 branch
+  agent_memory_guard_memory_path "$aw" || return 1
   branch=$(basename "$aw" .md)
   awk '
     /^## Task/ { in_task = 1; next }
@@ -875,12 +997,14 @@ extract_active_work_summary() {
 refresh_current_in_progress() {
   local current="$memory/current.md" tmp
   [ -f "$current" ] || return 0
+  agent_memory_guard_memory_path "$current" || return 1
 
   tmp=$(mktemp)
   {
     for aw in "$memory"/active-work/*.md; do
       [ -f "$aw" ] || continue
       [ "$(basename "$aw")" = "TEMPLATE.md" ] && continue
+      agent_memory_guard_memory_path "$aw" || continue
       local base summary
       base=$(basename "$aw")
       summary=$(extract_active_work_summary "$aw")

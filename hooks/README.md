@@ -18,7 +18,18 @@ links, `architecture.md`, `patterns.md`, `vision.md` (ask user if uncertain).
 
 ## TL;DR
 
-Copy the shared scripts plus host config (paths from repo root):
+Install with the user-run installer (review first):
+
+```bash
+npx --yes github:diegoos/agent-memory#v0.0.12 -- install hooks <harness>
+# or: bash hooks/install-hooks.sh <harness>
+```
+
+The installer creates the harness directory (e.g. `.cursor/`) if it is missing.
+It refuses destination or parent-directory symlinks and requires an existing
+`PROJECT_DIR` (resolved with `realpath`).
+Set `AGENT_MEMORY_PROJECT_DIR` to install into a project other than the current
+working directory.
 
 | Host            | Scripts                                                                 | Config                                  |
 | --------------- | ----------------------------------------------------------------------- | --------------------------------------- |
@@ -30,13 +41,15 @@ Copy the shared scripts plus host config (paths from repo root):
 | **OpenCode**    | plugin → `.opencode/hooks/*.sh`                                         | `.opencode/plugin/agent-memory.ts`      |
 | **Gemini CLI**  | → `.gemini/hooks/`                                                      | merge `.gemini/settings.json`           |
 
-Or run `/agent-memory init <harness>` when the harness directory already exists.
+`/agent-memory init <harness>` wires the **context** layer when the harness
+directory already exists; it **prints** hook-install commands and does not copy
+scripts.
 
-**Cursor:** `init cursor` wires two layers — `.cursor/rules/agent-memory.mdc`
-(`alwaysApply: true`) as the **context layer** (always-on rules) and lifecycle
-hooks as the **checkpoint layer**. `@import` in `AGENTS.md` is a no-op and
-`AGENTS.md` may not auto-inject, so the `.mdc` is the reliable context path. See
-root `README.md`.
+**Cursor:** `init cursor` wires `.cursor/rules/agent-memory.mdc`
+(`alwaysApply: true`) as the **context layer**. Install hooks separately as the
+**checkpoint layer**. `@import` in `AGENTS.md` is a no-op and `AGENTS.md` may
+not auto-inject, so the `.mdc` is the reliable context path. See root
+`README.md`.
 
 ## Events (all hosts)
 
@@ -69,6 +82,7 @@ turn).
 
 ```text
 hooks/
+├── install-hooks.sh              # user-run installer (also used by npx CLI)
 ├── agent-memory-hooks/
 │   ├── agent-memory-common.sh    # shared helpers (sourced by sync + session)
 │   ├── agent-memory-sync.sh      # checkpoint after tools / end of turn
@@ -76,9 +90,10 @@ hooks/
 ├── cursor/hooks.json
 ├── claude-code/settings.json
 ├── codex/hooks.json
-├── codex/config.toml.snippet
+├── codex/config.toml.snippet   # manual alternate only — not applied by installer
 ├── copilot/agent-memory.json
 ├── opencode/agent-memory.ts
+├── gemini/settings.json
 └── git/pre-commit
 ```
 
@@ -90,17 +105,32 @@ hooks/
 
 ## Install (per project)
 
-Copy **all three** files from `hooks/agent-memory-hooks/` into the harness hooks
-directory (`agent-memory-common.sh` must sit beside the other two — sync/session
-source it). **Never copy only sync + session** — partial installs fail at
-runtime (sync/session print a stderr hint and exit 0 so the harness is not
-blocked). Re-copy all three on `/agent-memory update` when hook scripts change.
+**Preferred:** run the installer from the project root (needs Node for JSON
+merges):
+
+```bash
+npx --yes github:diegoos/agent-memory#v0.0.12 -- install hooks cursor
+```
+
+Or from a checkout of the same tag:
+
+```bash
+bash hooks/install-hooks.sh cursor
+```
+
+The installer copies **all three** files from `hooks/agent-memory-hooks/` into
+the harness hooks directory (`agent-memory-common.sh` must sit beside the other
+two — sync/session source it). **Never copy only sync + session** — partial
+installs fail at runtime (sync/session print a stderr hint and exit 0 so the
+harness is not blocked). Re-run the installer when hook scripts change.
+
+Manual copy examples (if you prefer not to use the installer):
 
 ### Cursor (recommended)
 
 ```bash
 mkdir -p .cursor/hooks
-cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .cursor/hooks/
+cp hooks/agent-memory-hooks/agent-memory-*.sh .cursor/hooks/
 chmod +x .cursor/hooks/agent-memory-*.sh
 # merge hooks/cursor/hooks.json into .cursor/hooks.json
 ```
@@ -109,7 +139,7 @@ chmod +x .cursor/hooks/agent-memory-*.sh
 
 ```bash
 mkdir -p .claude/hooks
-cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .claude/hooks/
+cp hooks/agent-memory-hooks/agent-memory-*.sh .claude/hooks/
 chmod +x .claude/hooks/agent-memory-*.sh
 # merge hooks/claude-code/settings.json into .claude/settings.json
 ```
@@ -118,28 +148,32 @@ chmod +x .claude/hooks/agent-memory-*.sh
 
 ```bash
 mkdir -p .codex/hooks
-cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .codex/hooks/
+cp hooks/agent-memory-hooks/agent-memory-*.sh .codex/hooks/
 chmod +x .codex/hooks/agent-memory-*.sh
 # merge hooks/codex/hooks.json into .codex/hooks.json
 # then run /hooks in the Codex TUI to trust project hooks
 ```
 
+`codex/config.toml.snippet` is a **manual alternate** for TOML-based wiring —
+the installer only merges `hooks/codex/hooks.json` and does not apply the
+snippet.
+
 ### Copilot (CLI + cloud agent)
 
 ```bash
 mkdir -p .github/hooks
-cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .github/hooks/
+cp hooks/agent-memory-hooks/agent-memory-*.sh .github/hooks/
 chmod +x .github/hooks/agent-memory-*.sh
-cp skills/agent-memory/hooks/copilot/agent-memory.json .github/hooks/agent-memory.json
+cp hooks/copilot/agent-memory.json .github/hooks/agent-memory.json
 ```
 
 ### OpenCode
 
 ```bash
 mkdir -p .opencode/hooks .opencode/plugin
-cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .opencode/hooks/
+cp hooks/agent-memory-hooks/agent-memory-*.sh .opencode/hooks/
 chmod +x .opencode/hooks/agent-memory-*.sh
-cp skills/agent-memory/hooks/opencode/agent-memory.ts .opencode/plugin/agent-memory.ts
+cp hooks/opencode/agent-memory.ts .opencode/plugin/agent-memory.ts
 ```
 
 The TypeScript plugin spawns the same shell scripts on `session.idle` and
@@ -149,8 +183,8 @@ below.
 ### Git (host-agnostic baseline)
 
 ```bash
-cp skills/agent-memory/hooks/git/pre-commit .git/hooks/pre-commit
-cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .git/hooks/
+cp hooks/git/pre-commit .git/hooks/pre-commit
+cp hooks/agent-memory-hooks/agent-memory-*.sh .git/hooks/
 chmod +x .git/hooks/pre-commit .git/hooks/agent-memory-*.sh
 ```
 
@@ -252,6 +286,8 @@ day** (`opencode_log_heading_id` in `.hook-sync-state`) instead of one heading
 per `ses_*`. Empty duplicate `ses_*` headings are pruned on sessionStart.
 Semantic bullets remain agent-owned (`/agent-memory sync`).
 
-Logic lives in the shared `.sh` files; the plugin only passes
-`AGENT_MEMORY_PROJECT_DIR`, `AGENT_MEMORY_SESSION_ID`, and stdin JSON. Install
-all three scripts under `.opencode/hooks/`.
+Logic lives in the shared `.sh` files; the plugin only passes an **allowlisted**
+environment (`PATH` / `HOME` / `TMP*` / `LANG` / `LC_*` / `TZ` plus
+`AGENT_MEMORY_HOST` / `EVENT` / `PROJECT_DIR` / `SESSION_ID`),
+`AGENT_MEMORY_SESSION_ID`, and minimal stdin JSON. Install all three scripts
+under `.opencode/hooks/`.

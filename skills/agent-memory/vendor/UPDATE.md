@@ -287,7 +287,8 @@ Format:
   upgrade path.
 - sensitive: **`update` / `install hooks cursor`** must merge `afterFileEdit` into
   the project's `.cursor/hooks.json` when refreshing Cursor hooks — show diff
-  and confirm if the user has custom hook entries.
+  and confirm if the user has custom hook entries. **Superseded** — hooks refresh
+  is user-run installer only (skill prints instructions; no agent merge).
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.10`.
 
 ## 0.0.11
@@ -316,3 +317,36 @@ Format:
 - sensitive: `agent-memory/memory/log.md` — OpenCode coalescence note under the
   per-session heading rules. `update` must show the diff and confirm.
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.11`.
+
+## 0.0.12
+
+- safe: **Vendor + dual installers** — memory skeleton / `UPDATE.md` under
+  `skills/agent-memory/vendor/`; lifecycle hooks under repo-root `hooks/`;
+  `hooks/install-hooks.sh` + `bin/agent-memory.js` (`npx`) for user-run install.
+  Skill prints hook-install instructions only (no agent-side hook copy/merge).
+  Repo-root `agent-memory/` path removed — edit `skills/agent-memory/vendor/`
+  only (older UPDATE entries that say `agent-memory/memory/…` map to
+  `vendor/memory/…`).
+- safe: Installer refuses destination **and parent-directory symlinks**; copies
+  shared scripts before merging host JSON; requires existing `PROJECT_DIR` then
+  `realpath`.
+- safe: Runtime hooks refuse `.agents/memory` symlink escape, symlink paths under
+  memory, and symlink `.hook-sync-state`; `write_state` accepts RS (`\x1e`)
+  multi-value delimiters.
+- safe: **Supersedes 0.0.10 sensitive** — Cursor `afterFileEdit` / hooks.json
+  refresh is **user-run installer only** (`npx` / `install-hooks.sh`); the
+  skill prints instructions and does not agent-merge hook config.
+- safe: Nested / flat JSON merge matches product script path tokens only (not
+  bare filename mentions); preserves sibling custom hooks in nested groups.
+- safe: CLI `shell: false`, validates `--agent` charset, expanded env allowlist
+  (Windows / `XDG_*` / `GIT_CONFIG_*`); OpenCode plugin allowlist aligned.
+- safe: `write_state` / `normalize_repo_rel_path` reject newlines and `..` path
+  segments; `normalize_repo_rel_path` also rejects `\x1e` in individual paths;
+  `pre-commit` uses `git rev-parse --show-toplevel`.
+- safe: `ensure_active_work` prefers branch cache; `add_touched_file` no-ops when
+  the path is already in `session_touched_files`; full checkpoints normalize
+  git paths before merging session state.
+- safe: Cross-package docs pin `hooks/README.md` / `npx` examples to `v0.0.12`.
+- safe: root `README.md` — `skills add` primary; pinned `npx` for hooks / alt skill.
+- safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.12`.
+- safe: root `package.json` — version bumped to `0.0.12`.

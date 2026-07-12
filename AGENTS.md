@@ -1,46 +1,58 @@
 # Agent instructions — agent-memory repository
 
 This repo **is** the source for the [Agent Memory](README.md) method and its
-manual-only skill. It is not a consumer install — the skeleton agents copy into
-other projects lives under `agent-memory/memory/`; the orchestrator lives under
-`skills/agent-memory/`.
+manual-only skill. It is not a consumer install — the skeleton the skill copies
+into other projects lives under `skills/agent-memory/vendor/`; the orchestrator
+lives under `skills/agent-memory/`.
 
 ## Layout
 
 ```text
-agent-memory/
-├── memory/           # canonical skeleton → copied to .agents/memory/ on init
-├── UPDATE.md         # migration log; drives /agent-memory update
-└── README.md         # method documentation
+skills/agent-memory/          # skill only (no hooks)
+├── SKILL.md
+├── vendor/                   # SoT: skeleton + UPDATE.md + method README
+└── references/
 
-skills/agent-memory/
-├── SKILL.md          # skill entry (version in frontmatter)
-├── references/       # init, install-hooks, update, bootstrap, sync, lint, agent-block.md
-└── hooks/            # optional lifecycle hooks per harness
+hooks/                        # outside the skill — user-run install
+├── install-hooks.sh
+├── agent-memory-hooks/       # common / sync / session
+├── <harness>/                # cursor, claude-code, …
+└── README.md
 
-CHANGELOG.md          # release history (Keep a Changelog + SemVer)
+bin/agent-memory.js           # npx CLI (install skill / hooks)
+package.json
+
+CHANGELOG.md
 ```
 
 ## Conventions for agents working here
 
 - **Single sources of truth** — do not duplicate or drift:
   - Agent-memory block text: `skills/agent-memory/references/agent-block.md`
-  - Installed memory shape: `agent-memory/memory/`
-  - **Harness parity (hooks vs agent):** `agent-memory/memory/instructions.md` →
-    _Harness parity — memory contract_ (canonical; link, do not copy)
-  - Migrations: `agent-memory/UPDATE.md`
+  - Installed memory shape: `skills/agent-memory/vendor/memory/`
+  - **Harness parity (hooks vs agent):**
+    `skills/agent-memory/vendor/memory/instructions.md` → _Harness parity —
+    memory contract_ (canonical; link, do not copy)
+  - Migrations: `skills/agent-memory/vendor/UPDATE.md`
   - Release history: `CHANGELOG.md` ([Keep a Changelog][kac], [SemVer][semver])
+- **Always edit** `skills/agent-memory/vendor/` — never invent a repo-root
+  `agent-memory/` path for writes.
 - **Version bumps** — only when requested: add a `## <version>` section to
-  `agent-memory/UPDATE.md`, bump `metadata.version` in
-  `skills/agent-memory/SKILL.md`, align the example in `references/init.md`, and
-  add a matching `[<version>]` entry to `CHANGELOG.md` (human-oriented; map
-  `safe`/`sensitive` items from `UPDATE.md` into Added / Changed / Removed /
-  Fixed / Security — do not dump git logs).
+  `skills/agent-memory/vendor/UPDATE.md`, bump `metadata.version` in
+  `skills/agent-memory/SKILL.md`, bump `package.json` `version` (CLI reads it),
+  align examples in `references/init.md`, `references/install-hooks.md`,
+  `hooks/README.md`, and root `README.md`, keep `install-hooks.sh` fallback
+  version in sync if present, and add a matching `[<version>]` entry to
+  `CHANGELOG.md` (human-oriented; map `safe`/`sensitive` items from `UPDATE.md`
+  into Added / Changed / Removed / Fixed / Security — do not dump git logs).
 - **Skill boundary** — `/agent-memory` is manual-only
   (`disable-model-invocation: true`). Never auto-trigger it; follow `SKILL.md`
   and the matching `references/<command>.md` when the user invokes a subcommand.
-- **Hooks** — shared scripts in `skills/agent-memory/hooks/agent-memory-hooks/`
-  (`common`, `sync`, `session`); per-host config in `hooks/<harness>/`.
+  The skill **never** installs hooks (print instructions only).
+- **Hooks** — live under repo-root `hooks/` (**not** inside the skill). Shared
+  scripts in `hooks/agent-memory-hooks/` (`common`, `sync`, `session`);
+  per-host config in `hooks/<harness>/`. User installs via
+  `hooks/install-hooks.sh` or `npx` CLI (`bin/agent-memory.js`).
   Deterministic checkpoint: session-cumulative `active-work/` _Touched files_,
   `log.md` file bullets on full checkpoints only, `current.md` _In progress_ on
   session start — no LLM loops (`followup_message` on Cursor `stop` is
@@ -89,10 +101,10 @@ agent, not hooks.
 - After a summary bullet, suppress further individual path bullets in the same
   session.
 
-**Consumer upgrade:** re-copy the three scripts from
-`skills/agent-memory/hooks/agent-memory-hooks/` and merge host config
-(especially `.cursor/hooks.json` — must include `afterFileEdit`). Or run
-`/agent-memory install hooks <harness>` / `/agent-memory update`.
+**Consumer upgrade:** re-run the user installer for the release tag (npx or
+`install-hooks.sh`) so all three scripts and host config are refreshed
+(especially `.cursor/hooks.json` — must include `afterFileEdit`). Or follow
+`/agent-memory install hooks <harness>` printed instructions.
 
 ### OpenCode empty `log.md` headings (fixed in tree)
 
@@ -108,40 +120,15 @@ heading. `session.idle` carries only `sessionID` (no stable conversation id).
 duplicate headings; plugin skips redundant `sessionStart` only when the bound
 heading **exists in `log.md`**; compaction runs sync only (no new heading).
 Checkpoints call `ensure_log_heading_for_checkpoint` before appending bullets
-(state binding alone is insufficient). Re-copy
-`.opencode/plugin/agent-memory.ts` and the three `.opencode/hooks/*.sh` scripts.
+(state binding alone is insufficient). Re-run the OpenCode hook installer for
+the release tag (plugin + three `.opencode/hooks/*.sh` scripts).
 
 ## Dogfooding
 
 To use Workspace Memory at the repo root, run `/agent-memory init` (installs
-`.agents/memory/` from `agent-memory/memory/`). Until then, treat
-`agent-memory/memory/instructions.md` as the method file for this project.
-
-<!-- <agent-memory> -->
-
-## Agent Memory
-
-This project uses Agent Memory (a local Workspace Memory). **Before starting any
-task**, Read `.agents/memory/instructions.md` (it defines the workflow), then
-read `.agents/memory/index.md`, `.agents/memory/current.md`, and your branch's
-file in `.agents/memory/active-work/`.
-
-This memory is **read AND written** by agents — it is not chat history. While
-you work and when you finish a task, keep it current per `instructions.md`:
-update your branch's `active-work/<branch>.md` (Task, progress, touched files,
-blockers), append bullets to the **current session** heading in `log.md`,
-**record architecture and design decisions in `decisions.md`**, keep `index.md`
-aligned with lazy and domain/feature files, and refresh `current.md` when
-project state changes (list open active-work files in _In progress_; move
-completed work to _Done_). Ask the user before changing `vision.md` when
-uncertain. Delete your `active-work/` file when the branch merges. At
-checkpoints (end of task, before commit, before compaction, end of session), run
-`/agent-memory sync` to flush `current.md`, active-work, `log.md`, and
-`index.md` from repo state.
-
-@.agents/memory/instructions.md
-
-<!-- </agent-memory> -->
+`.agents/memory/` from `skills/agent-memory/vendor/memory/`). Until then, treat
+`skills/agent-memory/vendor/memory/instructions.md` as the method file for this
+project.
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html

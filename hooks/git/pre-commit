@@ -6,11 +6,13 @@
 # /agent-memory sync). Never blocks the commit. Fails open.
 #
 # Install:
-#   cp skills/agent-memory/hooks/git/pre-commit .git/hooks/pre-commit
-#   cp skills/agent-memory/hooks/agent-memory-hooks/agent-memory-*.sh .git/hooks/
+#   cp hooks/git/pre-commit .git/hooks/pre-commit
+#   cp hooks/agent-memory-hooks/agent-memory-*.sh .git/hooks/
 #   chmod +x .git/hooks/pre-commit .git/hooks/agent-memory-*.sh
 
-cwd="${GIT_PREFIX:-$PWD}"
+# GIT_PREFIX is the subdirectory where the user ran `git commit`, not the repo
+# root — never use it as PROJECT_DIR (would skip memory when committing from src/).
+cwd=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 [ -d "$cwd/.agents/memory" ] || exit 0
 
 hook_dir=$(dirname "$0")
