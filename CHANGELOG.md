@@ -7,11 +7,81 @@ and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Migration details for `/agent-memory update` live in
-[`agent-memory/UPDATE.md`](agent-memory/UPDATE.md) (machine-oriented `safe` /
-`sensitive` tags). This changelog is the human-oriented release history — keep
-both in sync on version bumps.
+[`skills/agent-memory/vendor/UPDATE.md`](skills/agent-memory/vendor/UPDATE.md)
+(machine-oriented `safe` / `sensitive` tags). This changelog is the
+human-oriented release history — keep both in sync on version bumps.
 
 ## [Unreleased]
+
+## [0.0.12] - 2026-07-12
+
+### Security
+
+- Skill no longer clones or fetches remote content for `init` / `update` — the
+  memory skeleton is **vendored** with the skill package (`vendor/`).
+- Skill no longer writes or executes harness hook scripts; users install hooks
+  via a reviewed `install-hooks.sh` or `npx` CLI (pinned release tag).
+- OpenCode plugin and `npx` CLI forward an **allowlisted** environment to hook
+  scripts / the installer (includes Windows and `XDG_*` / `GIT_CONFIG_*` keys).
+- Installer refuses destination **and parent-directory symlinks** when copying
+  scripts or merging JSON.
+- Runtime hooks refuse `.agents/memory` symlink escape and symlink
+  `.hook-sync-state`.
+- CLI always uses `spawnSync` with `shell: false` and validates `--agent` names
+  (`[A-Za-z0-9._-]+`) to avoid `cmd.exe` metacharacter injection on Windows.
+- Hook `write_state` rejects keys/values with newlines; values may use RS
+  (`\x1e`) as a multi-path delimiter (`session_touched_files`, `logged_files`).
+  `normalize_repo_rel_path` rejects controls and `..` path segments.
+
+### Added
+
+- `hooks/install-hooks.sh` — canonical per-harness hook installer (copy shared
+  scripts + merge host config); lives under repo-root `hooks/` (outside the
+  skill).
+- Root `package.json` + `bin/agent-memory.js` — `npx` entry for
+  `install skill`, `install hooks <harness>`, and `install <harness>`.
+- Repo-root `agent-memory/` directory moved to `skills/agent-memory/vendor/`
+  (no compat symlink — edit vendor paths only).
+- Lifecycle hooks package moved to repo-root `hooks/` (not shipped inside the
+  skill directory).
+
+### Changed
+
+- Canonical skeleton / `UPDATE.md` live under `skills/agent-memory/vendor/`.
+- `/agent-memory install hooks`, `init`, and `update` print user-run install
+  instructions only (no agent-side hook copy/merge).
+- Hook and skill docs updated for the dual installer and trust boundary.
+- `npx` CLI installs the skill from the local checkout (or a tag-pinned GitHub
+  tree URL), not unpinned `diegoos/agent-memory` HEAD.
+- OpenCode plugin uses local calendar date (not UTC) for heading binding; env
+  allowlist includes `TZ` and drops unused cross-harness project-dir vars.
+- Skill `allowed-tools` allows read-only git used by `sync` /
+  `lint` (`branch` / `status` / `diff` / `log`) instead of broad `Bash(git:*)`.
+- Installer creates missing harness dirs (e.g. `.cursor/`); skill still never
+  creates them.
+- Cross-package docs link to tag-pinned GitHub `hooks/README.md` (not relative
+  paths that break when the skill is installed alone).
+- Installer copies shared scripts **before** merging host config so a failed
+  copy cannot leave config pointing at missing files.
+- `isOurs` merge matcher requires a product script basename as a path/token
+  (not a bare substring mention such as `…agent-memory-sync.sh.example`).
+
+### Fixed
+
+- Nested merge (Claude / Codex / Gemini) scrubs only our entries inside
+  `group.hooks[]`, preserving sibling custom hooks in the same group.
+- CLI honors `AGENT_MEMORY_PROJECT_DIR` when set (falls back to `cwd`).
+- Installer requires `PROJECT_DIR` to exist, then canonicalizes with
+  `realpath` (same behavior with or without GNU/`python3` fallback).
+- CLI `install <harness> -a <agent>` preserves valued flags for `skills add`.
+- Installer writes merged configs via temp files beside the target (atomic
+  replace).
+- Git `pre-commit` uses `git rev-parse --show-toplevel` as project root (not
+  `GIT_PREFIX`, which is the subdirectory where the user ran `git commit`).
+- `ensure_active_work` / `add_touched_file` use the cached branch and skip
+  redundant state writes when a path is already in `session_touched_files`.
+- Full checkpoints normalize git paths through `normalize_repo_rel_path` before
+  merging into session state.
 
 ## [0.0.11] - 2026-07-05
 
@@ -249,5 +319,11 @@ both in sync on version bumps.
 
 - Initial Agent Memory method, skill, and `.agents/memory/` skeleton.
 
-[unreleased]: https://github.com/diegoos/agent-memory/compare/v0.0.6...HEAD
+[unreleased]: https://github.com/diegoos/agent-memory/compare/v0.0.12...HEAD
+[0.0.12]: https://github.com/diegoos/agent-memory/compare/v0.0.11...v0.0.12
+[0.0.11]: https://github.com/diegoos/agent-memory/compare/v0.0.10...v0.0.11
+[0.0.10]: https://github.com/diegoos/agent-memory/compare/v0.0.9...v0.0.10
+[0.0.9]: https://github.com/diegoos/agent-memory/compare/v0.0.8...v0.0.9
+[0.0.8]: https://github.com/diegoos/agent-memory/compare/v0.0.7...v0.0.8
+[0.0.7]: https://github.com/diegoos/agent-memory/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/diegoos/agent-memory/compare/v0.0.5...v0.0.6

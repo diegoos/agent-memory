@@ -1,11 +1,14 @@
 # `/agent-memory install hooks`
 
-Install or refresh lifecycle hooks for one harness. Idempotent: overwrites the
-canonical shared scripts and merges harness config from the agent-memory
-repository. Does **not** create `.agents/memory/`, touch project memory content,
-or wire agent instruction files — use `init` for that.
+Print how to install or refresh lifecycle hooks for one harness. **This skill
+does not copy scripts, merge configs, or run installers** — the user must run
+the shell script or `npx` CLI themselves (trust boundary for security audits).
 
-Also used by `init` (step 6) and `update` (refresh already-installed harnesses).
+Does **not** create `.agents/memory/`, touch project memory content, or wire
+agent instruction files — use `init` for that.
+
+Also used by `init` (step 6) and `update` (refresh already-installed harnesses)
+to print the same instructions.
 
 ## Invocation
 
@@ -16,69 +19,63 @@ Also used by `init` (step 6) and `update` (refresh already-installed harnesses).
 
 Accepted `<harness>` values (aliases in parentheses):
 
-| Harness    | Aliases       | Prerequisite dir | Installs into                            |
-| ---------- | ------------- | ---------------- | ---------------------------------------- |
-| `cursor`   | —             | `.cursor/`       | `.cursor/hooks/` + merge `hooks.json`    |
-| `claude`   | `claude-code` | `.claude/`       | `.claude/hooks/` + merge `settings.json` |
-| `codex`    | —             | `.codex/`        | `.codex/hooks/` + merge `hooks.json`     |
-| `opencode` | —             | `.opencode/`     | `.opencode/hooks/` + plugin `.ts`        |
-| `copilot`  | `github`      | `.github/`       | `.github/hooks/` + `agent-memory.json`   |
-| `gemini`   | —             | `.gemini/`       | `.gemini/hooks/` + merge `settings.json` |
+| Harness    | Aliases       | Dir (created by installer if missing) | Installer writes into                    |
+| ---------- | ------------- | ------------------------------------- | ---------------------------------------- |
+| `cursor`   | —             | `.cursor/`                            | `.cursor/hooks/` + merge `hooks.json`    |
+| `claude`   | `claude-code` | `.claude/`                            | `.claude/hooks/` + merge `settings.json` |
+| `codex`    | —             | `.codex/`                             | `.codex/hooks/` + merge `hooks.json`     |
+| `opencode` | —             | `.opencode/`                          | `.opencode/hooks/` + plugin `.ts`        |
+| `copilot`  | `github`      | `.github/`                            | `.github/hooks/` + `agent-memory.json`   |
+| `gemini`   | —             | `.gemini/`                            | `.gemini/hooks/` + merge `settings.json` |
 
-Canonical sources live under `skills/agent-memory/hooks/` in the agent-memory
-repository (see `SKILL.md` → Repository source).
+Canonical hook sources live under `hooks/` in the
+[agent-memory](https://github.com/diegoos/agent-memory) repository (tag matching
+this skill's `metadata.version`).
 
 ## Steps
 
 1. **Guard.** If `.agents/memory/` does not exist, stop and suggest
-   `/agent-memory init` first.
+   `/agent-memory init` first. (Skip this guard when called from `init` step 6.)
 
 2. **Parse harness.** Read `<harness>` from the invocation. Normalize aliases
    (`claude-code` → `claude`, `github` → `copilot`). If missing, stop and list
    accepted values.
 
-3. **Prerequisite dir.** If the harness prerequisite directory does not exist,
-   stop — tell the user to create it first (e.g. `mkdir .opencode` after
-   enabling OpenCode in the project). **Never create** `.cursor/`, `.claude/`,
-   `.codex/`, `.opencode/`, or `.github/` unless the user explicitly requests
-   it; on explicit confirmation, create the dir (and any needed subdir) and
-   continue.
+3. **Prerequisite dir.** The user-run installer (`install-hooks.sh` / `npx`)
+   **creates** the harness prerequisite directory if missing (e.g. `.cursor/`,
+   `.opencode/`). The skill itself still must **not** create those dirs — only
+   print the install commands.
 
-4. **Obtain repository.** Load hook sources from the agent-memory repository
-   (local clone, shallow `git clone`, or `WebFetch` — see `SKILL.md`).
+4. **Print install instructions (do not execute).** Read this skill's
+   `metadata.version` (e.g. `0.0.12`). Tell the user to review and run **one** of
+   the following from the **project root** (never embed
+   `raw.githubusercontent.com` URLs):
 
-5. **Install shared scripts (always).** Copy **all three** files from
-   `hooks/agent-memory-hooks/` into the harness hooks directory:
-   - `agent-memory-common.sh`
-   - `agent-memory-sync.sh`
-   - `agent-memory-session.sh`
+   **Preferred — npx (pinned tag):**
 
-   `chmod +x` each script. Never install sync/session without `common`.
+   ```bash
+   npx --yes github:diegoos/agent-memory#v0.0.12 -- install hooks <harness>
+   ```
 
-   | Harness    | Hooks directory    |
-   | ---------- | ------------------ |
-   | `cursor`   | `.cursor/hooks/`   |
-   | `claude`   | `.claude/hooks/`   |
-   | `codex`    | `.codex/hooks/`    |
-   | `opencode` | `.opencode/hooks/` |
-   | `copilot`  | `.github/hooks/`   |
-   | `gemini`   | `.gemini/hooks/`   |
+   (Replace `0.0.12` with this skill's `metadata.version` when it differs.)
 
-6. **Merge harness config (idempotent).** Add or update agent-memory entries
-   only — do not remove unrelated hooks the user may have configured.
+   **Alternative — shell script:** open the GitHub release page for the matching
+   tag (Releases → `v0.0.12`, or the tag tree on GitHub), review
+   `hooks/install-hooks.sh`, then from a checkout of that
+   tag:
 
-   | Harness    | Action                                                                                                                                                                                              |
-   | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-   | `cursor`   | Merge [`hooks/cursor/hooks.json`](../hooks/cursor/hooks.json) into `.cursor/hooks.json` (create file if missing). Must include **`afterFileEdit`** (agent edits) alongside `postToolUse` (`Write`). |
-   | `claude`   | Merge [`hooks/claude-code/settings.json`](../hooks/claude-code/settings.json) into `.claude/settings.json`.                                                                                         |
-   | `codex`    | Merge [`hooks/codex/hooks.json`](../hooks/codex/hooks.json) into `.codex/hooks.json`. Remind user to run `/hooks` in Codex TUI to trust hooks.                                                      |
-   | `opencode` | Copy [`hooks/opencode/agent-memory.ts`](../hooks/opencode/agent-memory.ts) → `.opencode/plugin/agent-memory.ts` (overwrite canonical plugin).                                                       |
-   | `copilot`  | Copy [`hooks/copilot/agent-memory.json`](../hooks/copilot/agent-memory.json) → `.github/hooks/agent-memory.json` if missing; merge if file exists.                                                  |
-   | `gemini`   | Merge [`hooks/gemini/settings.json`](../hooks/gemini/settings.json) into `.gemini/settings.json`.                                                                                                   |
+   ```bash
+   bash hooks/install-hooks.sh <harness>
+   ```
 
-7. **Report.** List: harness, scripts copied, config merged or skipped (and
-   why), and any harness-specific reminders (Codex `/hooks`, Cursor hooks
-   reload). Suggest `/agent-memory sync` at the next checkpoint.
+   Replace `<harness>` with the normalized harness name. Remind: the installer
+   needs Node.js for JSON merges; it creates the harness directory if missing;
+   Codex users should run `/hooks` in the TUI after install; Cursor may need a
+   hooks reload.
+
+5. **Report.** List: harness, that hooks were **not** written by the agent, and
+   the exact commands printed. Suggest `/agent-memory sync` at the next
+   checkpoint after the user installs.
 
 ## Detecting installed harnesses (`update`)
 
@@ -94,15 +91,17 @@ A harness counts as **already installed** when its prerequisite dir exists
 | `copilot`  | `.github/hooks/agent-memory.json` or `.github/hooks/agent-memory-sync.sh`               |
 | `gemini`   | `.gemini/settings.json` containing agent-memory or `.gemini/hooks/agent-memory-sync.sh` |
 
-For `update`, run steps 4–6 above for **each** installed harness (no `<harness>`
-argument). Skip harnesses with no marker even if the prerequisite dir exists.
+For `update`, for **each** installed harness print the refresh commands from
+step 4 (no agent copy/merge). Skip harnesses with no marker even if the
+prerequisite dir exists.
 
 ## Behavior
 
 Hooks run a **deterministic checkpoint** — `active-work/` (Touched files, Task
 stub), `log.md` (session heading on session start + file-path bullets), and
 `current.md` _In progress_ on session start. Semantic log text and
-`decisions.md` stay agent-owned. See [`hooks/README.md`](../hooks/README.md).
+`decisions.md` stay agent-owned. See the
+[hooks README](https://github.com/diegoos/agent-memory/blob/v0.0.12/hooks/README.md).
 
-Optional git `pre-commit` is **not** installed by this command — see
-[`hooks/README.md`](../hooks/README.md).
+Optional git `pre-commit` is **not** installed by this command — see the same
+[hooks README](https://github.com/diegoos/agent-memory/blob/v0.0.12/hooks/README.md).
