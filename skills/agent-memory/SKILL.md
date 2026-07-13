@@ -21,7 +21,7 @@ description: >-
   automatically; this skill must be invoked on demand only.
 metadata:
   invocation: manual
-  version: '0.0.12'
+  version: '0.0.13'
 compatibility: >-
   Works offline from the skill package vendor skeleton. Hook installation is
   user-run (shell script or npx CLI), not performed by this skill.

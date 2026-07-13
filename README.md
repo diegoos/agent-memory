@@ -64,10 +64,12 @@ In your agent:
 /agent-memory install hooks cursor # print hook-install commands (skill never runs them)
 ```
 
-Install lifecycle hooks with the pinned `npx` CLI (same release tag):
+Install lifecycle hooks with the `npx` CLI:
 
 ```bash
-npx --yes github:diegoos/agent-memory#v0.0.12 -- install hooks cursor
+npx @dos/agent-memory install hooks cursor
+# interactive menu (skill + hooks / skill only / hooks only):
+npx @dos/agent-memory install cursor
 # or from a checkout: bash hooks/install-hooks.sh cursor
 ```
 
@@ -107,19 +109,10 @@ Install steps, event matrix, and project-dir resolution:
 
 ## Other install options
 
-**Skill via pinned `npx`** (alternative to `skills add` — reviewed tag + vendored
-skeleton; can also install skill + hooks in one shot):
-
-```bash
-npx --yes github:diegoos/agent-memory#v0.0.12 -- install skill
-# or skill + hooks for one harness:
-# npx --yes github:diegoos/agent-memory#v0.0.12 -- install cursor
-```
-
 **Manual skeleton** (no skill CLI):
 
 ```bash
-git clone --branch v0.0.12 --depth 1 \
+git clone --branch 0.0.13 --depth 1 \
   https://github.com/diegoos/agent-memory /tmp/agent-memory
 mkdir -p .agents
 cp -R /tmp/agent-memory/skills/agent-memory/vendor/memory .agents/memory

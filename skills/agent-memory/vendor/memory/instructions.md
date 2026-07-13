@@ -155,7 +155,7 @@ single heading — same contract, different session-key granularity.
 **Without hooks:** run `/agent-memory sync` at the same checkpoints; the agent
 must supply both evidence (from `git`) and semantic bullets manually.
 
-See the [hooks README](https://github.com/diegoos/agent-memory/blob/v0.0.12/hooks/README.md)
+See the [hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md)
 for per-host wiring. Do not duplicate this contract elsewhere — link to this
 section.
 
@@ -255,7 +255,7 @@ on first setup). Hooks keep `active-work/` (session-cumulative _Touched files_,
 Task stub), `log.md` (session heading; file-path bullets on full checkpoints
 only), and `current.md` _In progress_ on session start — you own **semantic**
 log text, Task meaning, `decisions.md`, _Done_, and `index.md`. See the
-[hooks README](https://github.com/diegoos/agent-memory/blob/v0.0.12/hooks/README.md).
+[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).
 
 **Context vs checkpoint:** `.mdc` puts the obligation to Read `instructions.md`
 into every session context; hooks run deterministic git checkpoints without an
