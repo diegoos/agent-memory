@@ -19,7 +19,7 @@ hooks/                        # outside the skill — user-run install
 ├── <harness>/                # cursor, claude-code, …
 └── README.md
 
-bin/agent-memory.js           # npx CLI (install skill / hooks)
+bin/agent-memory.js           # npx CLI (install hooks)
 package.json
 
 CHANGELOG.md

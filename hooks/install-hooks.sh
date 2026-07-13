@@ -16,7 +16,7 @@ elif [[ -f "$SCRIPT_DIR/../package.json" ]] && command -v node >/dev/null 2>&1; 
     node -p 'require(process.argv[1]).version' "$SCRIPT_DIR/../package.json" 2>/dev/null || true
   )"
 fi
-VERSION="${VERSION:-0.0.12}"
+VERSION="${VERSION:-0.0.13}"
 
 # Resolve project dir (absolute). Relative AGENT_MEMORY_PROJECT_DIR is allowed.
 # Require an existing directory so realpath and python3 agree (no mkdir surprise).

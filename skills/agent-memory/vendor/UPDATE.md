@@ -350,3 +350,20 @@ Format:
 - safe: root `README.md` — `skills add` primary; pinned `npx` for hooks / alt skill.
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.12`.
 - safe: root `package.json` — version bumped to `0.0.12`.
+
+## 0.0.13
+
+- safe: npm package renamed to `@dos/agent-memory` (was unscoped `agent-memory`).
+  CLI is hooks-only; skill install is via
+  `npx skills add diegoos/agent-memory#<version> --skill agent-memory`.
+  `install skill` redirects interactively; `install <harness>` shows a TTY menu.
+  Removed CLI skill flags and `install hook` alias.
+- safe: `runSkillsAdd` uses tag-pinned remote source
+  (`diegoos/agent-memory#${VERSION}`, no `v` prefix); not the npm tarball path.
+- safe: Interactive menu resilience — EOF handler, CSI/ESC parsing, Alt+letter,
+  `try/finally` raw-mode cleanup; `run()` fails on child signal/null status;
+  `shell: false` after options spread.
+- safe: Cross-package docs / vendor skeleton pin `hooks/README.md` and examples to
+  `0.0.13` (blob / github / skills add).
+- safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.13`.
+- safe: root `package.json` — version bumped to `0.0.13`.

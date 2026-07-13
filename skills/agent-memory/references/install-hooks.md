@@ -47,20 +47,26 @@ this skill's `metadata.version`).
    print the install commands.
 
 4. **Print install instructions (do not execute).** Read this skill's
-   `metadata.version` (e.g. `0.0.12`). Tell the user to review and run **one** of
+   `metadata.version` (e.g. `0.0.13`). Tell the user to review and run **one** of
    the following from the **project root** (never embed
    `raw.githubusercontent.com` URLs):
 
-   **Preferred — npx (pinned tag):**
+   **Preferred — npx:**
 
    ```bash
-   npx --yes github:diegoos/agent-memory#v0.0.12 -- install hooks <harness>
+   npx @dos/agent-memory install hooks <harness>
    ```
 
-   (Replace `0.0.12` with this skill's `metadata.version` when it differs.)
+   **Pinned tag (optional):**
+
+   ```bash
+   npx --yes github:diegoos/agent-memory#0.0.13 -- install hooks <harness>
+   ```
+
+   (Replace `0.0.13` with this skill's `metadata.version` when it differs.)
 
    **Alternative — shell script:** open the GitHub release page for the matching
-   tag (Releases → `v0.0.12`, or the tag tree on GitHub), review
+   tag (Releases → `0.0.13`, or the tag tree on GitHub), review
    `hooks/install-hooks.sh`, then from a checkout of that
    tag:
 
@@ -101,7 +107,7 @@ Hooks run a **deterministic checkpoint** — `active-work/` (Touched files, Task
 stub), `log.md` (session heading on session start + file-path bullets), and
 `current.md` _In progress_ on session start. Semantic log text and
 `decisions.md` stay agent-owned. See the
-[hooks README](https://github.com/diegoos/agent-memory/blob/v0.0.12/hooks/README.md).
+[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).
 
 Optional git `pre-commit` is **not** installed by this command — see the same
-[hooks README](https://github.com/diegoos/agent-memory/blob/v0.0.12/hooks/README.md).
+[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).

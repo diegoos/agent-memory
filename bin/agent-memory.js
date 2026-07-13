@@ -8,11 +8,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const VERSION = require('../package.json').version;
 const INSTALL_HOOKS_SH = path.join(ROOT, 'hooks', 'install-hooks.sh');
-const LOCAL_SKILL_DIR = path.join(ROOT, 'skills', 'agent-memory');
-const PINNED_SKILL_URL = `https://github.com/diegoos/agent-memory/tree/v${VERSION}/skills/agent-memory`;
-
-/** Safe charset for skills CLI --agent values (no shell metacharacters). */
-const AGENT_NAME_RE = /^[A-Za-z0-9._-]+$/;
+const REMOTE_SKILL_SOURCE = `diegoos/agent-memory#${VERSION}`;
 
 const CANONICAL_HARNESSES = new Set([
   'cursor',
@@ -61,28 +57,40 @@ const ENV_ALLOWLIST_EXACT = new Set([
   'GIT_CONFIG',
 ]);
 
+const ESC = '\u001b';
+const CSI = `${ESC}[`;
+
 function normalizeHarness(name) {
   if (CANONICAL_HARNESSES.has(name)) return name;
   return HARNESS_ALIASES[name] || null;
 }
 
+function isTTY() {
+  return process.stdin.isTTY === true && process.stdout.isTTY === true;
+}
+
+function skillsAddCommandText() {
+  return `npx --yes skills add ${REMOTE_SKILL_SOURCE} --skill agent-memory`;
+}
+
 function printHelp() {
   console.log(`agent-memory ${VERSION}
 
+Hooks installer for @dos/agent-memory. The skill is installed separately
+via npx skills add (not this CLI).
+
 Usage:
-  agent-memory install skill [-g|--global] [-a|--agent <agent> ...]
-  agent-memory install hooks <harness>    # alias: install hook
-  agent-memory install <harness> [skill flags...]  # skill + hooks
+  agent-memory install hooks <harness>
+  agent-memory install <harness>          # interactive menu (TTY)
+  agent-memory install skill              # redirect to npx skills add
   agent-memory help
 
 Harnesses: cursor, claude (claude-code), codex, opencode, copilot (github), gemini
 
-Skill flags: -g/--global, -a/--agent <name>, -y/--yes, --all, --copy
-
 Examples:
-  npx --yes github:diegoos/agent-memory#v${VERSION} -- install cursor
-  npx --yes github:diegoos/agent-memory#v${VERSION} -- install hooks cursor
-  npx --yes github:diegoos/agent-memory#v${VERSION} -- install skill
+  npx @dos/agent-memory install hooks cursor
+  npx @dos/agent-memory install cursor
+  npx skills add diegoos/agent-memory#${VERSION} --skill agent-memory
 `);
 }
 
@@ -90,75 +98,19 @@ Examples:
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     stdio: 'inherit',
-    shell: false,
     ...options,
+    shell: false,
   });
   if (result.error) {
     console.error(`error: ${result.error.message}`);
     process.exit(1);
   }
-  if (typeof result.status === 'number' && result.status !== 0) {
-    process.exit(result.status);
-  }
-}
-
-function assertAgentName(val, flag) {
-  if (!AGENT_NAME_RE.test(val)) {
-    console.error(
-      `error: invalid agent name for ${flag}: ${val} (use [A-Za-z0-9._-]+ only)`
-    );
+  if (result.signal) {
     process.exit(1);
   }
-}
-
-/** Parse skill CLI flags; rejects unknown tokens. */
-function parseSkillFlags(args) {
-  const out = [];
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i];
-    if (
-      a === '-g' ||
-      a === '--global' ||
-      a === '-y' ||
-      a === '--yes' ||
-      a === '--all' ||
-      a === '--copy'
-    ) {
-      out.push(a);
-      continue;
-    }
-    if (a === '-a' || a === '--agent') {
-      const val = args[i + 1];
-      if (!val || val.startsWith('-')) {
-        console.error(`error: ${a} requires a value`);
-        process.exit(1);
-      }
-      assertAgentName(val, a);
-      out.push(a, val);
-      i++;
-      continue;
-    }
-    if (a.startsWith('--agent=')) {
-      const val = a.slice('--agent='.length);
-      assertAgentName(val, '--agent');
-      out.push(a);
-      continue;
-    }
-    if (a.startsWith('-')) {
-      console.error(`error: unknown flag: ${a}`);
-      process.exit(1);
-    }
-    console.error(`error: unexpected argument: ${a}`);
-    process.exit(1);
+  if (result.status === null || result.status !== 0) {
+    process.exit(result.status ?? 1);
   }
-  return out;
-}
-
-function skillSource() {
-  if (fs.existsSync(path.join(LOCAL_SKILL_DIR, 'SKILL.md'))) {
-    return LOCAL_SKILL_DIR;
-  }
-  return PINNED_SKILL_URL;
 }
 
 function buildInstallerEnv() {
@@ -176,11 +128,15 @@ function buildInstallerEnv() {
   return env;
 }
 
-function installSkill(extraArgs) {
-  const flags = parseSkillFlags(extraArgs);
-  const source = skillSource();
-  const args = ['--yes', 'skills', 'add', source, '--skill', 'agent-memory', ...flags];
-  // On Windows, prefer npx.cmd so shell:false still resolves the shim.
+function runSkillsAdd() {
+  const args = [
+    '--yes',
+    'skills',
+    'add',
+    REMOTE_SKILL_SOURCE,
+    '--skill',
+    'agent-memory',
+  ];
   const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
   run(npx, args);
 }
@@ -194,7 +150,272 @@ function installHooks(harness) {
   run(bash, [INSTALL_HOOKS_SH, harness], { env: buildInstallerEnv() });
 }
 
-function main(argv) {
+function renderSelectLines(title, options, selected) {
+  const lines = [title, ''];
+  for (let i = 0; i < options.length; i++) {
+    const active = i === selected;
+    const prefix = active ? `${ESC}[1m› ` : '  ';
+    const suffix = active ? `${ESC}[22m` : '';
+    lines.push(`${prefix}${options[i].label}${suffix}`);
+  }
+  lines.push('', '↑/↓ or j/k · Enter confirm · Ctrl+C/Esc cancel');
+  return lines;
+}
+
+function clearRenderedLines(lineCount) {
+  for (let i = 0; i < lineCount; i++) {
+    process.stdout.write(`${CSI}1A${CSI}2K`);
+  }
+}
+
+/**
+ * Interactive single-select menu (TTY only). Returns the chosen option value.
+ * Aborts with exit 1 on Ctrl+C or Esc.
+ */
+function selectPrompt(title, options) {
+  return new Promise((resolve) => {
+    let selected = 0;
+    let renderedLineCount = 0;
+    let escState = 'normal';
+    let escTimer = null;
+    let rawModeEnabled = false;
+    const stdin = process.stdin;
+
+    function disableRawMode() {
+      if (rawModeEnabled && typeof stdin.setRawMode === 'function') {
+        stdin.setRawMode(false);
+        rawModeEnabled = false;
+      }
+    }
+
+    function clearEscTimer() {
+      if (escTimer) {
+        clearTimeout(escTimer);
+        escTimer = null;
+      }
+    }
+
+    function isCsiFinal(ch) {
+      const code = ch.charCodeAt(0);
+      return code >= 0x40 && code <= 0x7e;
+    }
+
+    function isAlphanumeric(ch) {
+      return /[0-9A-Za-z]/.test(ch);
+    }
+
+    function startEscTimer() {
+      clearEscTimer();
+      escTimer = setTimeout(() => {
+        escTimer = null;
+        if (escState === 'esc') {
+          escState = 'normal';
+          abort();
+          return;
+        }
+        if (escState === 'csi' || escState === 'ss3') {
+          escState = 'normal';
+        }
+      }, 50);
+    }
+
+    function moveUp() {
+      selected = (selected - 1 + options.length) % options.length;
+      redraw();
+    }
+
+    function moveDown() {
+      selected = (selected + 1) % options.length;
+      redraw();
+    }
+
+    function abort() {
+      cleanup();
+      process.stdout.write('\n');
+      process.exit(1);
+    }
+
+    function cleanup() {
+      clearEscTimer();
+      disableRawMode();
+      stdin.pause();
+      stdin.removeListener('data', onData);
+      stdin.removeListener('end', onEnd);
+    }
+
+    function printMenu() {
+      const lines = renderSelectLines(title, options, selected);
+      lines.forEach((line) => process.stdout.write(`${line}\n`));
+      renderedLineCount = lines.length;
+    }
+
+    function redraw() {
+      clearRenderedLines(renderedLineCount);
+      printMenu();
+    }
+
+    function processChar(ch) {
+      if (escState === 'esc') {
+        clearEscTimer();
+        if (ch === '[') {
+          escState = 'csi';
+          startEscTimer();
+          return;
+        }
+        if (ch === 'O') {
+          escState = 'ss3';
+          startEscTimer();
+          return;
+        }
+        if (isAlphanumeric(ch)) {
+          escState = 'normal';
+        } else {
+          escState = 'normal';
+          abort();
+          return;
+        }
+      }
+
+      if (escState === 'csi') {
+        if (!isCsiFinal(ch)) {
+          startEscTimer();
+          return;
+        }
+        clearEscTimer();
+        escState = 'normal';
+        if (ch === 'A') {
+          moveUp();
+          return;
+        }
+        if (ch === 'B') {
+          moveDown();
+          return;
+        }
+        return;
+      }
+
+      if (escState === 'ss3') {
+        if (!isCsiFinal(ch)) {
+          startEscTimer();
+          return;
+        }
+        clearEscTimer();
+        escState = 'normal';
+        if (ch === 'A') {
+          moveUp();
+          return;
+        }
+        if (ch === 'B') {
+          moveDown();
+          return;
+        }
+        return;
+      }
+
+      if (ch === '\u0003') {
+        abort();
+        return;
+      }
+      if (ch === ESC) {
+        escState = 'esc';
+        startEscTimer();
+        return;
+      }
+      if (ch === 'k') {
+        moveUp();
+        return;
+      }
+      if (ch === 'j') {
+        moveDown();
+        return;
+      }
+      if (ch === '\r' || ch === '\n') {
+        cleanup();
+        process.stdout.write('\n');
+        resolve(options[selected].value);
+      }
+    }
+
+    function onData(chunk) {
+      for (let i = 0; i < chunk.length; i++) {
+        processChar(chunk[i]);
+      }
+    }
+
+    function onEnd() {
+      abort();
+    }
+
+    let setupComplete = false;
+    try {
+      if (typeof stdin.setRawMode === 'function') {
+        stdin.setRawMode(true);
+        rawModeEnabled = true;
+      }
+      stdin.resume();
+      stdin.setEncoding('utf8');
+      stdin.on('data', onData);
+      stdin.on('end', onEnd);
+      printMenu();
+      setupComplete = true;
+    } finally {
+      if (!setupComplete) {
+        disableRawMode();
+      }
+    }
+  });
+}
+
+function failNonTTYInstallChoice(harness) {
+  console.error('error: interactive install requires a TTY.');
+  console.error(`  Hooks: npx @dos/agent-memory install hooks ${harness}`);
+  console.error(`  Skill: ${skillsAddCommandText()}`);
+  process.exit(1);
+}
+
+function failNonTTYSkillsAdd() {
+  console.error('error: interactive install requires a TTY.');
+  console.error(`  Skill: ${skillsAddCommandText()}`);
+  process.exit(1);
+}
+
+async function promptInstallChoice(harness) {
+  if (!isTTY()) {
+    failNonTTYInstallChoice(harness);
+  }
+
+  const choice = await selectPrompt(`Install agent-memory for ${harness}:`, [
+    { label: 'Skill + hooks', value: 'both' },
+    { label: 'Skill only', value: 'skill' },
+    { label: 'Hooks only', value: 'hooks' },
+  ]);
+
+  if (choice === 'both') {
+    runSkillsAdd();
+    installHooks(harness);
+    return;
+  }
+  if (choice === 'skill') {
+    runSkillsAdd();
+    return;
+  }
+  installHooks(harness);
+}
+
+async function promptSkillsAddOrCancel() {
+  const choice = await selectPrompt('Continue?', [
+    { label: 'Run npx skills add', value: 'run' },
+    { label: 'Cancel', value: 'cancel' },
+  ]);
+
+  if (choice === 'run') {
+    runSkillsAdd();
+    return;
+  }
+  process.exit(0);
+}
+
+async function main(argv) {
   const args = argv.slice(2);
   if (
     args.length === 0 ||
@@ -220,11 +441,20 @@ function main(argv) {
   }
 
   if (rest[0] === 'skill') {
-    installSkill(rest.slice(1));
+    if (rest.length > 1) {
+      console.error('error: install skill does not accept arguments');
+      process.exit(1);
+    }
+    if (!isTTY()) {
+      failNonTTYSkillsAdd();
+    }
+    console.log('This CLI installs hooks only. Install the skill with:');
+    console.log(`  ${skillsAddCommandText()}`);
+    await promptSkillsAddOrCancel();
     return;
   }
 
-  if (rest[0] === 'hooks' || rest[0] === 'hook') {
+  if (rest[0] === 'hooks') {
     const raw = rest[1];
     if (!raw) {
       console.error('error: install hooks requires a harness argument');
@@ -247,8 +477,11 @@ function main(argv) {
 
   const harness = normalizeHarness(rest[0]);
   if (harness) {
-    installSkill(rest.slice(1));
-    installHooks(harness);
+    if (rest.length > 1) {
+      console.error(`error: unexpected argument: ${rest[1]}`);
+      process.exit(1);
+    }
+    await promptInstallChoice(harness);
     return;
   }
 
@@ -257,4 +490,7 @@ function main(argv) {
   process.exit(1);
 }
 
-main(process.argv);
+main(process.argv).catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
