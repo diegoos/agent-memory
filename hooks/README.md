@@ -21,15 +21,14 @@ links, `architecture.md`, `patterns.md`, `vision.md` (ask user if uncertain).
 Install with the user-run installer (review first):
 
 ```bash
-npx --yes github:diegoos/agent-memory#v0.0.12 -- install hooks <harness>
+npx @dos/agent-memory install hooks <harness>
 # or: bash hooks/install-hooks.sh <harness>
 ```
 
 The installer creates the harness directory (e.g. `.cursor/`) if it is missing.
 It refuses destination or parent-directory symlinks and requires an existing
-`PROJECT_DIR` (resolved with `realpath`).
-Set `AGENT_MEMORY_PROJECT_DIR` to install into a project other than the current
-working directory.
+`PROJECT_DIR` (resolved with `realpath`). Set `AGENT_MEMORY_PROJECT_DIR` to
+install into a project other than the current working directory.
 
 | Host            | Scripts                                                                 | Config                                  |
 | --------------- | ----------------------------------------------------------------------- | --------------------------------------- |
@@ -109,7 +108,7 @@ hooks/
 merges):
 
 ```bash
-npx --yes github:diegoos/agent-memory#v0.0.12 -- install hooks cursor
+npx @dos/agent-memory install hooks cursor
 ```
 
 Or from a checkout of the same tag:
