@@ -17,8 +17,8 @@ human-oriented release history — keep both in sync on version bumps.
 
 ### Changed
 
-- Package renamed to `@dos/agent-memory` (was `agent-memory` (unscoped)).
-- `npx @dos/agent-memory` is hooks-only; skill install is via
+- Package renamed to `@dosx/agent-memory` (was `agent-memory` (unscoped)).
+- `npx @dosx/agent-memory` is hooks-only; skill install is via
   `npx skills add diegoos/agent-memory#<version> --skill agent-memory`.
   `install skill` redirects interactively; `install <harness>` shows a TTY menu
   (skill + hooks / skill only / hooks only). Removed skill flags and

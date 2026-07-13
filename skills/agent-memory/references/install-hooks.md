@@ -54,7 +54,7 @@ this skill's `metadata.version`).
    **Preferred — npx:**
 
    ```bash
-   npx @dos/agent-memory install hooks <harness>
+   npx @dosx/agent-memory install hooks <harness>
    ```
 
    **Pinned tag (optional):**

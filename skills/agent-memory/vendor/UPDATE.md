@@ -353,7 +353,7 @@ Format:
 
 ## 0.0.13
 
-- safe: npm package renamed to `@dos/agent-memory` (was unscoped `agent-memory`).
+- safe: npm package renamed to `@dosx/agent-memory` (was unscoped `agent-memory`).
   CLI is hooks-only; skill install is via
   `npx skills add diegoos/agent-memory#<version> --skill agent-memory`.
   `install skill` redirects interactively; `install <harness>` shows a TTY menu.

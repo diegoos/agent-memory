@@ -67,9 +67,9 @@ In your agent:
 Install lifecycle hooks with the `npx` CLI:
 
 ```bash
-npx @dos/agent-memory install hooks cursor
+npx @dosx/agent-memory install hooks cursor
 # interactive menu (skill + hooks / skill only / hooks only):
-npx @dos/agent-memory install cursor
+npx @dosx/agent-memory install cursor
 # or from a checkout: bash hooks/install-hooks.sh cursor
 ```
 

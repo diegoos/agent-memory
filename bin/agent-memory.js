@@ -76,7 +76,7 @@ function skillsAddCommandText() {
 function printHelp() {
   console.log(`agent-memory ${VERSION}
 
-Hooks installer for @dos/agent-memory. The skill is installed separately
+Hooks installer for @dosx/agent-memory. The skill is installed separately
 via npx skills add (not this CLI).
 
 Usage:
@@ -88,8 +88,8 @@ Usage:
 Harnesses: cursor, claude (claude-code), codex, opencode, copilot (github), gemini
 
 Examples:
-  npx @dos/agent-memory install hooks cursor
-  npx @dos/agent-memory install cursor
+  npx @dosx/agent-memory install hooks cursor
+  npx @dosx/agent-memory install cursor
   npx skills add diegoos/agent-memory#${VERSION} --skill agent-memory
 `);
 }
@@ -368,7 +368,7 @@ function selectPrompt(title, options) {
 
 function failNonTTYInstallChoice(harness) {
   console.error('error: interactive install requires a TTY.');
-  console.error(`  Hooks: npx @dos/agent-memory install hooks ${harness}`);
+  console.error(`  Hooks: npx @dosx/agent-memory install hooks ${harness}`);
   console.error(`  Skill: ${skillsAddCommandText()}`);
   process.exit(1);
 }

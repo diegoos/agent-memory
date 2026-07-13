@@ -21,7 +21,7 @@ links, `architecture.md`, `patterns.md`, `vision.md` (ask user if uncertain).
 Install with the user-run installer (review first):
 
 ```bash
-npx @dos/agent-memory install hooks <harness>
+npx @dosx/agent-memory install hooks <harness>
 # or: bash hooks/install-hooks.sh <harness>
 ```
 
@@ -108,7 +108,7 @@ hooks/
 merges):
 
 ```bash
-npx @dos/agent-memory install hooks cursor
+npx @dosx/agent-memory install hooks cursor
 ```
 
 Or from a checkout of the same tag:
