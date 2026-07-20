@@ -24,7 +24,7 @@ If memory diverges from an authoritative source: do not pick silently; record un
 
 Before recording:
 
-1. Reusable in another session? If no → skip or keep only in the current log until consolidate.
+1. Reusable in another session? If no → skip (keep in the current log only if useful to resume this session, until consolidate).
 2. Already in a canonical source? → store only `link + delta/relevance` (optional `relevant when:` / `verified: YYYY-MM-DD` for code/config inferences).
 3. Current-task state only? → branch `active-work`; shared active state → `current.md`.
 4. Non-trivial decision? → pointer to the project decision system; local fallback in `decisions.md` only when none exists.
@@ -55,7 +55,7 @@ One file per branch. Sanitize the real branch name (or `local`) to `active-work/
 
 ### Harness parity — memory contract
 
-Every supported harness targets the same memory shape. **Context layer** injects the obligation to read/maintain memory; **checkpoint layer** (hooks/plugin) syncs Git/session evidence. Harness config controls timing, not meaning — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md). Differing outcomes are bugs.
+Every supported harness targets the same memory shape. **Context layer** injects the obligation to read/maintain memory; **checkpoint layer** (hooks/plugin) syncs Git/session evidence. Harness config controls timing, not meaning — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.0.14/hooks/README.md). Differing outcomes are bugs.
 
 **Hooks own evidence/scaffolding:** session log heading; `current.md` _In progress_ from open active-work; ensure branch file exists; session-cumulative _Touched files_; full-checkpoint path bullets (or `changed N files…` above eight); generic _Task_ stub only; `.hook-sync-state` (uncommitted).
 

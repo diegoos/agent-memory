@@ -93,7 +93,7 @@ The skill installs from the vendored skeleton next to this file (`memory/`) and
 also handles `sync`, `update`, `lint`, `consolidate`, and `help`. See
 [`SKILL.md`](../SKILL.md). Hooks are **user-installed** (the skill only prints
 commands) — see the
-[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).
+[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.14/hooks/README.md).
 
 ### Manual
 
@@ -130,8 +130,8 @@ write it too, and `/agent-memory sync` is the executable flush at checkpoints.
 `.cursor/rules/agent-memory.mdc` (`alwaysApply: true`). Install lifecycle hooks
 separately as the **checkpoint layer**. Run `init` when `.cursor/` already
 exists. See the
-[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).
+[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.14/hooks/README.md).
 
 Lifecycle hooks (Cursor, Claude Code, Codex, OpenCode, Copilot, Gemini, plus git
 `pre-commit`) run a deterministic git checkpoint between turns — same
-[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).
+[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.14/hooks/README.md).

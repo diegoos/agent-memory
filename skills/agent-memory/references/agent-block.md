@@ -1,21 +1,16 @@
 # The agent-memory block
 
-The exact block `init` writes into harness instruction files and `update`
-refreshes in place. **Single source of truth** for the block content — both
-`init` and `update` read it from here; never duplicate the block text in those
-references.
+Canonical block for `init` / `update` — do not duplicate this text elsewhere.
+Write targets and carrier rules: `references/init.md`.
 
-**Write targets** (body identical everywhere; see `references/init.md` for
-carrier resolution and which file receives the block):
-
-| Harness  | File                                                                     |
-| -------- | ------------------------------------------------------------------------ |
-| cursor   | `.cursor/rules/agent-memory.mdc` (with `alwaysApply: true` frontmatter)  |
-| copilot  | `.github/instructions/agent-memory.instructions.md`                      |
-| claude   | `CLAUDE.md` (or `AGENTS.md` when `CLAUDE.md` delegates via `@AGENTS.md`) |
-| codex    | `AGENTS.md`                                                              |
-| opencode | `AGENTS.md`                                                              |
-| gemini   | `GEMINI.md` (or delegated carrier — same rules as claude)                |
+| Harness  | File                                                   |
+| -------- | ------------------------------------------------------ |
+| cursor   | `.cursor/rules/agent-memory.mdc` (`alwaysApply: true`) |
+| copilot  | `.github/instructions/agent-memory.instructions.md`    |
+| claude   | `CLAUDE.md` (or `AGENTS.md` if it `@import`s AGENTS)   |
+| codex    | `AGENTS.md`                                            |
+| opencode | `AGENTS.md`                                            |
+| gemini   | `GEMINI.md` (or delegated carrier — same as claude)    |
 
 ## The block
 
@@ -35,9 +30,9 @@ merge; periodically run `/agent-memory consolidate`.
 <!-- </agent-memory> -->
 ```
 
-## Cursor `.mdc` wrapper
+## Wrappers
 
-For Cursor, prepend this frontmatter to the block above (body unchanged):
+**Cursor `.mdc`** — prepend; `update` refreshes only the delimited body:
 
 ```yaml
 ---
@@ -46,11 +41,7 @@ alwaysApply: true
 ---
 ```
 
-`update` compares only the delimited body; preserve frontmatter when refreshing.
-
-## Copilot `.instructions.md` wrapper
-
-For Copilot, prepend this frontmatter to the block above (body unchanged):
+**Copilot `.instructions.md`** — prepend (`applyTo: "**"` required for always-on):
 
 ```yaml
 ---
@@ -58,43 +49,13 @@ applyTo: "**"
 ---
 ```
 
-Copilot path-specific files under `.github/instructions/**/*.instructions.md`
-are applied only to files matching an `applyTo` glob. `**` makes the block
-**always-on** (every file, every session) — required so the agent receives the
-agent-memory workflow before any task. Without `applyTo`, the file may not apply
-at all. `update` compares only the delimited body; preserve frontmatter when
-refreshing.
+## Notes
 
-## Why the delimiters
-
-`<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` mark the block so
-`update` can find and replace **only** it, without touching anything else in the
-file. HTML comments are invisible in rendered Markdown (no raw tags in the
-preview) but remain machine-identifiable in the source. Never edit content
-outside the delimiters.
-
-## Why both the read list and `@import`
-
-- The explicit "Read `.agents/memory/instructions.md`" line is the load path for
-  plain-Markdown harnesses and Cursor rules (`.cursor/rules/agent-memory.mdc`
-  with `alwaysApply: true`). `@import` in `AGENTS.md` is a no-op on Cursor.
-  Hooks are the **checkpoint** layer (user-run installer); `.mdc` / agent files
-  are the **context** layer — see `instructions.md` →
-  _Harness parity — memory contract_ and the
-  [hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).
-- `@.agents/memory/instructions.md` is honored by harnesses that follow the
-  AGENTS.md `@import` convention (Claude Code, Gemini CLI, Codex).
-
-Including both is intentional — a harness that loads `@import` still gets
-`instructions.md` once. Keep this block short; do not duplicate the method.
-
-## How to compare
-
-`update` decides whether to refresh by comparing the block currently in the
-instruction file (text between the delimiters, inclusive) against the block
-above, byte-for-byte. Identical → nothing to do. Different → propose the unified
-diff and confirm before replacing (sensitive). Legacy installs may still use
-plain `<agent-memory>` … `</agent-memory>` tags (0.0.4–0.0.5); `update` treats
-those as the same block and replaces them with the comment-delimited canonical
-form. For `.cursor/rules/agent-memory.mdc`, compare the delimited body only —
-ignore YAML frontmatter.
+- Delimiters `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` let `update`
+  replace only this block. Legacy plain `<agent-memory>` tags migrate to comments.
+- Explicit **Read** `instructions.md` covers plain-Markdown / Cursor rules;
+  `@import` covers Claude/Gemini/Codex. Keep the block short — method details
+  stay in `instructions.md` → _Harness parity — memory contract_ and the
+  [hooks README](https://github.com/diegoos/agent-memory/blob/0.0.14/hooks/README.md).
+- Compare installed vs canonical byte-for-byte (body only for `.mdc`); identical
+  → skip; different → confirm before replace.

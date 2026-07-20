@@ -19,4 +19,4 @@ Keep aligned with useful entry points only (what they own + when to read). `/age
 - [log.md](./log.md) — recent session deltas.
 - `learnings.md` — optional; create when the gate in `instructions.md` passes, then link here.
 
-Legacy mirrors (`vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*`, …) may exist — convert via `lint` / `consolidate`; do not recreate.
+Older installs may still have legacy mirror files — convert via `lint` / `consolidate`; do not recreate.

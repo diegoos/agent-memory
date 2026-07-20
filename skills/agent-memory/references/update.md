@@ -60,6 +60,9 @@ carrier rules):
    - **Always confirm with a diff before applying:**
      - `instructions.md` when the installed copy differs from the skill's
        current `vendor/memory/instructions.md` (identical → nothing to do).
+     - `current.md` structural cleanup from `UPDATE.md` (e.g. 0.0.14 removal of
+       legacy `Version / milestone` / `Done` / `Next steps`) — preserve
+       `## In progress` and any still-useful bullets the user wants kept.
      - Any change to a file that can hold user content — including `index.md`
        (merge structural sections; **preserve** the user's _Canonical project
        sources_ and _Recall files_ lists, including `learnings.md` / topic
