@@ -24,23 +24,11 @@ carrier resolution and which file receives the block):
 
 ## Agent Memory
 
-This project uses Agent Memory (a local Workspace Memory). **Before starting any
-task**, Read `.agents/memory/instructions.md` (it defines the workflow), then
-read `.agents/memory/index.md`, `.agents/memory/current.md`, and your branch's
-file in `.agents/memory/active-work/`.
-
-This memory is **read AND written** by agents — it is not chat history. While
-you work and when you finish a task, keep it current per `instructions.md`:
-update your branch's `active-work/<branch>.md` (Task, progress, touched files,
-blockers), append bullets to the **current session** heading in `log.md`,
-**record architecture and design decisions in `decisions.md`**, keep `index.md`
-aligned with lazy and domain/feature files, and refresh `current.md` when
-project state changes (list open active-work files in _In progress_; move
-completed work to _Done_). Ask the user before changing `vision.md` when
-uncertain. Delete your `active-work/` file when the branch merges. At
-checkpoints (end of task, before commit, before compaction, end of session), run
-`/agent-memory sync` to flush `current.md`, active-work, `log.md`, and
-`index.md` from repo state.
+Local **recall** layer in `.agents/memory/` — not a docs mirror. **Before any
+task**, Read `.agents/memory/instructions.md`, then `index.md`, `current.md`,
+and your branch file under `active-work/`. Write **links and deltas**, not
+copies. At checkpoints run `/agent-memory sync`. Delete branch active-work on
+merge; periodically run `/agent-memory consolidate`.
 
 @.agents/memory/instructions.md
 
@@ -66,7 +54,7 @@ For Copilot, prepend this frontmatter to the block above (body unchanged):
 
 ```yaml
 ---
-applyTo: '**'
+applyTo: "**"
 ---
 ```
 
@@ -87,21 +75,18 @@ outside the delimiters.
 
 ## Why both the read list and `@import`
 
-- The explicit "Read `.agents/memory/instructions.md`" line makes the agent load
-  the method file directly. This is the load path for harnesses that treat agent
-  files as plain Markdown or load context via rules — **Cursor** receives the
-  block through `.cursor/rules/agent-memory.mdc` (`alwaysApply: true`);
-  `@import` in `AGENTS.md` is a no-op there. The "Read …" line is the active
-  path on Cursor. For hooks (checkpoint layer), print user-run install commands
-  from `/agent-memory install hooks <harness>` — the skill never installs hooks;
-  see `instructions.md` → _Plain-Markdown harnesses_ (hooks = checkpoint; `.mdc` =
-  context).
-- The `@.agents/memory/instructions.md` line is honored by harnesses that follow
-  the AGENTS.md `@import` convention (Claude Code, Gemini CLI, Codex),
-  auto-loading `instructions.md`.
+- The explicit "Read `.agents/memory/instructions.md`" line is the load path for
+  plain-Markdown harnesses and Cursor rules (`.cursor/rules/agent-memory.mdc`
+  with `alwaysApply: true`). `@import` in `AGENTS.md` is a no-op on Cursor.
+  Hooks are the **checkpoint** layer (user-run installer); `.mdc` / agent files
+  are the **context** layer — see `instructions.md` →
+  _Harness parity — memory contract_ and the
+  [hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).
+- `@.agents/memory/instructions.md` is honored by harnesses that follow the
+  AGENTS.md `@import` convention (Claude Code, Gemini CLI, Codex).
 
-Including both is intentional and harmless — a harness that loads `@import`
-simply gets `instructions.md` once.
+Including both is intentional — a harness that loads `@import` still gets
+`instructions.md` once. Keep this block short; do not duplicate the method.
 
 ## How to compare
 

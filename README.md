@@ -1,10 +1,12 @@
 # Agent Memory
 
-**Agent Memory** is a project-local **Workspace Memory** for AI coding agents.
-It is a small set of versioned Markdown files in `.agents/memory/` — the shared
-source of truth between humans and agents — so work continues across sessions,
-tools, and teammates **without chat history** and **without external
-infrastructure** (no server, vector DB, or embeddings).
+**Agent Memory** is a project-local **Workspace Memory** for AI coding agents —
+a versioned **recall layer** in `.agents/memory/`. It points at the project's
+canonical sources (AGENTS, README, specs, ADRs, code) and keeps only what agents
+need to continue work across sessions: active state, recent deltas, decision
+pointers, and evidenced learnings that have no better home. No chat history
+dependency and **no external infrastructure** (no server, vector DB, or
+embeddings).
 
 Agents **read and write** that memory. A manual skill (`/agent-memory`)
 bootstraps and maintains it; optional lifecycle hooks add deterministic git
@@ -14,35 +16,37 @@ Supported harnesses: Cursor, Claude Code, Codex, OpenCode, Copilot, Gemini CLI.
 
 ## Why
 
-- **Project memory, not chat memory.** Files in Git beat paste-from-yesterday
-  chats. Anyone (human or agent) can pick up from `.agents/memory/` alone.
+- **Project recall, not a docs mirror.** Files in Git beat paste-from-yesterday
+  chats. Canonical docs stay canonical; memory stores links and deltas.
 - **Plain Markdown.** Searchable with `grep`, reviewable in PRs, no new runtime.
 - **Progressive disclosure.** Always-load files stay short; detail lives in
-  on-demand files (`architecture.md`, `domains/*`, …).
+  canonical sources or on-demand recall (`learnings.md`, …).
 - **Inspired by Karpathy's [llm-wiki][llm-wiki]** (index, log, lint, small
   cross-linked files), adapted from source ingestion to _project_ memory.
 
 ## How it works
 
-Memory lives at `.agents/memory/` and separates **durable knowledge** from
-**operational state**:
+Memory lives at `.agents/memory/` and separates **canonical project sources**
+from **operational recall** and **durable recall**:
 
-| File                      | Role                                                           |
-| ------------------------- | -------------------------------------------------------------- |
-| `instructions.md`         | Method: how agents read and maintain the memory.               |
-| `index.md`                | Map + loading policy (always-load vs on-demand).               |
-| `current.md`              | Shared project state (done / in progress / next).              |
-| `active-work/<branch>.md` | Per-branch scratchpad (no merge conflicts across branches).    |
-| `decisions.md`            | Decisions and **why**.                                         |
-| `log.md`                  | Chronological activity log (append at the bottom).             |
+| File                      | Role                                                                 |
+| ------------------------- | -------------------------------------------------------------------- |
+| `instructions.md`         | Method: how agents read and maintain the memory.                     |
+| `index.md`                | Map of canonical sources + recall files (loading policy).            |
+| `current.md`              | Shared **active** state (in progress / blockers / handoff).          |
+| `active-work/<branch>.md` | Per-branch scratchpad (no merge conflicts across branches).          |
+| `decisions.md`            | Decision **pointers** (or local fallback when no ADR system).        |
+| `log.md`                  | Recent session deltas (append at the bottom; prune via consolidate). |
 
-Lazy files (`vision.md`, `architecture.md`, `patterns.md`, `mistakes.md`,
-`known-issues.md`, `domains/*`, `features/*`) appear only when there is real
-content.
+Optional on demand: `learnings.md` — evidenced, reusable facts with no better
+source. Do **not** create parallel vision/architecture/patterns/domains copies;
+link the project's own docs instead.
 
 **Workflow:** before a task, agents read `index.md`, `current.md`, and their
-branch's `active-work` file; while working they keep those current; at
-checkpoints they flush with `/agent-memory sync`.
+branch's `active-work` file; while working they keep those current and write
+links/deltas (not copies); at checkpoints they flush with `/agent-memory sync`;
+periodically they run `/agent-memory consolidate` to promote useful facts and
+prune closed-session noise.
 
 Full method:
 [`skills/agent-memory/vendor/README.md`](./skills/agent-memory/vendor/README.md)
@@ -60,7 +64,7 @@ In your agent:
 
 ```text
 /agent-memory init                 # auto-detect harnesses, or: init cursor
-/agent-memory bootstrap            # optional: populate memory from the repo
+/agent-memory bootstrap            # optional: inventory sources + gaps
 /agent-memory install hooks cursor # print hook-install commands (skill never runs them)
 ```
 
@@ -84,25 +88,26 @@ npx @dosx/agent-memory install cursor
 
 [`/agent-memory`](./skills/agent-memory) is **manual-only** (never auto-triggers):
 
-| Command                       | Does                                                              |
-| ----------------------------- | ----------------------------------------------------------------- |
-| `/agent-memory help`          | List commands.                                                    |
-| `/agent-memory init`          | Create `.agents/memory/`; wire native instruction file(s).        |
-| `/agent-memory install hooks` | Print how to install/refresh hooks (user-run installer).          |
-| `/agent-memory update`        | Migrate scaffolding; never overwrites your content blindly.       |
-| `/agent-memory bootstrap`     | Analyze the project and populate the memory.                      |
-| `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md`.       |
-| `/agent-memory lint`          | Broken links, orphans, stale per-branch files, consistency.       |
+| Command                       | Does                                                             |
+| ----------------------------- | ---------------------------------------------------------------- |
+| `/agent-memory help`          | List commands.                                                   |
+| `/agent-memory init`          | Create `.agents/memory/`; wire native instruction file(s).       |
+| `/agent-memory install hooks` | Print how to install/refresh hooks (user-run installer).         |
+| `/agent-memory update`        | Migrate scaffolding; never overwrites your content blindly.      |
+| `/agent-memory bootstrap`     | Inventory canonical sources and gaps; populate pointers.         |
+| `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md`.      |
+| `/agent-memory lint`          | Broken links, orphans, duplication, stale branches, consistency. |
+| `/agent-memory consolidate`   | Promote useful facts; prune closed-session noise (guided).       |
 
 ## Hooks
 
 Optional lifecycle hooks keep `.agents/memory/` current **during** agent work
 with deterministic checkpoints (no LLM loops): session binding, _Touched files_,
 `log.md` path bullets on full checkpoints, `current.md` _In progress_ on session
-start.
+start. Hooks never copy docs and never consolidate.
 
-**Semantic** content stays agent-owned (or `/agent-memory sync`): decisions,
-progress notes, log summary/type, lazy files.
+**Semantic** content stays agent-owned (or `/agent-memory sync` /
+`consolidate`): decision pointers, progress notes, log outcomes, learnings.
 
 Install steps, event matrix, and project-dir resolution:
 [`hooks/README.md`](./hooks/README.md).

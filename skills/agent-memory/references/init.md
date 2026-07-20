@@ -100,7 +100,7 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
    ```yaml
    ---
-   applyTo: '**'
+   applyTo: "**"
    ---
    ```
 
@@ -152,9 +152,9 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
    skeleton created, carrier file(s) wired or skipped (and why — delegation,
    copilot coexistence, idempotency), orphan-block offers, hook-install
    commands printed (or skipped for missing harness dirs), and suggest
-   `bootstrap` / `sync` next steps. For Cursor, note that **hooks are the
-   recommended checkpoint integration** (user-installed) and **`.mdc` is the
-   context layer**.
+   `bootstrap` (source inventory / gaps — not doc copies) / `sync` next steps.
+   For Cursor, note that **hooks are the recommended checkpoint integration**
+   (user-installed) and **`.mdc` is the context layer**.
 
 ## Auto-detection (`init` without `<harness>`)
 
@@ -199,10 +199,10 @@ distinct carriers → write the block in each file that is an effective carrier.
 
 ## Notes
 
-- Do not populate the memory here — `init` only scaffolds. To fill it from the
-  codebase, the user runs `/agent-memory bootstrap`. If product vision is
-  unclear, ask the user before writing `vision.md` (same rule as `bootstrap` /
-  `sync`).
+- Do not populate the memory here — `init` only scaffolds. To index canonical
+  sources and gaps, the user runs `/agent-memory bootstrap` (pointers, not doc
+  copies). Bootstrap does not invent product vision when docs are missing — it
+  reports the gap.
 - Optional git `pre-commit` hook is **not** wired by `init` — see the
   [hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).
 - **Context vs checkpoint:** native instruction files (`.mdc`, agent `*.md`,

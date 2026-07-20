@@ -38,7 +38,7 @@ if command -v git >/dev/null 2>&1 && git -C "$cwd" rev-parse --git-dir >/dev/nul
   refresh_current_in_progress
 fi
 
-msg="Agent Memory (.agents/memory/). Before tasks: read instructions.md, index.md, current.md, and your branch active-work file. As you work: refine active-work Task/Progress, append semantic bullets under the current session heading in log.md, and record every architecture/design decision in decisions.md. Hooks keep Touched files, log file-bullets, and current.md In progress synced — you own task meaning, log type/summary, and decisions.md. Run /agent-memory sync at checkpoints (end of task, before commit/compaction)."
+msg="Agent Memory: recall layer in .agents/memory/ — not a docs mirror. Before tasks: read instructions.md, index.md, current.md, and your branch active-work. Write links/deltas, not copies. Hooks sync Touched files, log path bullets, and current.md In progress; you own meaning (task, outcomes, decisions, learnings). Run /agent-memory sync at checkpoints."
 
 json_escape() {
   local s=$1

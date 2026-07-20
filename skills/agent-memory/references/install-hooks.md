@@ -105,8 +105,9 @@ prerequisite dir exists.
 
 Hooks run a **deterministic checkpoint** — `active-work/` (Touched files, Task
 stub), `log.md` (session heading on session start + file-path bullets), and
-`current.md` _In progress_ on session start. Semantic log text and
-`decisions.md` stay agent-owned. See the
+`current.md` _In progress_ on session start. Semantic log text, decision
+pointers / fallbacks, learnings, and consolidation stay agent-owned (or
+`/agent-memory consolidate`). Hooks never copy project docs. See the
 [hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).
 
 Optional git `pre-commit` is **not** installed by this command — see the same

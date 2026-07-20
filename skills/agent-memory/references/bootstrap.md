@@ -1,7 +1,8 @@
 # `/agent-memory bootstrap`
 
-Analyze the project and populate the memory with real content. Uses three
-analyses that run as subagents when the host supports them.
+Analyze the project and populate the memory as a **source inventory + gaps** —
+not a parallel wiki. Uses three analyses that run as subagents when the host
+supports them.
 
 ## Steps
 
@@ -16,42 +17,58 @@ analyses that run as subagents when the host supports them.
 3. **Run the three analyses.** Launch them as **parallel subagents** if the host
    supports subagents (e.g. Claude Code's Task/Agent tool). If it does not, run
    the same three analyses **sequentially** in the current agent.
-   - **A — Documentation.** Read `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, then
-     `README.md` and other `.md` docs. Extract: product purpose, scope, goals.
-   - **B — Structure.** Map the repo layout: backend, frontend, database,
-     services, and the major areas/modules.
-   - **C — Technologies.** Identify the main languages, frameworks, and tooling,
-     and determine what kind of project it is.
+   - **A — Source inventory.** Locate agent files (`AGENTS.md`, `CLAUDE.md`,
+     `GEMINI.md`), README, docs indices, specs, ADRs/decision systems, roadmaps,
+     and issue references. For each entry point: what type of information it
+     owns and when to read it. Return entry points + gaps only — never paste
+     document bodies.
+   - **B — Structure evidence.** Map modules and entry points from paths /
+     manifests. Check whether that structure is already documented. Return only
+     useful gaps or divergences (documented vs actual layout).
+   - **C — Tooling and behavior evidence.** Identify stack and commands from
+     manifests/configs. Check coverage in AGENTS/README. Return only
+     undocumented or contradictory facts with evidence paths.
 
-4. **Vision gate.** Before writing `vision.md`, if purpose or scope is unclear
-   from the analyses, **ask the user** — do not invent product goals.
+4. **Synthesize and write (inventory-first, skip empties).** Wait for all three,
+   then fill memory **without copying docs**:
 
-5. **Synthesize and write (skip empties).** Wait for all three, then fill memory
-   files only where there is real content — respect the lazy principle, do not
-   create shallow placeholders:
+   | Source       | Writes to                                                   |
+   | ------------ | ----------------------------------------------------------- |
+   | A (sources)  | `index.md` → _Canonical project sources_ (few entry points) |
+   | A (ADRs)     | `decisions.md` — optional single pointer to ADR index/dir   |
+   |              | when a decision system exists and is useful for continuity  |
+   | B + C (gaps) | `learnings.md` — **only** stable, evidenced, undocumented   |
+   |              | facts that pass the gate in `instructions.md`               |
+   | synthesis    | `log.md` — one bootstrap session entry                      |
 
-   | Source        | Writes to                                            |
-   | ------------- | ---------------------------------------------------- |
-   | A (docs)      | `vision.md` (after vision gate)                      |
-   | B (structure) | `architecture.md`, `domains/*.md` (per major area)   |
-   | C (tech)      | `architecture.md` (stack), `patterns.md`             |
-   | synthesis     | `current.md` (state/version), `log.md` session entry |
+   Rules:
+   - Do **not** create `vision.md`, `architecture.md`, `patterns.md`,
+     `mistakes.md`, `known-issues.md`, `domains/*`, or `features/*`.
+   - Do **not** invent product vision/scope. If purpose/scope is undocumented,
+     report the gap — do not write a vision file.
+   - Leave `current.md` with empty placeholders if there is no active work — do
+     not invent milestones, Done lists, or roadmaps.
+   - Leave `active-work/` with only its `TEMPLATE.md`.
+   - Do **not** invent decisions — only point at an existing ADR index/dir when
+     helpful, or leave `decisions.md` empty.
+   - Create `learnings.md` only when at least one fact passes the gate
+     (reusable, undocumented, non-obvious, evidenced, no secrets). Mark facts
+     that should become official docs with `pending-doc`. Link `learnings.md`
+     from `index.md` when created.
+   - Append to `log.md` using the per-session format in `instructions.md`, e.g.
+     `## [YYYY-MM-DD] [docs] bootstrap source inventory` with bullets listing
+     sources indexed / learnings created / gaps reported.
+   - Keep every `index.md` source line to: link + what it owns + when to read.
 
-   - **Register every created lazy file and every `domains/*.md` /
-     `features/*.md` in `index.md`** (under the matching section, replacing
-     `_None yet._`). Otherwise `lint` will flag orphans.
-   - Append to `log.md` using the per-session format in `instructions.md` (one
-     heading + bullets), e.g. `## [YYYY-MM-DD] [docs] bootstrap initial memory`
-     with a bullet list of files created.
-   - Leave `active-work/` with only its `TEMPLATE.md` (no branch files), and
-     **do not invent** decisions — `decisions.md` stays empty unless a genuine,
-     already-made trade-off is documented in the project.
-
-6. **Report.** List which files were created/filled and which were skipped (and
-   why), so the user can fill the gaps later. If vision was uncertain, note what
-   still needs user input. Tell the user to run `/agent-memory sync` at
-   checkpoints to keep `current.md`, active-work, `log.md`, and `index.md`
-   current.
+5. **Report.** Group clearly:
+   - **Sources indexed** — paths linked in `index.md`.
+   - **Gaps kept as learnings** — with evidence.
+   - **Contradictions** — need a user decision.
+   - **Missing documentation recommended** — suggested external paths (skill
+     does **not** create those docs).
+   - **Ignored** — transient or already covered by a source.
+     Tell the user to run `/agent-memory sync` at checkpoints and
+     `/agent-memory consolidate` periodically to prune noise.
 
 ## Subagent prompts
 
@@ -59,26 +76,27 @@ Pass each analysis to a subagent with `Task` (read-only). Replies must be short
 and high-signal — they feed the memory, where tokens matter. **If subagents are
 unavailable, run the three prompts yourself, in order.**
 
-- **A — Documentation:**
+- **A — Source inventory:**
 
-  > Read-only task. Read the project's agent/instruction files (`AGENTS.md`,
-  > `CLAUDE.md`, `GEMINI.md`), then `README.md` and other top-level `*.md` docs.
-  > Do not read source code. Return, in ≤150 words: the product purpose (1–2
-  > sentences), scope/goals (bullets), and any stated conventions or
-  > constraints. Cite the file for each fact. If something is not documented,
-  > say so — never invent.
+  > Read-only task. Inventory project documentation entry points: agent files
+  > (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`), `README.md`, docs indices, specs,
+  > ADRs/decision folders, roadmaps, notable issue/tracker links in docs. Do not
+  > paste document bodies. Return ≤150 words: a bullet list of paths, each with
+  > (1) what information type it owns and (2) when an agent should read it.
+  > Flag gaps (e.g. no ADR system, no product docs). Never invent sources.
 
-- **B — Structure:**
+- **B — Structure evidence:**
 
-  > Read-only task. Map the repository layout. Identify backend, frontend,
-  > database, services, and the major modules/areas. Return a concise list of
-  > top-level areas, each with its role and key entry-point path(s). Flag
-  > anything ambiguous. Classify from paths and manifests; avoid reading file
-  > bodies unless necessary.
+  > Read-only task. Map the repository layout from paths and manifests. Identify
+  > major modules/areas and key entry-point paths. Check whether README/docs/
+  > AGENTS already describe that structure. Return ≤150 words: only gaps or
+  > divergences (documented vs actual), each with evidence paths. If structure
+  > is already well documented, say so and return no memory candidates.
 
-- **C — Technologies:**
+- **C — Tooling and behavior evidence:**
+
   > Read-only task. From manifests (`package.json`, `pyproject.toml`, `go.mod`,
-  > `Cargo.toml`, etc.) and config files, identify the main languages,
-  > frameworks, and build/test tooling, and decide the project type (web app,
-  > library, CLI, service, monorepo…). Return: the stack (bullets), notable
-  > tooling, and a one-line project-type verdict with the evidence (which file).
+  > `Cargo.toml`, etc.) and config, identify stack and build/test commands.
+  > Check whether AGENTS/README already cover them. Return ≤150 words: only
+  > undocumented or contradictory facts, each with evidence file. Skip anything
+  > already clearly documented. Never invent.

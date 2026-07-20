@@ -1,55 +1,22 @@
 # Memory Index
 
-Map and entry point. Read this, `current.md`, and your branch's active-work file
-before any task; see `instructions.md` for the full method.
+Map of canonical sources and recall files. Before any task: read this, `current.md`, and your branch `active-work` file. Method: `instructions.md`.
 
-**Keep this file aligned** with the memory tree: every lazy file and every
-`domains/*.md` / `features/*.md` entry must be linked here; remove links when
-files are deleted. `index.md` is updated at checkpoints and by
-`/agent-memory sync` (domains/features discovery) — you must also update it when
-you create or rename lazy files by hand.
+Keep aligned with useful entry points only (what they own + when to read). `/agent-memory sync` may add/remove recall links — it does not re-index the whole docs tree.
 
-## Loading policy
+## Read first
 
-- **Always load** (before any task): this `index.md`, `current.md`, and your
-  branch's `active-work/<branch>.md`. (`instructions.md` is attached via your
-  agent file.) That is the minimal context.
-- **Load on demand**: everything else — including `decisions.md` and `log.md` —
-  when the task needs it. Use the lists below to find it.
+- [current.md](./current.md) — shared active state.
+- `active-work/<branch>.md` — branch scratchpad (see `instructions.md` → _Branch work_).
 
-## Core files
+## Canonical project sources
 
-- [instructions.md](./instructions.md) — the method.
-- [current.md](./current.md) — shared project state.
-- `active-work/` — per-branch scratchpad (see `instructions.md` → _Per-branch
-  active work_).
-- [decisions.md](./decisions.md) — decisions + reasoning.
-- [log.md](./log.md) — chronological activity (per-session headings + bullets).
+- _None yet — run `/agent-memory bootstrap` or add links._ Shape: `[AGENTS.md](../../AGENTS.md) — mandatory agent rules; read before structural changes.`
 
-## Lazy files (created on demand; link them here once real)
+## Recall files
 
-| File                                 | Purpose                                                       |
-| ------------------------------------ | ------------------------------------------------------------- |
-| [vision.md](./vision.md)             | Product purpose, scope, goals — ask the user if uncertain.    |
-| [architecture.md](./architecture.md) | Components, stack, major flows — update on structural change. |
-| [patterns.md](./patterns.md)         | Coding conventions — align with agent instruction files.      |
-| [mistakes.md](./mistakes.md)         | Pitfalls to avoid.                                            |
-| [known-issues.md](./known-issues.md) | Bugs, limitations, debt.                                      |
+- [decisions.md](./decisions.md) — decision pointers or local fallback.
+- [log.md](./log.md) — recent session deltas.
+- `learnings.md` — optional; create when the gate in `instructions.md` passes, then link here.
 
-Also `domains/*.md` and `features/*.md` — one file per major area or user-facing
-capability; link under _Domains_ / _Features_ below.
-
-## Domains
-
-Technical or structural areas (backend, API, infra, packages). Add a link when
-you create `domains/<name>.md`; remove when the file is deleted.
-
-_None yet._
-
-## Features
-
-User-facing or product capabilities. Add a link when you create
-`features/<name>.md`; remove when the file is deleted. If the project has no
-feature-level docs, leave this section as _None yet._
-
-_None yet._
+Legacy mirrors (`vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*`, …) may exist — convert via `lint` / `consolidate`; do not recreate.

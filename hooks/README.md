@@ -11,10 +11,12 @@ Optional hooks that keep agent-memory current during real work. They run a
   reconciliation: session-cumulative _Touched files_ + new file bullets under
   the current `log.md` session heading
 
-**Still manual (agent or `/agent-memory sync`):** semantic `log.md` bullets and
-summary/type, `decisions.md` (required when decisions change), active-work
-Progress/Blockers/Notes, `current.md` _Done_ / _Next steps_, `index.md` lazy
-links, `architecture.md`, `patterns.md`, `vision.md` (ask user if uncertain).
+**Still manual (agent or `/agent-memory sync`):** semantic `log.md` outcome
+bullets and summary/type; active-work Progress/Blockers/Notes; `current.md`
+_Blockers / attention_ and _Handoff_; `index.md` canonical-source and recall
+links; `decisions.md` (ADR pointers or local fallback); `learnings.md` when the
+gate passes. Promotion/pruning of closed-session noise is
+`/agent-memory consolidate` only — never automatic.
 
 ## TL;DR
 
@@ -202,17 +204,25 @@ Canonical **memory contract** (hooks vs agent, all harnesses): `instructions.md`
 → _Harness parity — memory contract_. The table below is a summary; do not drift
 from the contract.
 
-| Field                         | Hook updates?                                |
-| ----------------------------- | -------------------------------------------- |
-| `active-work` → Touched files | Yes (session-cumulative; git + stdin paths)  |
-| `active-work` → Task stub     | Yes (from branch name when placeholder)      |
-| `log.md` → session heading    | Yes (session start or first checkpoint)      |
-| `log.md` → file bullets       | Yes (full checkpoints only — from `git`)     |
-| `log.md` → semantic bullets   | **No** — agent or `/agent-memory sync`       |
-| `current.md` → In progress    | Yes (on session start from `active-work/`)   |
-| `current.md` → Done / Next    | **No** — agent or `/agent-memory sync`       |
-| `decisions.md`                | **No** — agent (required on decision change) |
-| `.hook-sync-state`            | Yes (session ID, logged/touched paths, etc.) |
+| Field                             | Hook updates?                                |
+| --------------------------------- | -------------------------------------------- |
+| `active-work` → Touched files     | Yes (session-cumulative; git + stdin paths)  |
+| `active-work` → Task stub         | Yes (from branch name when placeholder)      |
+| `log.md` → session heading        | Yes (session start or first checkpoint)      |
+| `log.md` → file bullets           | Yes (full checkpoints only — from `git`)     |
+| `log.md` → semantic bullets       | **No** — agent or `/agent-memory sync`       |
+| `current.md` → In progress        | Yes (on session start from `active-work/`)   |
+| `current.md` → Blockers / Handoff | **No** — agent or `/agent-memory sync`       |
+| `decisions.md`                    | **No** — agent (pointers / local fallback)   |
+| `learnings.md`                    | **No** — agent (on-demand, evidenced)        |
+| Consolidation / pruning           | **No** — `/agent-memory consolidate` only    |
+| `.hook-sync-state`                | Yes (session ID, logged/touched paths, etc.) |
+
+Hooks write **operational evidence only**. They never read, consult, or copy
+project docs/ADRs to fill memory; never promote decisions/learnings; and never
+run consolidation. Path bullets in `log.md` are temporary evidence; agents may
+prune closed-session path noise via `/agent-memory consolidate` (never
+automatically).
 
 ### Log format
 

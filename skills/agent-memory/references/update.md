@@ -11,8 +11,8 @@ installer).
 ## Boundary (read before doing anything)
 
 - **Project memory (NEVER touch):** `current.md`, `active-work/*`,
-  `decisions.md`, `log.md`, `domains/*`, `features/*`, and any user-authored
-  content.
+  `decisions.md`, `log.md`, `learnings.md`, legacy `domains/*` / `features/*`,
+  and any other user-authored recall content.
 - **Scaffolding (may change, see rules):** `instructions.md`, the structural
   sections of `index.md`, the `.version` file, brand-new core files, and the
   agent-memory block in harness instruction files.
@@ -61,8 +61,10 @@ carrier rules):
      - `instructions.md` when the installed copy differs from the skill's
        current `vendor/memory/instructions.md` (identical → nothing to do).
      - Any change to a file that can hold user content — including `index.md`
-       (merge structural sections, **preserve the user's Domains/Features
-       lists**).
+       (merge structural sections; **preserve** the user's _Canonical project
+       sources_ and _Recall files_ lists, including `learnings.md` / topic
+       splits). Legacy Domains/Features sections are not auto-preserved —
+       convert them to pointers via `lint` / `consolidate`.
      - Any rename, move, or deletion.
    - **Skip superseded items** — e.g. do **not** agent-merge `.cursor/hooks.json`
      for `afterFileEdit` when `UPDATE.md` marks that 0.0.10 sensitive step as

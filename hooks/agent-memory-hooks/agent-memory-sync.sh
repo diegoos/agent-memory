@@ -74,6 +74,18 @@ normalize_repo_rel_path() {
   printf '%s' "$rel"
 }
 
+# Git-free: merge stdin path into session touched set; no log.md bullets.
+# Defined before the postToolUse early-exit path so the function is in scope.
+run_posttool_checkpoint() {
+  local rel=$1 aw accumulated
+  rel=$(normalize_repo_rel_path "$rel") || return 0
+  accumulated=$(read_state session_touched_files "")
+  file_already_logged "$rel" "$accumulated" && return 0
+  aw=$(ensure_active_work)
+  add_touched_file "$aw" "$rel"
+  update_task_stub "$aw"
+}
+
 case "$event" in
   postToolUse)
     agent_memory_include_commit_files=0
@@ -92,17 +104,6 @@ mark_head_processed() {
   current_head=$(git -C "$cwd" rev-parse HEAD 2>/dev/null || true)
   [ -n "$current_head" ] || return 0
   write_state last_processed_head "$current_head"
-}
-
-# Git-free: merge stdin path into session touched set; no log.md bullets.
-run_posttool_checkpoint() {
-  local rel=$1 aw accumulated
-  rel=$(normalize_repo_rel_path "$rel") || return 0
-  accumulated=$(read_state session_touched_files "")
-  file_already_logged "$rel" "$accumulated" && return 0
-  aw=$(ensure_active_work)
-  add_touched_file "$aw" "$rel"
-  update_task_stub "$aw"
 }
 
 run_full_checkpoint() {
