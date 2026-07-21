@@ -98,7 +98,7 @@ function extractConversationId(input: unknown): string | undefined {
 
 /**
  * Env keys forwarded to hook scripts (avoid leaking full parent env).
- * Keep in sync with bin/agent-memory.js ENV_ALLOWLIST_EXACT.
+ * Keep in sync with install.ts ENV_ALLOWLIST_EXACT.
  */
 const ENV_ALLOWLIST_EXACT = new Set([
   'PATH',

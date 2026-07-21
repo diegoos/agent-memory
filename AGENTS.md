@@ -19,8 +19,9 @@ hooks/                        # outside the skill — user-run install
 ├── <harness>/                # cursor, claude-code, …
 └── README.md
 
-bin/agent-memory.js           # npx CLI (install hooks)
-package.json
+install.ts                    # CLI source (Bun build)
+bin/cli.js                    # npx CLI (skill + hooks)
+package.json                  # SoT: package / skill / hooks version
 
 CHANGELOG.md
 ```
@@ -35,16 +36,19 @@ CHANGELOG.md
     memory contract_ (canonical; link, do not copy)
   - Migrations: `skills/agent-memory/vendor/UPDATE.md`
   - Release history: `CHANGELOG.md` ([Keep a Changelog][kac], [SemVer][semver])
+  - Package / skill / hooks version: `package.json` `version` (mirror into
+    `skills/agent-memory/SKILL.md` → `metadata.version`)
 - **Always edit** `skills/agent-memory/vendor/` — never invent a repo-root
   `agent-memory/` path for writes.
-- **Version bumps** — only when requested: add a `## <version>` section to
-  `skills/agent-memory/vendor/UPDATE.md`, bump `metadata.version` in
-  `skills/agent-memory/SKILL.md`, bump `package.json` `version` (CLI reads it),
-  align examples in `references/init.md`, `references/install-hooks.md`,
-  `hooks/README.md`, and root `README.md`, keep `install-hooks.sh` fallback
-  version in sync if present, and add a matching `[<version>]` entry to
-  `CHANGELOG.md` (human-oriented; map `safe`/`sensitive` items from `UPDATE.md`
-  into Added / Changed / Removed / Fixed / Security — do not dump git logs).
+- **Version bumps** — only when requested: bump `package.json` `version` (SoT),
+  mirror it into `skills/agent-memory/SKILL.md` → `metadata.version`, add a
+  `## <version>` section to `skills/agent-memory/vendor/UPDATE.md` when memory
+  scaffolding/migrations change, align pinned examples in `references/init.md`,
+  `references/install-hooks.md`, `hooks/README.md`, and root `README.md`, keep
+  `install-hooks.sh` fallback version in sync if present, and add a matching
+  `[<version>]` entry to `CHANGELOG.md` (human-oriented; map `safe`/`sensitive`
+  items from `UPDATE.md` into Added / Changed / Removed / Fixed / Security — do
+  not dump git logs).
 - **Skill boundary** — `/agent-memory` is manual-only
   (`disable-model-invocation: true`). Never auto-trigger it; follow `SKILL.md`
   and the matching `references/<command>.md` when the user invokes a subcommand.
@@ -52,7 +56,7 @@ CHANGELOG.md
 - **Hooks** — live under repo-root `hooks/` (**not** inside the skill). Shared
   scripts in `hooks/agent-memory-hooks/` (`common`, `sync`, `session`);
   per-host config in `hooks/<harness>/`. User installs via
-  `hooks/install-hooks.sh` or `npx` CLI (`bin/agent-memory.js`).
+  `hooks/install-hooks.sh` or `npx` CLI (`install.ts` → `bin/cli.js`).
   Deterministic checkpoint: session-cumulative `active-work/` _Touched files_,
   `log.md` file bullets on full checkpoints only, `current.md` _In progress_ on
   session start — no LLM loops (`followup_message` on Cursor `stop` is

@@ -24,7 +24,14 @@ Install with the user-run installer (review first):
 
 ```bash
 npx @dosx/agent-memory install hooks <harness>
+# TTY: multi-select harnesses (Space toggle, Enter confirm):
+npx @dosx/agent-memory install hooks
+# Skill only (no hooks):
+npx @dosx/agent-memory install skill
 # or: bash hooks/install-hooks.sh <harness>
+# Refresh skill + installed hooks (stamps hooks/.version from package.json):
+npx @dosx/agent-memory update
+# or: npx @dosx/agent-memory update --yes
 ```
 
 The installer creates the harness directory (e.g. `.cursor/`) if it is missing.

@@ -1,9 +1,14 @@
 {
   "name": "@dosx/agent-memory",
-  "version": "0.0.13",
-  "description": "Local Markdown workspace memory for AI coding agents (Cursor, Claude Code, Codex, OpenCode, Copilot, Gemini). npx CLI installs harness lifecycle hooks; install the skill with npx skills add — no server, vector DB, or embeddings.",
+  "version": "0.0.14",
+  "description": "Local Markdown workspace memory for AI coding agents (Cursor, Claude Code, Codex, OpenCode, Copilot, Gemini). npx CLI installs the skill into .agents/skills/ and harness lifecycle hooks — no server, vector DB, or embeddings.",
   "bin": {
-    "agent-memory": "bin/agent-memory.js"
+    "agent-memory": "bin/cli.js"
+  },
+  "scripts": {
+    "build": "bun build ./install.ts --outfile bin/cli.js --target node --format cjs --banner '#!/usr/bin/env node' --minify",
+    "test": "bash tests/reference-first-contract.sh && bash tests/hooks-checkpoint.sh",
+    "prepublishOnly": "bun run build"
   },
   "files": [
     "bin/",
@@ -18,5 +23,8 @@
     "url": "git+https://github.com/diegoos/agent-memory.git"
   },
   "license": "MIT",
-  "packageManager": "pnpm@11.11.0+sha512.4463f65fd80ed80d69bc1d4bf163ee94f605c7380fc318bb5b2ebe15f8cd12d49c51a4d59e951b401e764d3b6ca751cbf51bc50ed7001a6bcb4935e684c34882"
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "bun-types": "^1.3.14"
+  }
 }
