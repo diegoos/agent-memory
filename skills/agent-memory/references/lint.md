@@ -39,12 +39,13 @@ confirmation. Semantic promotion/pruning belongs to `/agent-memory consolidate`
      grep -q '^## Touched files' "$f" || echo "missing-heading: $f ## Touched files"
    done
 
-   # Session headings in log.md (ignore fenced examples and the title)
+   # Session headings in log.md (ignore fenced examples, title, and Format docs)
    # Real entries: ## [YYYY-MM-DD] … — warn on other ## headings outside fences
    awk '
      /^```/ { fence = !fence; next }
      fence { next }
      /^# / { next }
+     /^## Format($| )/ { next }
      /^## / && $0 !~ /^## \[[0-9]{4}-[0-9]{2}-[0-9]{2}\]/ {
        print "bad-log-heading: " $0
      }
