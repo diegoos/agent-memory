@@ -401,5 +401,9 @@ Format:
 - safe: Cross-package docs pin `hooks/README.md` / examples to `0.0.14`.
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.14`; routing
   includes `consolidate`.
-- safe: root `package.json` — version bumped to `0.0.14`; `npm test` runs
+- safe: root `package.json` — version bumped to `0.0.14`; `bun run test` runs
   contract + hooks checkpoint fixtures.
+- safe: CLI — `install.ts` → `bin/cli.js` (Bun); `install skill` / `install hooks`
+  / `update`; hook `$hooksDir/.version` stamps; `package.json` version is SoT.
+  Re-run `npx @dosx/agent-memory update` (or install) after upgrading the npm
+  package. Memory migration remains `/agent-memory update` in-agent.

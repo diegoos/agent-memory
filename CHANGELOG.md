@@ -13,6 +13,58 @@ human-oriented release history — keep both in sync on version bumps.
 
 ## [Unreleased]
 
+## [0.0.14] - 2026-07-20
+
+### Added
+
+- `/agent-memory consolidate` — guided promotion and pruning of closed-session
+  noise (confirm each diff; no `--auto`; never from hooks/sync/lint).
+- Optional on-demand `learnings.md` for evidenced facts with no better canonical
+  source (`pending-doc` when an external doc is still needed).
+- `tests/reference-first-contract.sh` and `tests/hooks-checkpoint.sh`;
+  `bun run test` runs both.
+- New Bun-built CLI (`install.ts` → `bin/cli.js`):
+  - `install skill` — copy packaged skill to `.agents/skills/agent-memory/`
+    (replaces `npx skills add` as the primary path).
+  - `install hooks` — headless one harness, or TTY multi-select (Space/Enter).
+  - `install` / `install <harness>` — TTY menus for skill and/or hooks.
+  - `update` / `update --yes` — refresh skill and/or installed hooks when behind
+    `package.json` version; never edits `.agents/memory/` (points user to
+    `/agent-memory update` or `init` **in the coding-agent chat**).
+  - Colored output (`NO_COLOR` / `FORCE_COLOR`); clearer post-install Next steps.
+- Hook installer stamps `$harnessHooksDir/.version` with `package.json` version
+  (CLI `update` compares stamps to decide which harnesses to refresh).
+
+### Changed
+
+- Memory is a **recall layer**: prefer links/deltas over copying project docs,
+  ADRs, or AGENTS content (reference-first contract).
+- Slim always-load contract and skeleton templates (`instructions`, `index`,
+  `current`, `log`, `decisions`, active-work template).
+- Shorter harness agent-memory block and session-start hook message.
+- `bootstrap` inventories sources/gaps (no vision/architecture/patterns
+  mirrors); `sync` stays on four files; `lint` soft budgets, exact-dup warnings,
+  and `## Format` allowlist in `log.md`; soft budgets live in the lint reference
+  only.
+- `current.md` drops Version/Done/Next — active state only.
+- Cross-package pins and examples use `0.0.14` (including manual README
+  `git clone --branch 0.0.14`).
+- Removed `bin/agent-memory.js`; project build/test tooling is Bun-only
+  (`bun run build` with `--minify`, `bun run test`).
+- Single version SoT is `package.json` `version` (mirrored to `SKILL.md`
+  `metadata.version`); CLI and hook stamps use that value.
+
+### Fixed
+
+- Hook `postToolUse` path: `run_posttool_checkpoint` defined before use.
+- Broken section anchors after contract compression (`Workflow`, `Branch work`,
+  harness parity).
+- CLI package-root resolution uses `process.argv[1]` (avoids Bun baking a
+  build-time `__dirname`, which broke `npx` consumers).
+- CLI `update` refreshes installed hooks even when the skill is not present.
+- `lint` no longer false-positives `bad-log-heading` on the skeleton `## Format`
+  docs section in `log.md`.
+
 ## [0.0.13] - 2026-07-12
 
 ### Changed
@@ -342,7 +394,8 @@ human-oriented release history — keep both in sync on version bumps.
 
 - Initial Agent Memory method, skill, and `.agents/memory/` skeleton.
 
-[unreleased]: https://github.com/diegoos/agent-memory/compare/0.0.13...HEAD
+[unreleased]: https://github.com/diegoos/agent-memory/compare/0.0.14...HEAD
+[0.0.14]: https://github.com/diegoos/agent-memory/compare/0.0.13...0.0.14
 [0.0.13]: https://github.com/diegoos/agent-memory/compare/0.0.12...0.0.13
 [0.0.12]: https://github.com/diegoos/agent-memory/compare/v0.0.11...v0.0.12
 [0.0.11]: https://github.com/diegoos/agent-memory/compare/v0.0.10...v0.0.11
