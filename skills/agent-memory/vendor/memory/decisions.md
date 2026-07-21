@@ -1,29 +1,32 @@
 # Decisions
 
-Important architecture and design decisions with reasoning. Oldest first —
-append new entries at the **bottom**. On merge conflicts, keep both.
-
-**You MUST record decisions here** when you make, confirm, or **change** a
-non-trivial choice (library, pattern, API shape, data model, security trade-off,
-etc.). When superseding a prior decision, add a new entry that references it.
+Pointers to the project's ADR / decision system, or a local fallback when none exists. Oldest first — append at the **bottom**. On conflict, keep both. Record when you make, confirm, or change a non-trivial choice; do not copy ADR bodies or index every ADR.
 
 ## When to record
 
-- Choosing between viable approaches (and why the others were rejected).
-- Adopting or changing a convention that affects more than one file.
-- Any decision a future agent would need to avoid re-litigating.
+Viable approach trade-offs; conventions spanning files; anything a future agent would re-litigate. Skip trivial renames, obvious fixes, formatting-only changes.
 
-Skip: trivial renames, obvious bug fixes, formatting-only changes.
-
-## Format (concise ADR)
+## Format — pointer (preferred)
 
 ```md
 ## [YYYY-MM-DD] Short title
 
-**Context:** what problem or choice prompted this. **Decision:** what was
-decided. **Why:** reasoning and alternatives considered. **Consequences:**
-follow-ups, constraints, or files affected (optional).
+- Source: [ADR-012](../../docs/adr/012.md)
+- Relevance: constraint the next agent must know.
 ```
+
+## Format — local fallback
+
+```md
+## [YYYY-MM-DD] Short title
+
+- Context: concise problem.
+- Decision: chosen option.
+- Why: decisive trade-off only.
+- Consequence: constraint or follow-up.
+```
+
+Replace a local body with a pointer during `/agent-memory consolidate` once an external ADR exists.
 
 ---
 

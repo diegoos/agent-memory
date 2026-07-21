@@ -367,3 +367,43 @@ Format:
   `0.0.13` (blob / github / skills add).
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.13`.
 - safe: root `package.json` — version bumped to `0.0.13`.
+
+## 0.0.14
+
+- sensitive: `instructions.md` — rewritten as a concise recall-layer contract
+  (authority by fact type, retention gate, minimum formats, slim harness parity).
+  Preserve any project-specific notes the user added outside the method; show
+  the full diff and confirm.
+- sensitive: `index.md` — map of canonical sources + recall files (no Domains/
+  Features taxonomy). Merge structural headings; **preserve** the user's
+  _Canonical project sources_ and _Recall files_ lists (including `learnings.md`
+  / topic splits). Do not delete legacy mirror files.
+- sensitive: `current.md` — shared active snapshot only (`In progress`,
+  `Blockers / attention`, `Handoff`). If legacy `Version / milestone`, `Done`,
+  or `Next steps` sections exist, propose removing them after confirming any
+  still-useful bullets move to a canonical source, handoff, or are discarded.
+  Preserve the `## In progress` heading (hooks require it).
+- sensitive: `log.md` / `decisions.md` / `active-work/TEMPLATE.md` — concise
+  reference-first templates. Preserve existing session entries, decisions, and
+  per-branch active-work files; only refresh scaffolding/instructions text and
+  missing required headings.
+- sensitive: harness agent-memory block — shorter recall-layer block from
+  `references/agent-block.md` (Read instructions; links/deltas; sync;
+  consolidate). Refresh delimited blocks with confirmation.
+- safe: add `/agent-memory consolidate` (`references/consolidate.md`) — guided
+  promote/prune; no `--auto`; never run from hooks/sync/lint.
+- safe: `bootstrap` / `sync` / `lint` references — inventory-first bootstrap, no
+  doc copies; sync four-file boundary; lint soft budgets + legacy/dup checks;
+  promotion deferred to consolidate.
+- safe: hooks session message + hooks README — recall-layer context; same
+  checkpoint fields. **User must re-run the hooks installer** to pick up the new
+  session `msg` and any shared-script comment/doc refresh.
+- safe: Cross-package docs pin `hooks/README.md` / examples to `0.0.14`.
+- safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.14`; routing
+  includes `consolidate`.
+- safe: root `package.json` — version bumped to `0.0.14`; `bun run test` runs
+  contract + hooks checkpoint fixtures.
+- safe: CLI — `install.ts` → `bin/cli.js` (Bun); `install skill` / `install hooks`
+  / `update`; hook `$hooksDir/.version` stamps; `package.json` version is SoT.
+  Re-run `npx @dosx/agent-memory update` (or install) after upgrading the npm
+  package. Memory migration remains `/agent-memory update` in-agent.

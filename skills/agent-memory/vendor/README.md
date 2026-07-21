@@ -3,11 +3,11 @@
 A local **Workspace Memory** method for AI coding agents — Claude Code, Cursor,
 Codex, OpenCode, Gemini, and others.
 
-The Memory is a small set of versioned Markdown files in `.agents/memory/` that
-act as the shared source of truth between humans and agents. It separates
-**permanent knowledge** (architecture, decisions, patterns) from **operational
-memory** (current state, in-flight work), so any agent can pick up the project
-without relying on chat history.
+The Memory is a small set of versioned Markdown files in `.agents/memory/`: a
+**recall layer** that points at the project's canonical sources (AGENTS, README,
+specs, ADRs, code) and keeps operational state plus evidenced learnings that
+have no better home. It is **not** a second copy of project documentation. Any
+agent can pick up work without relying on chat history.
 
 The method borrows the _discipline_ of the [llm-wiki pattern][llm-wiki] (an
 index, a chronological log, periodic linting, small cross-referenced files) but
@@ -18,22 +18,24 @@ its identity is **project memory**, not external-source ingestion.
 ## When to use it
 
 Any project where AI agents do meaningful work across multiple sessions, and
-where humans and agents need a single, trustworthy account of "where things
-stand" and "why".
+where humans and agents need a trustworthy account of "where things stand"
+without duplicating existing docs.
 
 ## How agents use it
 
 Agents **read AND write** the memory — it is not chat history.
 
 - **Before a task:** read `index.md`, `current.md`, and the current branch's
-  `active-work/<branch>.md`.
+  `active-work/<branch>.md`. Follow canonical sources listed in `index.md`.
 - **During:** keep that `active-work` file current (task, progress, touched
-  files, blockers); append events to `log.md`; record decisions in
-  `decisions.md`.
-- **After / at checkpoints:** refresh `current.md` when project state changed;
-  run `/agent-memory sync` to flush `current.md`, `active-work`, `log.md`, and
-  `index.md` from repo state; delete the branch's `active-work` file when it
-  merges.
+  files, blockers); append **outcome** bullets to `log.md`; record decisions as
+  **pointers** (or local fallback); add learnings only when evidenced and
+  undocumented elsewhere.
+- **After / at checkpoints:** refresh `current.md` when shared active state
+  changed; run `/agent-memory sync` to flush `current.md`, `active-work`,
+  `log.md`, and `index.md` from repo state; delete the branch's `active-work`
+  file when it merges. Periodically run `/agent-memory consolidate` to promote
+  useful facts and prune closed-session noise.
 
 The full workflow and multi-developer rules live in
 [`memory/instructions.md`](./memory/instructions.md) — the canonical method file
@@ -41,19 +43,19 @@ agents load first.
 
 ## What's inside the memory (`.agents/memory/`)
 
-| File              | Role                                    |
-| ----------------- | --------------------------------------- |
-| `instructions.md` | The canonical method (read this first). |
-| `index.md`        | Map of the Memory.                      |
-| `current.md`      | Shared, durable project state.          |
-| `active-work/`    | Per-branch ephemeral task scratchpad.   |
-| `decisions.md`    | Decisions and their reasoning.          |
-| `log.md`          | Chronological activity log.             |
-| `.gitignore`      | Ignores hook-local state (not content). |
+| File              | Role                                                      |
+| ----------------- | --------------------------------------------------------- |
+| `instructions.md` | The canonical method (read this first).                   |
+| `index.md`        | Map of canonical sources + recall files.                  |
+| `current.md`      | Shared **active** state (in progress / blockers handoff). |
+| `active-work/`    | Per-branch ephemeral task scratchpad.                     |
+| `decisions.md`    | Decision pointers or local fallback ADRs.                 |
+| `log.md`          | Recent session deltas.                                    |
+| `.gitignore`      | Ignores hook-local state (not content).                   |
 
-Other files (`vision.md`, `architecture.md`, `patterns.md`, `mistakes.md`,
-`known-issues.md`, `domains/*`, `features/*`) are created **on demand** — only
-when there is real content to record. See `memory/instructions.md` for the full
+Optional on demand: `learnings.md` — evidenced reusable facts with no better
+source. Do not create parallel vision/architecture/patterns/domains files; link
+the project's own docs instead. See `memory/instructions.md` for the full
 workflow and the multi-developer rules.
 
 ## Install
@@ -72,10 +74,11 @@ Install the `agent-memory` skill
 /agent-memory init opencode     # OpenCode only
 /agent-memory init copilot      # Copilot only
 /agent-memory init gemini       # Gemini only
-/agent-memory bootstrap         # optional: analyze the project and fill the memory
+/agent-memory bootstrap         # optional: inventory sources + gaps
 /agent-memory install hooks <harness>  # print how to install/refresh hooks
 /agent-memory update            # update scaffolding + refresh instruction blocks
 /agent-memory sync              # keep current.md / active-work / log.md / index.md fresh
+/agent-memory consolidate       # promote useful facts; prune closed-session noise
 ```
 
 Without a harness name, `init` **auto-detects** harnesses from project markers
@@ -87,9 +90,10 @@ exist, unless you explicitly ask `init` to create them. Use `init <harness>`
 when you know which agent you use.
 
 The skill installs from the vendored skeleton next to this file (`memory/`) and
-also handles `sync`, `update`, `lint`, and `help`. See [`SKILL.md`](../SKILL.md).
-Hooks are **user-installed** (the skill only prints commands) — see the
-[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).
+also handles `sync`, `update`, `lint`, `consolidate`, and `help`. See
+[`SKILL.md`](../SKILL.md). Hooks are **user-installed** (the skill only prints
+commands) — see the
+[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.14/hooks/README.md).
 
 ### Manual
 
@@ -114,19 +118,20 @@ convention (Claude Code, Gemini CLI, Codex) auto-load `instructions.md`. On
 Cursor, run `init cursor` when `.cursor/` exists — it wires
 `.cursor/rules/agent-memory.mdc` (context layer); install hooks separately. On
 Copilot, run `init copilot` then the hooks installer. See
-_Plain-Markdown harnesses_ in `memory/instructions.md`.
+_Harness parity — memory contract_ in `memory/instructions.md`.
 
 ## Keeping the memory current
 
 The memory rots if agents only read it. The agent-memory block tells them to
 write it too, and `/agent-memory sync` is the executable flush at checkpoints.
+`/agent-memory consolidate` is the guided prune/promote pass — never automatic.
 
 **On Cursor:** `init cursor` wires the **context layer** —
 `.cursor/rules/agent-memory.mdc` (`alwaysApply: true`). Install lifecycle hooks
 separately as the **checkpoint layer**. Run `init` when `.cursor/` already
 exists. See the
-[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).
+[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.14/hooks/README.md).
 
 Lifecycle hooks (Cursor, Claude Code, Codex, OpenCode, Copilot, Gemini, plus git
 `pre-commit`) run a deterministic git checkpoint between turns — same
-[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.13/hooks/README.md).
+[hooks README](https://github.com/diegoos/agent-memory/blob/0.0.14/hooks/README.md).

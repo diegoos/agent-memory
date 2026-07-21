@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOOKS_ROOT="$SCRIPT_DIR"
 SHARED_DIR="$HOOKS_ROOT/agent-memory-hooks"
 
-# Prefer version from CLI / package; fall back for standalone checkout.
+# Prefer version from CLI env; else package.json; fall back for standalone checkout.
 if [[ -n "${AGENT_MEMORY_VERSION:-}" ]]; then
   VERSION="$AGENT_MEMORY_VERSION"
 elif [[ -f "$SCRIPT_DIR/../package.json" ]] && command -v node >/dev/null 2>&1; then
@@ -16,7 +16,7 @@ elif [[ -f "$SCRIPT_DIR/../package.json" ]] && command -v node >/dev/null 2>&1; 
     node -p 'require(process.argv[1]).version' "$SCRIPT_DIR/../package.json" 2>/dev/null || true
   )"
 fi
-VERSION="${VERSION:-0.0.13}"
+VERSION="${VERSION:-0.0.14}"
 
 # Resolve project dir (absolute). Relative AGENT_MEMORY_PROJECT_DIR is allowed.
 # Require an existing directory so realpath and python3 agree (no mkdir surprise).
@@ -352,6 +352,9 @@ main() {
     gemini) install_gemini ;;
   esac
 
+  local hooks_dir
+  hooks_dir="$(hooks_dir_for "$harness")"
+  printf '%s\n' "$VERSION" >"$PROJECT_DIR/$hooks_dir/.version"
   echo "done: agent-memory hooks installed for $harness (v${VERSION})"
 }
 

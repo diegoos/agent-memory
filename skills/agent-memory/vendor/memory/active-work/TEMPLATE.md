@@ -1,26 +1,22 @@
 # Active Work — Branch: `<branch>`
 
-Ephemeral, per-branch scratchpad. On your first task on a branch, copy this file
-to `active-work/<branch>.md` (sanitize the branch name: every character that is
-not a letter, digit, `.`, `_`, or `-` becomes `-`) and set the `Branch:` header
-above to the real branch name. Delete your file when the branch merges.
+Ephemeral per-branch scratchpad. Copy to `active-work/<branch>.md` (sanitize: non `[A-Za-z0-9._-]` → `-`), set the real `Branch:` name, delete on merge. Method: `instructions.md`.
 
 ## Task
 
-**Required.** Hooks seed a stub from the branch name when this is still a
-placeholder; refine from `current.md`, `log.md`, and the user's request — one or
-two concise lines. Semantic task text is your responsibility.
+**Required.** Hooks may seed a branch-name stub; refine to 1–2 lines.
 
 - _No active task._
 
 ## Progress
 
+Outcomes/state — not a command diary.
+
 - _none_
 
 ## Touched files
 
-Hooks refresh this section from `git` between turns. You may add notes in
-_Progress_ or _Notes_ for files that matter semantically.
+Hooks refresh from `git`. Semantic notes go in _Progress_ / _Notes_.
 
 - _none_
 
@@ -29,5 +25,7 @@ _Progress_ or _Notes_ for files that matter semantically.
 - _none_
 
 ## Notes
+
+Resume context only — links/deltas, not copied docs.
 
 - _none_

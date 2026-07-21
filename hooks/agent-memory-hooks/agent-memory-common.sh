@@ -2,12 +2,14 @@
 # Deterministic, evidence-backed updates only (git + harness session ID).
 #
 # Hook-owned memory fields (the agent owns everything else — task meaning,
-# semantic log bullets, decisions.md, Done/Next, index.md — see hooks/README.md
-# "Safe write scope" and instructions.md):
+# semantic log bullets, decision pointers/learnings, blockers/handoff, index.md
+# — see hooks/README.md "Safe write scope" and instructions.md):
 #   active-work/<branch>.md → Touched files (session-cumulative git + stdin paths)
 #   log.md                  → per-session heading (sessionStart), file-path bullets
 #                             (full checkpoints only — not postToolUse/afterFileEdit)
 #   current.md              → In progress list (sessionStart, from active-work/)
+# Hooks never read/consult/copy docs, never write decisions/learnings, and
+# never consolidate.
 #
 # Expects after agent_memory_init_context: cwd, memory, state_file globals.
 
