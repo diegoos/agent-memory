@@ -4,27 +4,8 @@ Skills that operate the [Agent Memory](./agent-memory/vendor/README.md) method.
 
 ## `agent-memory`
 
-A manual-only skill that orchestrates the local memory (a recall layer that
-points at project sources of truth). Invoke it on demand with a subcommand:
+Manual-only skill that orchestrates the local recall layer. See [`agent-memory/SKILL.md`](./agent-memory/SKILL.md) for routing and [`agent-memory/vendor/memory/instructions.md`](./agent-memory/vendor/memory/instructions.md) for the method.
 
-- `/agent-memory init` — create `.agents/memory/` and wire `AGENTS.md` /
-  `CLAUDE.md` / `GEMINI.md` (prints hook-install instructions; does not install
-  hooks).
-- `/agent-memory install hooks` — print how to install or refresh hooks for one
-  harness (user-run `npx` or `install-hooks.sh`).
-- `/agent-memory update` — migrate an existing memory to the latest structure,
-  without touching project memory content; instruct hook refresh.
-- `/agent-memory bootstrap` — inventory canonical sources and gaps; populate
-  pointers (not doc copies).
-- `/agent-memory sync` — refresh `current.md`, the branch's
-  `active-work/<branch>.md`, `log.md`, and `index.md` from repo state.
-- `/agent-memory lint` — check the memory for broken links, orphans,
-  duplication, and consistency problems.
-- `/agent-memory consolidate` — promote useful facts and prune closed-session
-  noise (guided; confirm each diff).
-- `/agent-memory help` — list the commands and how to use them.
+Commands: `init`, `install hooks`, `update`, `bootstrap`, `sync`, `lint`, `consolidate`, `help`.
 
-The skill is thin: it installs and migrates from the **vendored** skeleton
-([`agent-memory/vendor/memory/`](./agent-memory/vendor/memory)) and migration log
-([`agent-memory/vendor/UPDATE.md`](./agent-memory/vendor/UPDATE.md)). See
-[`agent-memory/SKILL.md`](./agent-memory/SKILL.md) for the full method.
+`init` wires harness-native instruction files (`.cursor/rules/*.mdc`, `.github/instructions/*.instructions.md`, or `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`). Hooks are user-installed separately.

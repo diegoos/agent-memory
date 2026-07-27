@@ -1,7 +1,6 @@
 # The agent-memory block
 
-Canonical block for `init` / `update` — do not duplicate this text elsewhere.
-Write targets and carrier rules: `references/init.md`.
+Canonical block for `init` / `update` — do not duplicate this text elsewhere. Write targets and carrier rules: `references/init.md`.
 
 | Harness  | File                                                   |
 | -------- | ------------------------------------------------------ |
@@ -21,9 +20,10 @@ Write targets and carrier rules: `references/init.md`.
 
 Local **recall** layer in `.agents/memory/` — not a docs mirror. **Before any
 task**, Read `.agents/memory/instructions.md`, then `index.md`, `current.md`,
-and your branch file under `active-work/`. Write **links and deltas**, not
-copies. At checkpoints run `/agent-memory sync`. Delete branch active-work on
-merge; periodically run `/agent-memory consolidate`.
+and your branch file under `active-work/` when it exists. Write **links and
+deltas**, not copies. Keep resume fields actionable (next step + validation).
+At checkpoints run `/agent-memory sync`. Delete branch active-work on merge;
+periodically run `/agent-memory consolidate`.
 
 @.agents/memory/instructions.md
 
@@ -51,11 +51,6 @@ applyTo: "**"
 
 ## Notes
 
-- Delimiters `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` let `update`
-  replace only this block. Legacy plain `<agent-memory>` tags migrate to comments.
-- Explicit **Read** `instructions.md` covers plain-Markdown / Cursor rules;
-  `@import` covers Claude/Gemini/Codex. Keep the block short — method details
-  stay in `instructions.md` → _Harness parity — memory contract_ and the
-  [hooks README](https://github.com/diegoos/agent-memory/blob/0.0.14/hooks/README.md).
-- Compare installed vs canonical byte-for-byte (body only for `.mdc`); identical
-  → skip; different → confirm before replace.
+- Delimiters `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` let `update` replace only this block. Legacy plain `<agent-memory>` tags migrate to comments.
+- Explicit **Read** `instructions.md` covers plain-Markdown / Cursor rules; `@import` covers Claude/Gemini/Codex. Keep the block short — method details stay in `instructions.md` → _Harness parity — memory contract_ and the [hooks README](https://github.com/diegoos/agent-memory/blob/0.0.15/hooks/README.md).
+- Compare installed vs canonical byte-for-byte (body only for `.mdc`); identical → skip; different → confirm before replace.

@@ -1,8 +1,8 @@
 #!/bin/sh
 # agent-memory git pre-commit hook (host-agnostic).
 #
-# Runs the deterministic sync script when co-installed, then reminds when
-# staged work has no .agents/memory/ change (semantic fields may still need
+# Runs the ephemeral sync script when co-installed, then reminds when staged
+# work has no .agents/memory/ change (semantic fields may still need
 # /agent-memory sync). Never blocks the commit. Fails open.
 #
 # Install:
@@ -24,8 +24,8 @@ staged=$(git diff --cached --name-only 2>/dev/null | grep -v '^\.agents/memory/'
 [ -n "$staged" ] || exit 0
 
 # Branch sanitization must mirror common.sh:sanitize_branch so the reminder
-# path matches the file ensure_active_work writes. (This hook is /bin/sh and
-# does not source common.sh, so the logic is duplicated by necessity.)
+# path matches active-work filenames. (This hook is /bin/sh and does not source
+# common.sh, so the logic is duplicated by necessity.)
 branch=$(git branch --show-current 2>/dev/null)
 branch=$(printf '%s' "$branch" | tr -c 'A-Za-z0-9._-' '-')
 [ -n "$branch" ] || branch="local"
@@ -36,8 +36,9 @@ if [ -z "$memory_staged" ]; then
   cat <<EOF
 
 [agent-memory] Staged work on branch '$branch' but no .agents/memory/ change in this commit.
-Hooks updated Touched files from git; review task/progress in
-\`.agents/memory/active-work/$branch.md\` and run \`/agent-memory sync\` if needed.
+Hooks updated ephemeral evidence only. Review resume fields in
+\`.agents/memory/active-work/$branch.md\` (if present) and run \`/agent-memory sync\`
+for semantic outcomes.
 (This is a reminder, not a block — the commit will proceed.)
 
 EOF

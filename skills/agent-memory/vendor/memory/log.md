@@ -1,10 +1,10 @@
 # Log
 
-Recent session deltas. Oldest first — append at the **bottom**. Closed sessions and path-only evidence may be pruned by `/agent-memory consolidate` (never hooks; never the current session). On merge conflicts during work, keep both.
+Recent session **semantic** deltas. Oldest first — append at the **bottom**. Create a heading only when there is a useful outcome. Closed sessions may be pruned by `/agent-memory consolidate` (never hooks; never the current session). On merge conflicts during work, keep both.
 
 ## Format
 
-One heading per session; append outcome bullets under it (not a new heading per checkpoint):
+One heading per session with outcome bullets (not a new heading per checkpoint):
 
 ```md
 ## [YYYY-MM-DD] [session-id] [type] short session outcome
@@ -14,10 +14,12 @@ One heading per session; append outcome bullets under it (not a new heading per 
 
 - **Date** — `YYYY-MM-DD` (session start).
 - **Session ID** — from `AGENT_MEMORY_SESSION_ID` when available; omit the bracket if unknown.
-- **Type** — `feat` | `fix` | `chore` | `review` | `docs` | `refactor` | `test` | `perf` | `security` | `release` | `ingest` | `improve`. Hooks do not invent type/summary.
-- **Bullets** — hooks append ``- `path` `` (temporary). You append semantic outcomes. Do not copy docs, full decisions, or re-list touched files.
+- **Type** — `feat` | `fix` | `chore` | `review` | `docs` | `refactor` | `test` | `perf` | `security` | `release` | `ingest` | `improve`.
+- **Bullets** — semantic outcomes only. Never path lists, `changed N files…` summaries, conversation transcripts, or empty headings.
 
-**OpenCode:** when `ses_*` IDs rotate the same day, keep appending under the day's bound heading.
+Hooks never write this file. Path evidence lives in `.hook-sync-state` (gitignored) and is consumed by `/agent-memory sync` when writing outcomes.
+
+**OpenCode:** when `ses_*` IDs rotate the same day, prefer one semantic heading per calendar day for that work stream.
 
 ---
 

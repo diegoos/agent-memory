@@ -17,18 +17,18 @@ Supported harnesses: Cursor, Claude Code, Codex, OpenCode, Copilot, Gemini CLI.
 
 Memory lives at `.agents/memory/` and separates **canonical project sources** from **operational recall** and **durable recall**:
 
-| File                      | Role                                                                 |
-| ------------------------- | -------------------------------------------------------------------- |
-| `instructions.md`         | Method: how agents read and maintain the memory.                     |
-| `index.md`                | Map of canonical sources + recall files (loading policy).            |
-| `current.md`              | Shared **active** state (in progress / blockers / handoff).          |
-| `active-work/<branch>.md` | Per-branch scratchpad (no merge conflicts across branches).          |
-| `decisions.md`            | Decision **pointers** (or local fallback when no ADR system).        |
-| `log.md`                  | Recent session deltas (append at the bottom; prune via consolidate). |
+| File                      | Role                                                               |
+| ------------------------- | ------------------------------------------------------------------ |
+| `instructions.md`         | Method: how agents read and maintain the memory.                   |
+| `index.md`                | Map of canonical sources + recall files (loading policy).          |
+| `current.md`              | Shared **active** state (in progress / blockers / handoff).        |
+| `active-work/<branch>.md` | Per-branch resume scratchpad (next step, validation, assumptions). |
+| `decisions.md`            | Decision **pointers** (or local fallback when no ADR system).      |
+| `log.md`                  | Recent **semantic** session deltas (append at the bottom).         |
 
-Optional on demand: `learnings.md` — evidenced, reusable facts with no better source. Do **not** create parallel vision/architecture/patterns/domains copies; link the project's own docs instead.
+Optional on demand: `learnings.md` — evidenced learnings/pitfalls with no better source. Do **not** create parallel vision/architecture/patterns/domains copies; link the project's own docs instead.
 
-**Workflow:** before a task, agents read `index.md`, `current.md`, and their branch's `active-work` file; while working they keep those current and write links/deltas (not copies); at checkpoints they flush with `/agent-memory sync`; periodically they run `/agent-memory consolidate` to promote useful facts and prune closed-session noise.
+**Workflow:** before a task, agents read `index.md`, `current.md`, and their branch's `active-work` file when it exists; while working they keep those current and write links/deltas (not copies); at checkpoints they flush with `/agent-memory sync`; periodically they run `/agent-memory consolidate` to promote useful facts and prune closed-session noise. Hooks store ephemeral path/session evidence in `.hook-sync-state` only — never Markdown.
 
 Full method: [`skills/agent-memory/vendor/README.md`](./skills/agent-memory/vendor/README.md) and [`instructions.md`](./skills/agent-memory/vendor/memory/instructions.md).
 
@@ -85,9 +85,9 @@ Use `init <harness>` when you already know the agent.
 
 ## Hooks
 
-Optional lifecycle hooks keep `.agents/memory/` current **during** agent work with deterministic checkpoints (no LLM loops): session binding, _Touched files_, `log.md` path bullets on full checkpoints, `current.md` _In progress_ on session start. Hooks never copy docs and never consolidate.
+Optional lifecycle hooks keep **ephemeral evidence** current **during** agent work with deterministic checkpoints (no LLM loops): session binding and session-cumulative touched paths in `.hook-sync-state`. Hooks never write Markdown, never copy docs, and never consolidate.
 
-**Semantic** content stays agent-owned (or `/agent-memory sync` / `consolidate`): decision pointers, progress notes, log outcomes, learnings.
+**Semantic** content stays agent-owned (or `/agent-memory sync` / `consolidate`): resume fields, decision pointers, log outcomes, learnings.
 
 Install steps, event matrix, and project-dir resolution: [`hooks/README.md`](./hooks/README.md).
 
@@ -102,7 +102,7 @@ npx skills add diegoos/agent-memory --skill agent-memory
 ### Manual skeleton (no skill CLI)
 
 ```bash
-git clone --branch 0.0.14 --depth 1 \
+git clone --branch 0.0.15 --depth 1 \
   https://github.com/diegoos/agent-memory /tmp/agent-memory
 mkdir -p .agents/skills/
 cp -R /tmp/agent-memory/skills/agent-memory .agents/skills/

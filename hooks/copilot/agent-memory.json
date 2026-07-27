@@ -8,14 +8,6 @@
         "timeoutSec": 5
       }
     ],
-    "postToolUse": [
-      {
-        "type": "command",
-        "bash": "AGENT_MEMORY_EVENT=postToolUse .github/hooks/agent-memory-sync.sh",
-        "matcher": "bash|edit|write|apply_patch",
-        "timeoutSec": 15
-      }
-    ],
     "agentStop": [
       {
         "type": "command",
