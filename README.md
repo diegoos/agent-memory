@@ -28,7 +28,7 @@ Memory lives at `.agents/memory/` and separates **canonical project sources** fr
 
 Optional on demand: `learnings.md` — evidenced learnings/pitfalls with no better source. Do **not** create parallel vision/architecture/patterns/domains copies; link the project's own docs instead.
 
-**Workflow:** before a task, agents read `index.md`, `current.md`, and their branch's `active-work` file when it exists; while working they keep those current and write links/deltas (not copies); at checkpoints they flush with `/agent-memory sync`; periodically they run `/agent-memory consolidate` to promote useful facts and prune closed-session noise. Hooks store ephemeral path/session evidence in `.hook-sync-state` only — never Markdown.
+**Workflow:** before a task, agents read `index.md`, `current.md`, and their branch's `active-work` file when it exists; **primary write** is in-turn (resume fields + semantic `log.md` outcomes); **catch-up** at checkpoints via `/agent-memory sync` (or follow the skill's `references/sync.md` without invoking the skill); periodically `/agent-memory consolidate` to promote useful facts and prune closed-session noise. Hooks store ephemeral path/session evidence in `.hook-sync-state` only — never Markdown.
 
 Full method: [`skills/agent-memory/vendor/README.md`](./skills/agent-memory/vendor/README.md) and [`instructions.md`](./skills/agent-memory/vendor/memory/instructions.md).
 
@@ -87,7 +87,7 @@ Use `init <harness>` when you already know the agent.
 
 Optional lifecycle hooks keep **ephemeral evidence** current **during** agent work with deterministic checkpoints (no LLM loops): session binding and session-cumulative touched paths in `.hook-sync-state`. Hooks never write Markdown, never copy docs, and never consolidate.
 
-**Semantic** content stays agent-owned (or `/agent-memory sync` / `consolidate`): resume fields, decision pointers, log outcomes, learnings.
+**Semantic** content stays agent-owned: resume fields and log outcomes are written in-turn (primary); `/agent-memory sync` / `consolidate` are catch-up and promotion.
 
 Install steps, event matrix, and project-dir resolution: [`hooks/README.md`](./hooks/README.md).
 

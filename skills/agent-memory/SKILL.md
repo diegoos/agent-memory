@@ -120,7 +120,7 @@ For `/agent-memory help` (and for any empty or unknown invocation), output the f
 
 - New project? Run `init` (or `init <harness>` — e.g. `init cursor` if you use Cursor and already have a `.cursor/` directory), then optionally `bootstrap` to index sources (not copy docs). Install hooks with the printed `npx` or shell command.
 - Memory exists but hooks missing or stale? Run `install hooks <harness>` for instructions, or re-run the installer from the release tag.
-- Keeping the memory current? Run `sync` at checkpoints (end of task, before commit, before compaction). Use `sync --auto` for low-friction routine flushes.
+- Keeping the memory current? Write resume fields + semantic `log.md` in the turn (primary); run `sync` at checkpoints for catch-up (or follow `references/sync.md` without invoking the skill). Use `sync --auto` for low-friction routine flushes.
 - Pruning noise? Run `consolidate` periodically (guided; never automatic).
 - Already set up? Use `lint` to check health (`lint --fix` also removes stale per-branch files), `update` to upgrade memory scaffolding, then refresh hooks with the user-run installer if needed.
 

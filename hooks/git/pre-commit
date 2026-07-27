@@ -20,15 +20,36 @@ if [ -x "$hook_dir/agent-memory-sync.sh" ]; then
   AGENT_MEMORY_EVENT=precommit AGENT_MEMORY_PROJECT_DIR="$cwd" "$hook_dir/agent-memory-sync.sh" || true
 fi
 
-staged=$(git diff --cached --name-only 2>/dev/null | grep -v '^\.agents/memory/' || true)
-[ -n "$staged" ] || exit 0
-
 # Branch sanitization must mirror common.sh:sanitize_branch so the reminder
 # path matches active-work filenames. (This hook is /bin/sh and does not source
 # common.sh, so the logic is duplicated by necessity.)
 branch=$(git branch --show-current 2>/dev/null)
 branch=$(printf '%s' "$branch" | tr -c 'A-Za-z0-9._-' '-')
 [ -n "$branch" ] || branch="local"
+
+aw="$cwd/.agents/memory/active-work/$branch.md"
+head_full=$(git rev-parse HEAD 2>/dev/null || true)
+head_short=$(git rev-parse --short HEAD 2>/dev/null || true)
+if [ -f "$aw" ] && [ -n "$head_full" ]; then
+  ck_line=$(grep -E '^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ ' "$aw" 2>/dev/null | head -1 || true)
+  ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ //' | tr -d '`"')
+  if [ -n "$ck_sha" ] && [ "$ck_sha" != "<short-sha>" ]; then
+    ck_full=$(git rev-parse "$ck_sha" 2>/dev/null || true)
+    if [ -z "$ck_full" ] || [ "$ck_full" != "$head_full" ]; then
+      cat <<EOF
+
+[agent-memory] active-work Checkpoint ($ck_sha) is behind HEAD ($head_short).
+Update resume fields in \`.agents/memory/active-work/$branch.md\` or run
+\`/agent-memory sync\` (catch-up) before relying on memory.
+(This is a reminder, not a block — the commit will proceed.)
+
+EOF
+    fi
+  fi
+fi
+
+staged=$(git diff --cached --name-only 2>/dev/null | grep -v '^\.agents/memory/' || true)
+[ -n "$staged" ] || exit 0
 
 memory_staged=$(git diff --cached --name-only 2>/dev/null | grep '^\.agents/memory/' || true)
 
@@ -38,7 +59,7 @@ if [ -z "$memory_staged" ]; then
 [agent-memory] Staged work on branch '$branch' but no .agents/memory/ change in this commit.
 Hooks updated ephemeral evidence only. Review resume fields in
 \`.agents/memory/active-work/$branch.md\` (if present) and run \`/agent-memory sync\`
-for semantic outcomes.
+for semantic outcomes (primary write is in-turn; sync is catch-up).
 (This is a reminder, not a block — the commit will proceed.)
 
 EOF

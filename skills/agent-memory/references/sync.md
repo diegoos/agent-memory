@@ -1,8 +1,10 @@
 # `/agent-memory sync`
 
-Refresh the four files that rot between commands — `current.md`, your branch's `active-work/<branch>.md`, `log.md`, and `index.md` — from **actual repo state** (`git`), session context, and optional `.hook-sync-state` evidence. This is the executable form of the _Workflow_ section in `instructions.md`.
+**Catch-up** for the four files that rot between commands — `current.md`, your branch's `active-work/<branch>.md`, `log.md`, and `index.md` — from **actual repo state** (`git`), session context, and optional `.hook-sync-state` evidence. This is the executable form of the _Workflow_ catch-up step in `instructions.md`.
 
-Use it at any checkpoint: end of a task, before a commit, before context compaction, or when picking work back up. Safe and idempotent.
+**Primary write path** is still the agent in the turn: durable progress → update `active-work` resume fields and a semantic `log.md` outcome before stopping. Sync fills gaps and aligns Checkpoint / `current.md` / `index.md`; it does not invent meaning from paths alone.
+
+Use sync at any checkpoint: end of a task, before a commit, before context compaction, or when picking work back up. Safe and idempotent. You may follow these steps and edit the four files directly without invoking the skill command.
 
 ## Flags
 

@@ -87,6 +87,12 @@ assert_contains "$instructions" '### Harness parity — memory contract' "harnes
 assert_contains "$instructions" 'Hooks own ephemeral evidence only:' "hooks write boundary"
 assert_contains "$instructions" 'Agent owns all versioned Markdown:' "agent ownership"
 assert_contains "$instructions" 'never create or edit Markdown' "hooks never edit markdown"
+assert_contains "$instructions" '**Primary write path (agent, in the turn):**' \
+  "workflow names primary write path"
+assert_contains "$instructions" '**Catch-up (`/agent-memory sync`):**' \
+  "workflow names sync as catch-up"
+assert_contains "$instructions" 'without invoking the skill command' \
+  "sync may be followed without skill invoke"
 assert_contains "$instructions" '## Memory lint boundaries' "lint boundaries summary"
 assert_contains "$instructions" \
   '- [YYYY-MM-DD] [learning|pitfall] [topic] insight — evidence: path|link; use when: trigger; verified: YYYY-MM-DD; invalidate when: condition.' \
@@ -122,6 +128,8 @@ assert_contains "$lint" '## Validation' "lint checks Validation"
 assert_contains "$lint" 'empty-log-heading' "lint checks empty headings"
 assert_contains "$lint" 'legacy-path-bullet' "lint checks legacy path bullets"
 assert_contains "$lint" 'Soft budgets (warnings only)' "soft budgets live in lint"
+assert_contains "$lint" 'stale-resume:' "lint checks checkpoint freshness vs HEAD"
+assert_contains "$lint" 'evidence-pending:' "lint checks pending hook path evidence"
 
 # --- Sync ---
 assert_contains "$sync" 'Sync writes only to:' "sync four-file boundary"
@@ -133,6 +141,9 @@ assert_contains "$sync" 'It **never** touches `decisions.md`, `learnings.md`,' \
 assert_contains "$sync" 'Hooks never write Markdown' "sync documents ephemeral hooks"
 assert_contains "$sync" '_Validation_' "sync fills Validation"
 assert_contains "$sync" '_Workflow_' "sync links live Workflow section"
+assert_contains "$sync" '**Catch-up**' "sync is catch-up not primary write"
+assert_contains "$sync" 'without invoking the skill command' \
+  "sync steps usable without skill"
 
 # --- Consolidate ---
 assert_contains "$consolidate" 'Never prune the **current session** heading' \
@@ -149,11 +160,17 @@ assert_contains "$consolidate" 'Legacy `## Touched files`' \
 # --- Context layer stays short ---
 assert_contains "$agent_block" 'Read `.agents/memory/instructions.md`' \
   "agent-block requires Read instructions"
+assert_contains "$agent_block" '**Primary write:**' "agent-block names primary write"
+assert_contains "$agent_block" '**Catch-up:**' "agent-block names sync catch-up"
 assert_contains "$agent_block" '_Harness parity — memory contract_' \
   "agent-block links harness parity"
-assert_contains "$session_sh" 'Hooks store ephemeral evidence only' \
-  "session msg keeps ephemeral obligation"
+assert_contains "$session_sh" 'build_session_context_msg' \
+  "session uses contextual status builder"
+assert_contains "$repo_root/hooks/agent-memory-hooks/agent-memory-common.sh" \
+  'build_session_context_msg' "common.sh defines contextual session msg"
 assert_contains "$sync_sh" 'no Markdown writes' "sync script header documents no Markdown"
+pre_commit="$repo_root/hooks/git/pre-commit"
+assert_contains "$pre_commit" 'Checkpoint' "pre-commit reminds when Checkpoint behind HEAD"
 
 # --- Harness configs omit per-tool events ---
 assert_absent "$cursor_hooks" 'postToolUse' "cursor omits postToolUse"

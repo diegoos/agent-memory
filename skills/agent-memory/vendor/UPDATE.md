@@ -183,14 +183,18 @@ Format:
 
 ## 0.0.15
 
-- sensitive: `instructions.md` — ephemeral-hooks contract (hooks never write Markdown); resumable active-work only; checkpoint freshness (`Checkpoint: date @ sha`); facts vs assumptions; rejected approaches; learning/pitfall formats; on-demand decisions/log/learnings. Show full diff and confirm. Preserve any project-specific notes outside the method text.
+- sensitive: `instructions.md` — ephemeral-hooks contract (hooks never write Markdown); resumable active-work only; checkpoint freshness (`Checkpoint: date @ sha`); facts vs assumptions; rejected approaches; learning/pitfall formats; on-demand decisions/log/learnings; **primary write** (in-turn) vs **catch-up** (`/agent-memory sync`, or follow `references/sync.md` without invoking the skill). Show full diff and confirm. Preserve any project-specific notes outside the method text.
 - sensitive: `active-work/TEMPLATE.md` — replace with resume sections (`Task`, `Progress`, `Next step`, `Validation`, `Assumptions / open questions`, `Blockers`, `Rejected approaches`, `References`); remove `Touched files`. For existing `active-work/*.md`: add missing sections; offer to remove legacy `## Touched files` (sensitive — show diff, confirm). Preserve semantic Task/Progress/Blockers/Notes content.
 - sensitive: `log.md` scaffolding — semantic outcomes only; document that hooks never write this file. Preserve existing session entries. Offer to remove legacy path-only bullets and empty closed-session headings via consolidate (confirm). Do not invent new headings.
 - sensitive: `decisions.md` scaffolding — add `Status`, `Supersedes` / `Superseded by`, and `Rejected alternatives` fields to format docs. Preserve existing decision bodies.
 - sensitive: `index.md` / `current.md` — align wording with resumable active-work and optional learnings/pitfalls. Preserve user source/recall lists and In progress bullets.
-- sensitive: harness agent-memory block — refresh from `references/agent-block.md` (resume + sync + consolidate). Confirm per file.
+- sensitive: harness agent-memory block — refresh from `references/agent-block.md` (primary write + catch-up sync + consolidate). Confirm per file.
 - safe: hooks rewritten as **ephemeral evidence only** (`.hook-sync-state`); no Markdown writes; per-tool events removed from harness configs; OpenCode plugin runs idle/compact sync only. Reinstall scrub also drops legacy per-tool **ours** entries via `hooks/lib/merge-hooks.mjs`. **User must re-run the hooks installer** for every installed harness.
-- safe: `sync` / `lint` / `consolidate` / `bootstrap` references — consume hook state as evidence; resume quality checks; legacy Touched files / path-bullet cleanup; pitfall entries.
+- safe: hooks `sessionStart` message — contextual `Status:` (branch, Checkpoint freshness, pending path count); still no Markdown writes. **Re-run the hooks installer** to pick up.
+- safe: git `pre-commit` — non-blocking stderr reminder when active-work Checkpoint is behind HEAD (in addition to the no-memory-staged reminder). **Re-run the hooks installer** (or refresh `.git/hooks/pre-commit`) to pick up.
+- safe: `resolve_session_id` state fallback — prefer canonical `session_binding` over `current_session_id`; when binding is `__no_id__`, do not resurrect a stale current id. **Re-run the hooks installer** to pick up.
+- safe: session rebind — clear paths + write `session_binding` atomically under one lock; fail-open skips both. **Re-run the hooks installer** to pick up.
+- safe: `sync` / `lint` / `consolidate` / `bootstrap` references — consume hook state as evidence; resume quality checks; legacy Touched files / path-bullet cleanup; pitfall entries; sync documented as catch-up; lint `stale-resume` / `evidence-pending` warnings.
 - safe: Cross-package docs pin `hooks/README.md` / examples to `0.0.15`.
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.15`.
 - safe: root `package.json` — version bumped to `0.0.15`.

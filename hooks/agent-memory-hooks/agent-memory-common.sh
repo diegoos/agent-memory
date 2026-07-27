@@ -164,14 +164,21 @@ resolve_session_id() {
   if [ -n "${GEMINI_SESSION_ID:-}" ]; then printf '%s' "$GEMINI_SESSION_ID"; return; fi
   if [ -n "$stdin_sid" ]; then printf '%s' "$stdin_sid"; return; fi
   if [ "$allow_state_fallback" = "1" ]; then
+    # session_binding is canonical (reset_session_state_if_changed). Prefer it
+    # over current_session_id so a stale current cannot resurrect the wrong
+    # session or clear/retain paths incorrectly when the fields diverge.
     local from_current from_binding
-    from_current=$(read_state current_session_id "")
-    if [ -n "$from_current" ]; then printf '%s' "$from_current"; return; fi
     from_binding=$(read_state session_binding "")
-    if [ -n "$from_binding" ] && [ "$from_binding" != "$NO_ID_SESSION_SENTINEL" ]; then
-      printf '%s' "$from_binding"
+    if [ -n "$from_binding" ]; then
+      if [ "$from_binding" != "$NO_ID_SESSION_SENTINEL" ]; then
+        printf '%s' "$from_binding"
+      else
+        printf ''
+      fi
       return
     fi
+    from_current=$(read_state current_session_id "")
+    if [ -n "$from_current" ]; then printf '%s' "$from_current"; return; fi
     printf ''
   else
     printf ''
@@ -180,7 +187,8 @@ resolve_session_id() {
 
 persist_session_id() {
   local sid="${1:-}"
-  [ -n "$sid" ] || return 0
+  # Keep current_session_id aligned with the resolved id. Clearing on empty
+  # prevents a stale current from surviving after binding moved to __no_id__.
   write_state current_session_id "$sid"
 }
 
@@ -220,11 +228,25 @@ _write_session_binding_body() {
     printf 'agent-memory: skip session binding write (lock not held)\n' >&2
     return 0
   fi
-  _write_session_binding_unlocked "$1"
+  _rebind_session_state_unlocked 0 "$1"
 }
 
-_write_session_binding_unlocked() {
-  local sid=$1
+# Atomically update session_binding (+ host/day) and optionally clear paths.
+# Under fail-open, skips entirely — never wipe paths without updating binding.
+_rebind_session_state() {
+  agent_memory_with_state_lock _rebind_session_state_body "$1" "$2"
+}
+
+_rebind_session_state_body() {
+  if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
+    printf 'agent-memory: skip session rebind (lock not held)\n' >&2
+    return 0
+  fi
+  _rebind_session_state_unlocked "$1" "$2"
+}
+
+_rebind_session_state_unlocked() {
+  local clear_paths=$1 sid=$2
   local host="${AGENT_MEMORY_HOST:-}"
   local day tmp
   day=$(_today_ymd)
@@ -251,11 +273,17 @@ _write_session_binding_unlocked() {
     while IFS= read -r line || [ -n "$line" ]; do
       case "${line%%=*}" in
         session_binding | session_binding_host | session_binding_day) continue ;;
+        session_touched_files)
+          [ "$clear_paths" = "1" ] && continue
+          ;;
       esac
       printf '%s\n' "$line"
     done <"$state_file" >"$tmp"
   else
     : >"$tmp"
+  fi
+  if [ "$clear_paths" = "1" ]; then
+    printf 'session_touched_files=\n' >>"$tmp"
   fi
   printf 'session_binding=%s\n' "$sid" >>"$tmp"
   printf 'session_binding_host=%s\n' "$host" >>"$tmp"
@@ -302,7 +330,7 @@ _session_rebind_preserves_paths() {
 # State key: session_binding (legacy logged_files_session is migrated on read).
 reset_session_state_if_changed() {
   local sid=$1 context="${2:-sync}"
-  local last bound_day
+  local last bound_day clear_paths
   sid="${sid:-}"
   last=$(read_state session_binding "")
   if [ -z "$last" ]; then
@@ -320,24 +348,23 @@ reset_session_state_if_changed() {
       if [ "${AGENT_MEMORY_HOST:-}" = "opencode" ]; then
         bound_day=$(read_state session_binding_day "")
         if [ -z "$bound_day" ] || [ "$bound_day" != "$(_today_ymd)" ]; then
-          _clear_session_path_state
-          _write_session_binding "$sid"
+          _rebind_session_state 1 "$sid"
         fi
       fi
       return 0
     fi
-    if ! _session_rebind_preserves_paths "$sid" "$last"; then
-      _clear_session_path_state
+    clear_paths=1
+    if _session_rebind_preserves_paths "$sid" "$last"; then
+      clear_paths=0
     fi
-    _write_session_binding "$sid"
+    _rebind_session_state "$clear_paths" "$sid"
     return 0
   fi
   if [ "$context" = "sessionStart" ]; then
     if [ "$last" = "$NO_ID_SESSION_SENTINEL" ]; then
       return 0
     fi
-    _clear_session_path_state
-    _write_session_binding "$NO_ID_SESSION_SENTINEL"
+    _rebind_session_state 1 "$NO_ID_SESSION_SENTINEL"
     return 0
   fi
   [ "$last" = "$NO_ID_SESSION_SENTINEL" ] && return 0
@@ -345,8 +372,7 @@ reset_session_state_if_changed() {
     _write_session_binding "$NO_ID_SESSION_SENTINEL"
     return 0
   fi
-  _clear_session_path_state
-  _write_session_binding "$NO_ID_SESSION_SENTINEL"
+  _rebind_session_state 1 "$NO_ID_SESSION_SENTINEL"
 }
 
 refresh_branch_cache() {
@@ -606,4 +632,57 @@ _apply_ephemeral_checkpoint_unlocked() {
   if [ -n "$current_head" ]; then
     _write_state_unlocked last_processed_head "$current_head"
   fi
+}
+
+# Contextual sessionStart message: obligation + branch/checkpoint/path status.
+# Never writes Markdown. Safe when git or active-work is missing.
+build_session_context_msg() {
+  local branch sanitized aw head_full head_short ck_line ck_sha status bits path_count
+  branch=""
+  if command -v git >/dev/null 2>&1 && [ -n "${cwd:-}" ] &&
+    git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
+    branch=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
+  fi
+  [ -n "$branch" ] || branch=$(read_state branch "")
+  [ -n "$branch" ] || branch="local"
+  sanitized=$(sanitize_branch "$branch")
+  [ -n "$sanitized" ] || sanitized="local"
+
+  status="branch=${branch}"
+  aw="${memory}/active-work/${sanitized}.md"
+  if [ -f "$aw" ]; then
+    status="${status}; active-work=yes"
+    ck_line=$(grep -E '^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ ' "$aw" 2>/dev/null | head -1 || true)
+    ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ //' | tr -d '`"')
+    head_full=""
+    head_short=""
+    if command -v git >/dev/null 2>&1 && [ -n "${cwd:-}" ]; then
+      head_full=$(git -C "$cwd" rev-parse HEAD 2>/dev/null || true)
+      head_short=$(git -C "$cwd" rev-parse --short HEAD 2>/dev/null || true)
+    fi
+    if [ -n "$ck_sha" ] && [ "$ck_sha" != "<short-sha>" ] && [ -n "$head_full" ]; then
+      if [ "$(git -C "$cwd" rev-parse "$ck_sha" 2>/dev/null || true)" = "$head_full" ]; then
+        status="${status}; Checkpoint=${head_short} (fresh)"
+      else
+        status="${status}; Checkpoint=${ck_sha} (behind HEAD ${head_short})"
+      fi
+    elif [ -n "$head_short" ]; then
+      status="${status}; Checkpoint=missing/placeholder (HEAD ${head_short})"
+    else
+      status="${status}; Checkpoint=unknown"
+    fi
+  else
+    status="${status}; active-work=no"
+  fi
+
+  path_count=0
+  bits=$(read_state session_touched_files "")
+  if [ -n "$bits" ]; then
+    path_count=$(printf '%s' "$bits" | tr $'\x1e' '\n' | grep -c . || true)
+  fi
+  if [ "$path_count" -gt 0 ] 2>/dev/null; then
+    status="${status}; pending paths=${path_count}"
+  fi
+
+  printf '%s' "Agent Memory: recall layer in .agents/memory/ — not a docs mirror. Before tasks: read instructions.md, index.md, current.md, and your branch active-work when it exists. Write links/deltas in-turn (primary); sync is catch-up. Hooks store ephemeral evidence only in .hook-sync-state. Status: ${status}. Update resume fields before ending durable work; run /agent-memory sync at checkpoints (or follow references/sync.md)."
 }

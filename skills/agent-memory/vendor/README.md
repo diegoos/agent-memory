@@ -16,7 +16,7 @@ Any project where AI agents do meaningful work across multiple sessions, and whe
 
 Agents **read AND write** the memory. Full workflow and multi-developer rules: [`memory/instructions.md`](./memory/instructions.md) (canonical method file).
 
-Short version: before a task read `index.md`, `current.md`, and the branch `active-work` when it exists; during work keep resume fields and semantic `log.md` outcomes current; at checkpoints run `/agent-memory sync`; periodically `/agent-memory consolidate`. Hooks write only `.hook-sync-state` — never Markdown.
+Short version: before a task read `index.md`, `current.md`, and the branch `active-work` when it exists; **primary write** is in-turn (resume fields + semantic `log.md`); **catch-up** via `/agent-memory sync` (or follow `references/sync.md` without the skill); periodically `/agent-memory consolidate`. Hooks write only `.hook-sync-state` — never Markdown.
 
 ## What's inside (`.agents/memory/`)
 

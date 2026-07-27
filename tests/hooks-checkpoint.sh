@@ -42,6 +42,10 @@ printf '{"session_id":"s1","cwd":"%s"}\n' "$TMP" |
 grep -q '"additional_context"' "$TMP/session-out.json" ||
   grep -qi 'recall layer\|Agent Memory' "$TMP/session-out.json" ||
   fail "session stdout missing agent-memory context"
+grep -q 'Status:' "$TMP/session-out.json" ||
+  fail "session context missing Status: line"
+grep -q 'active-work=no' "$TMP/session-out.json" ||
+  fail "session Status should report active-work=no when absent"
 
 test -f .agents/memory/.hook-sync-state || fail "session did not create state"
 grep -q 'current_session_id=s1' .agents/memory/.hook-sync-state ||
@@ -157,6 +161,7 @@ md_final=$(md_checksum)
 [[ "$md_before" == "$md_final" ]] || fail "harness events must not alter Markdown"
 
 # --- concurrency: lock fail-open does not remove a foreign live lock ---
+today=$(date +%Y-%m-%d)
 mkdir -p .agents/memory/.hook-sync-state.lock
 printf '%s\n' "$$" >.agents/memory/.hook-sync-state.lock/pid
 printf '{"session_id":"s4","cwd":"%s"}\n' "$TMP" |
@@ -169,6 +174,37 @@ grep -qi 'fail-open\|lock busy\|stale state lock' "$TMP/lock.err" ||
 [[ -d .agents/memory/.hook-sync-state.lock ]] ||
   fail "must not remove a live foreign lock"
 rm -rf .agents/memory/.hook-sync-state.lock
+
+# --- fail-open rebind must not clear paths while leaving old binding ---
+printf '%s\n' \
+  'session_binding=s-old-lock' \
+  'session_binding_host=cursor' \
+  "session_binding_day=$today" \
+  'session_touched_files=atomic-keep.txt' \
+  >.agents/memory/.hook-sync-state
+mkdir -p .agents/memory/.hook-sync-state.lock
+printf '%s\n' "$$" >.agents/memory/.hook-sync-state.lock/pid
+printf '{"session_id":"s-new-lock","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-new-lock \
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/rebind-lock.err" || true
+grep -q 'session_binding=s-old-lock' .agents/memory/.hook-sync-state ||
+  fail "fail-open rebind must leave old binding when lock held"
+grep -q 'atomic-keep.txt' .agents/memory/.hook-sync-state ||
+  fail "fail-open rebind must not clear paths without updating binding"
+[[ -d .agents/memory/.hook-sync-state.lock ]] ||
+  fail "fail-open rebind must not remove foreign lock"
+rm -rf .agents/memory/.hook-sync-state.lock
+
+# Successful rebind after lock release clears paths + updates binding together
+printf '{"session_id":"s-new-lock","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-new-lock \
+  ./agent-memory-sync.sh >/dev/null
+grep -q 'session_binding=s-new-lock' .agents/memory/.hook-sync-state ||
+  fail "unlocked rebind should update session_binding"
+! grep -q 'atomic-keep.txt' .agents/memory/.hook-sync-state ||
+  fail "unlocked rebind should clear paths with binding update"
 
 # --- stale lock (dead pid) is stolen ---
 mkdir -p .agents/memory/.hook-sync-state.lock
@@ -313,5 +349,94 @@ printf '{"session_id":"conv-stable","cwd":"%s"}\n' "$TMP" |
   fail "opencode same-id without binding_day must clear legacy paths"
 grep -q "session_binding_day=$today" .agents/memory/.hook-sync-state ||
   fail "opencode same-id should stamp session_binding_day"
+
+# --- session_binding wins over stale current_session_id ---
+printf '%s\n' \
+  'current_session_id=s-stale' \
+  'session_binding=s-canonical' \
+  'session_binding_host=cursor' \
+  "session_binding_day=$today" \
+  'session_touched_files=keep-bound.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop \
+  ./agent-memory-sync.sh >/dev/null
+grep -q 'session_binding=s-canonical' .agents/memory/.hook-sync-state ||
+  fail "stale current must not rebind away from session_binding"
+grep -q 'keep-bound.txt' .agents/memory/.hook-sync-state ||
+  fail "stale current must not clear paths of canonical binding"
+grep -q 'current_session_id=s-canonical' .agents/memory/.hook-sync-state ||
+  fail "persist should heal current_session_id to match binding"
+
+# --- __no_id__ binding must not resurrect stale current_session_id ---
+printf '%s\n' \
+  'current_session_id=s-stale' \
+  'session_binding=__no_id__' \
+  'session_binding_host=cursor' \
+  "session_binding_day=$today" \
+  'session_touched_files=no-id-keep.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop \
+  ./agent-memory-sync.sh >/dev/null
+grep -q 'session_binding=__no_id__' .agents/memory/.hook-sync-state ||
+  fail "__no_id__ binding must stay when no live session id"
+grep -q 'no-id-keep.txt' .agents/memory/.hook-sync-state ||
+  fail "__no_id__ + empty resolve must keep paths (pre-commit-like)"
+! grep -q 'current_session_id=s-stale' .agents/memory/.hook-sync-state ||
+  fail "empty resolve must not persist stale current over __no_id__"
+
+# --- contextual session Status: behind Checkpoint + pending paths ---
+git checkout -q -b feat-status 2>/dev/null || git checkout -q feat-status
+old_sha=$(git rev-parse --short HEAD)
+printf 'later\n' >later.txt
+git add later.txt
+git commit -q -m later
+new_sha=$(git rev-parse --short HEAD)
+mkdir -p .agents/memory/active-work
+cat >.agents/memory/active-work/feat-status.md <<EOF
+# Active Work — Branch: \`feat-status\`
+
+Checkpoint: 2026-07-01 @ ${old_sha}
+
+## Task
+- status test
+EOF
+md_snap=$(md_checksum)
+{
+  echo "current_session_id=s-status"
+  echo "session_binding=s-status"
+  echo "session_binding_day=$today"
+  echo "session_touched_files=later.txt"$'\x1e'"other.txt"
+  echo "branch=feat-status"
+} >.agents/memory/.hook-sync-state
+
+printf '{"session_id":"s-status","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  ./agent-memory-session.sh >"$TMP/session-status.json"
+grep -q 'active-work=yes' "$TMP/session-status.json" ||
+  fail "session Status should report active-work=yes"
+grep -q 'behind HEAD' "$TMP/session-status.json" ||
+  fail "session Status should report Checkpoint behind HEAD"
+grep -q 'pending paths=2' "$TMP/session-status.json" ||
+  fail "session Status should report pending path count"
+
+# --- pre-commit reminder when Checkpoint behind HEAD ---
+cp "$repo_root/hooks/git/pre-commit" .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+cp ./agent-memory-*.sh .git/hooks/
+printf 'remind\n' >remind.txt
+git add remind.txt
+out=$(git commit -q -m remind 2>&1 || true)
+printf '%s\n' "$out" | grep -q 'Checkpoint' ||
+  fail "pre-commit should remind when Checkpoint is behind HEAD"
+printf '%s\n' "$out" | grep -q 'reminder, not a block' ||
+  fail "pre-commit reminder must be non-blocking wording"
+
+# Session + pre-commit must not alter Markdown (active-work was written by the test)
+md_after=$(md_checksum)
+[[ "$md_snap" == "$md_after" ]] || fail "session/pre-commit must not modify Markdown"
 
 printf 'ok - hooks ephemeral checkpoint fixture\n'

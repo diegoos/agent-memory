@@ -32,7 +32,7 @@ if command -v git >/dev/null 2>&1 && git -C "$cwd" rev-parse --git-dir >/dev/nul
   refresh_branch_cache
 fi
 
-msg="Agent Memory: recall layer in .agents/memory/ — not a docs mirror. Before tasks: read instructions.md, index.md, current.md, and your branch active-work when it exists. Write links/deltas, not copies. Hooks store ephemeral evidence only in .hook-sync-state; you own all Markdown meaning. Run /agent-memory sync at checkpoints."
+msg=$(build_session_context_msg)
 
 json_escape() {
   local s=$1

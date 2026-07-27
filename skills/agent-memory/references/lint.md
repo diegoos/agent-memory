@@ -84,6 +84,36 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
 
    Report if `.agents/memory/.gitignore` is missing or does not list `.hook-sync-state` — hooks will leave untracked state that may be committed by mistake. Suggest copying from the skill's `vendor/memory/.gitignore`.
 
+   **Stale resume / evidence ahead of memory (warnings).** From the **project root**:
+
+   ```bash
+   branch=$(git branch --show-current 2>/dev/null | tr -c 'A-Za-z0-9._-' '-')
+   [ -n "$branch" ] || branch=local
+   aw=".agents/memory/active-work/${branch}.md"
+   head_full=$(git rev-parse HEAD 2>/dev/null || true)
+   head_short=$(git rev-parse --short HEAD 2>/dev/null || true)
+   if [ -f "$aw" ] && [ -n "$head_full" ]; then
+     ck_line=$(grep -E '^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ ' "$aw" | head -1 || true)
+     ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ //' | tr -d '`"')
+     if [ -z "$ck_sha" ] || [ "$ck_sha" = "<short-sha>" ]; then
+       echo "stale-resume: $aw Checkpoint missing or placeholder (HEAD $head_short)"
+     else
+       ck_full=$(git rev-parse "$ck_sha" 2>/dev/null || true)
+       if [ -z "$ck_full" ] || [ "$ck_full" != "$head_full" ]; then
+         echo "stale-resume: $aw Checkpoint@$ck_sha != HEAD@$head_short — suggest /agent-memory sync"
+       fi
+     fi
+   fi
+   state=".agents/memory/.hook-sync-state"
+   if [ -f "$state" ]; then
+     paths=$(grep '^session_touched_files=' "$state" | cut -d= -f2- || true)
+     if [ -n "$paths" ]; then
+       n=$(printf '%s' "$paths" | tr '\036' '\n' | grep -c . || true)
+       [ "${n:-0}" -gt 0 ] && echo "evidence-pending: $n path(s) in .hook-sync-state — confirm active-work/log reflect meaning (sync is catch-up)"
+     fi
+   fi
+   ```
+
    From the **project root**, check links in `index.md` that point outside memory (e.g. `../../AGENTS.md`, `../../docs/...`) and report missing targets as warnings.
 
    **Exact-duplication candidates (deterministic warning, never auto-fix).** From the project root, extract non-placeholder lines ≥ 60 characters from `.agents/memory/**/*.md` and look for exact matches in common canonical sources (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `README.md`, `docs/`). Report each match as `dup-exact: <memory-file> ↔ <source-file>`. Judgment paraphrase duplication still belongs in the semantic section below.

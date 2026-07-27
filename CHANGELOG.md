@@ -8,7 +8,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ## [Unreleased]
 
-## [0.0.15] - 2026-07-26
+## [0.0.15] - 2026-07-27
 
 ### Added
 
@@ -19,6 +19,9 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - Commit-range evidence collection (`last_processed_head..HEAD`) with rewrite fallback.
 - Expanded test matrix: version parity, installer merge, CLI headless, ephemeral hooks (no Markdown writes), and security fixtures.
 - CI for Linux/macOS with Bun frozen lockfile, typecheck, markdownlint, tests, build, and Node 18/20/22 CLI smoke.
+- Contextual `sessionStart` status (branch, Checkpoint freshness, pending path count) in the hooks message — still no Markdown writes.
+- `lint` warnings: `stale-resume` (Checkpoint vs HEAD) and `evidence-pending` (paths in `.hook-sync-state`).
+- Git `pre-commit` non-blocking reminder when active-work Checkpoint is behind HEAD.
 
 ### Changed
 
@@ -27,6 +30,8 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - OpenCode plugin runs idle/compact sync only (no synthetic sessionStart / day-coalescence); context comes from the AGENTS.md carrier.
 - `log.md` is semantic outcomes only — no path bullets or empty headings from hooks.
 - Active-work no longer has a `Touched files` section (paths stay in hook state for `/agent-memory sync` to consult).
+- Workflow clarified: **primary write** is in-turn (agent owns meaning); `/agent-memory sync` is **catch-up** (may follow `references/sync.md` without invoking the skill).
+- Agent-memory block, READMEs, and skill help aligned with primary write vs catch-up.
 - Cross-package docs pin `hooks/README.md` / examples to `0.0.15`.
 - Bun is the sole package manager (`bun.lock`); `package-lock.json` is ignored.
 - CLI source split into `lib/cli/` modules (filesystem install, semver, detect, hooks spawn, TTY); `install.ts` remains the entrypoint.
@@ -37,6 +42,8 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - Skill install/update replaces the destination directory atomically so obsolete files from prior skill versions are removed.
 - Multi-commit ranges since `last_processed_head` are collected instead of only the tip commit.
 - `init` / `update` explicitly ensure `.agents/memory/.gitignore` from vendor (dotfiles are often omitted by Glob); `lint` reports when it is missing.
+- Hook state fallback prefers canonical `session_binding` over stale `current_session_id` (and does not resurrect an id when binding is `__no_id__`).
+- Session rebind clears paths and updates `session_binding` under one lock (fail-open skips both — never wipe paths while leaving the old binding).
 
 ### Removed
 

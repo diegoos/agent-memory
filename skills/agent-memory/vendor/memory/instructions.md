@@ -63,9 +63,11 @@ Update the `Checkpoint: YYYY-MM-DD @ <short-sha>` line on every semantic sync (H
 
 ## Workflow
 
-- During work: maintain semantic branch progress (facts vs hypotheses), append semantic log outcomes when there is meaning, record decisions, apply the gate, align `index.md` when entry points change.
-- At end of turn / before compact / before commit / end of session: flush continuation state via `/agent-memory sync`. Update `current.md` only when shared active state changed; _Handoff_ must be explicit/evidenced — never an invented roadmap.
-- `/agent-memory sync` refreshes only `current.md`, branch active-work, `log.md`, and `index.md`. It may read `.hook-sync-state` for session/path evidence but never invents progress or log bullets without meaning. It never replaces decision/learning duties, invents roadmaps, or copies docs.
+**Primary write path (agent, in the turn):** when a turn produces durable progress, update branch `active-work` resume fields (facts vs hypotheses, next step, validation) and append a semantic `log.md` outcome before stopping. Record decisions and gated learnings when discovered; align `index.md` when entry points change. Do not defer meaning to a later sync — hooks only accumulate evidence.
+
+**Catch-up (`/agent-memory sync`):** at end of turn / before compact / before commit / end of session, or when picking work back up — consistency pass over `current.md`, branch active-work, `log.md`, and `index.md`. It may read `.hook-sync-state` and `git` as evidence but never invents progress or log bullets without meaning. Update `current.md` only when shared active state changed; _Handoff_ must be explicit/evidenced — never an invented roadmap. Sync never replaces decision/learning duties, invents roadmaps, or copies docs.
+
+You may follow the skill's `references/sync.md` steps and edit those four files directly without invoking the skill command.
 
 ### Harness parity — memory contract
 
@@ -73,7 +75,7 @@ Every supported harness targets the same memory shape. **Context layer** injects
 
 **Hooks own ephemeral evidence only:** session id binding; branch cache; session-cumulative touched paths; `last_processed_head` / commit range markers. Hooks never create or edit Markdown under `.agents/memory/` (no `active-work`, `log.md`, `current.md`, decisions, learnings, or consolidation).
 
-**Agent owns all versioned Markdown:** create/refine active-work and shared state; semantic log outcomes and headings; progress / next step / validation / assumptions / blockers / rejected approaches / references; source/recall links; decisions; gated learnings/pitfalls. Without hooks, run `/agent-memory sync` at the same checkpoints and supply both evidence (from `git`) and meaning.
+**Agent owns all versioned Markdown:** create/refine active-work and shared state; semantic log outcomes and headings; progress / next step / validation / assumptions / blockers / rejected approaches / references; source/recall links; decisions; gated learnings/pitfalls. Meaning is written in-turn (primary); sync is catch-up. Without hooks, use the same checkpoints and supply both evidence (from `git`) and meaning — via `/agent-memory sync` or by following `references/sync.md` directly.
 
 ## Multi-developer safety
 
@@ -84,4 +86,4 @@ Every supported harness targets the same memory shape. **Context layer** injects
 
 ## Memory lint boundaries
 
-Run `/agent-memory lint` on request or review. It checks structure, wiring, staleness, links, duplication, legacy mirrors, unsupported learnings, empty log headings, missing resume sections, and missing checkpoint freshness; it warns rather than adjudicating product truth or deleting user content. Soft line/heading budgets and auto-fix limits live in the skill's `lint` reference — consolidation handles promotion/pruning, not `lint --fix`.
+Run `/agent-memory lint` on request or review. It checks structure, wiring, staleness, links, duplication, legacy mirrors, unsupported learnings, empty log headings, missing resume sections, Checkpoint freshness vs HEAD (`stale-resume`), and pending hook path evidence (`evidence-pending`); it warns rather than adjudicating product truth or deleting user content. Soft line/heading budgets and auto-fix limits live in the skill's `lint` reference — consolidation handles promotion/pruning, not `lint --fix`.

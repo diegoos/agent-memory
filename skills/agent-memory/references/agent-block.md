@@ -18,12 +18,7 @@ Canonical block for `init` / `update` — do not duplicate this text elsewhere. 
 
 ## Agent Memory
 
-Local **recall** layer in `.agents/memory/` — not a docs mirror. **Before any
-task**, Read `.agents/memory/instructions.md`, then `index.md`, `current.md`,
-and your branch file under `active-work/` when it exists. Write **links and
-deltas**, not copies. Keep resume fields actionable (next step + validation).
-At checkpoints run `/agent-memory sync`. Delete branch active-work on merge;
-periodically run `/agent-memory consolidate`.
+Local **recall** layer in `.agents/memory/` — not a docs mirror. **Before any task**, Read `.agents/memory/instructions.md`, then `index.md`, `current.md`, and your branch `active-work/` when it exists. Write **links and deltas**, not copies. **Primary write:** when a turn has durable progress, update `active-work` (next step + validation) and a semantic `log.md` outcome before stopping. **Catch-up:** `/agent-memory sync` at checkpoints (or follow the skill's `references/sync.md` without invoking the skill). Delete branch active-work on merge; periodically `/agent-memory consolidate`.
 
 @.agents/memory/instructions.md
 

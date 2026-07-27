@@ -2,7 +2,7 @@
 
 Optional hooks that keep **ephemeral evidence** current during real work. They run a **deterministic git checkpoint** into `.agents/memory/.hook-sync-state` (gitignored) — no LLM call, no Markdown writes, no `followup_message` loops.
 
-**Still manual (agent or `/agent-memory sync`):** all versioned Markdown under `.agents/memory/`. Full contract: `instructions.md` → _Harness parity — memory contract_. Consolidation is `/agent-memory consolidate` only.
+**Still manual (agent owns Markdown):** **primary write** is in-turn (resume fields + semantic `log.md`); **catch-up** via `/agent-memory sync` or by following the skill's `references/sync.md` without invoking the skill. Full contract: `instructions.md` → _Harness parity — memory contract_. Consolidation is `/agent-memory consolidate` only. `sessionStart` injects a short status (branch, Checkpoint freshness, pending path count) — never Markdown.
 
 ## TL;DR
 
@@ -60,6 +60,6 @@ hooks/
 
 Copy **all three** files from `hooks/agent-memory-hooks/` — never sync+session alone. Re-run the installer when hook scripts change.
 
-Hooks write **only** `.hook-sync-state` (session, branch, paths, HEAD). They never edit Markdown, promote decisions/learnings, or consolidate. State uses a short portable lock and atomic replace; lock contention is fail-open.
+Hooks write **only** `.hook-sync-state` (session, branch, paths, HEAD). They never edit Markdown, promote decisions/learnings, or consolidate. State uses a short portable lock and atomic replace; lock contention is fail-open. The git `pre-commit` hook reminds (stderr, non-blocking) when Checkpoint is behind HEAD or staged work has no `.agents/memory/` change.
 
 OpenCode uses a Bun plugin (not `hooks.json`) that spawns the sync script on `session.idle` / `experimental.session.compacting` with an allowlisted env. Details and resolution order for project dir / session id live in the shared scripts and in `instructions.md` → _Harness parity_.
