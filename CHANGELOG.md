@@ -8,6 +8,10 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ## [Unreleased]
 
+### Changed
+
+- `instructions.md` slimmed for always-load: permission boundaries, numbered precedence, task-organized sections, observable turn closure, and formats linked to templates (`TEMPLATE.md`, `log.md`, `decisions.md`) instead of duplicated inventories.
+
 ## [0.1.0] - 2026-07-27
 
 ### Breaking
