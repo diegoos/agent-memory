@@ -35,8 +35,8 @@ The exact block `init` writes and `update` refreshes is defined in [`references/
    - **Always confirm with a diff before applying:**
      - `instructions.md` when the installed copy differs from the skill's current `vendor/memory/instructions.md` (identical → nothing to do).
      - `current.md` structural cleanup from `UPDATE.md` (e.g. 0.0.14 removal of legacy `Version / milestone` / `Done` / `Next steps`) — preserve `## In progress` and any still-useful bullets the user wants kept.
-     - `active-work/*.md` and `TEMPLATE.md` from 0.0.15 — add missing resume sections (`Next step`, `Validation`, `Assumptions / open questions`, `Rejected approaches`, `References`, `Checkpoint:`); offer removal of legacy `## Touched files` (sensitive — show diff, confirm). Preserve existing semantic content.
-     - `log.md` / `decisions.md` scaffolding from 0.0.15 — refresh format docs only; preserve entries; do not invent headings. Legacy path-only bullets and empty closed-session headings are consolidate candidates (confirm).
+     - `active-work/*.md` and `TEMPLATE.md` from 0.1.0 — add missing resume sections (`Next step`, `Validation`, `Assumptions / open questions`, `Rejected approaches`, `References`, `Checkpoint:`); offer removal of legacy `## Touched files` (sensitive — show diff, confirm). Preserve existing semantic content.
+     - `log.md` / `decisions.md` scaffolding from 0.1.0 — refresh format docs only; preserve entries; do not invent headings. Legacy path-only bullets and empty closed-session headings are consolidate candidates (confirm).
      - Any change to a file that can hold user content — including `index.md` (merge structural sections; **preserve** the user's _Canonical project sources_ and _Recall files_ lists, including `learnings.md` / topic splits). Legacy Domains/Features sections are not auto-preserved — convert them to pointers via `lint` / `consolidate`.
      - Any rename, move, or deletion.
    - **Skip superseded items** — e.g. do **not** agent-merge `.cursor/hooks.json` for `afterFileEdit` when `UPDATE.md` marks that 0.0.10 sensitive step as superseded (hooks refresh is user-run installer only).

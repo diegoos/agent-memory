@@ -35,7 +35,7 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
    **Dotfiles (required):** hosts often hide dotfiles from `Glob`. After the copy, **explicitly** Read `vendor/memory/.gitignore` and Write it to `.agents/memory/.gitignore` (create/overwrite to match vendor). Contents must ignore `.hook-sync-state`. Do **not** skip this step if Glob omitted the file. Then verify `.agents/memory/.gitignore` exists before continuing.
 
-3. **Write the version anchor.** Create `.agents/memory/.version` containing the latest version — the newest version section in this skill's `vendor/UPDATE.md`, e.g. `0.0.15`.
+3. **Write the version anchor.** Create `.agents/memory/.version` containing the latest version — the newest version section in this skill's `vendor/UPDATE.md`, e.g. `0.1.0`.
 
 4. **Parse the harness target.** From the invocation, read optional `<harness>`. Normalize aliases (`claude-code` → `claude`, `github` → `copilot`). If omitted, set mode to `auto` and **detect harnesses** (see **Auto-detection** below).
 
@@ -121,5 +121,5 @@ When `CLAUDE.md` is standalone (no `@AGENTS.md`), claude and opencode have disti
 ## Notes
 
 - Do not populate the memory here — `init` only scaffolds. To index canonical sources and gaps, the user runs `/agent-memory bootstrap` (pointers, not doc copies). Bootstrap does not invent product vision when docs are missing — it reports the gap.
-- Optional git `pre-commit` hook is **not** wired by `init` — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.0.15/hooks/README.md).
+- Optional git `pre-commit` hook is **not** wired by `init` — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.1.0/hooks/README.md).
 - **Context vs checkpoint:** native instruction files (`.mdc`, agent `*.md`, `.instructions.md`) inject the agent-memory workflow into the model context. Lifecycle hooks (see `install-hooks.md`) run deterministic git checkpoints — they do not replace context injection.

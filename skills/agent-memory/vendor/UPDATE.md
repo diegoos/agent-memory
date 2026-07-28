@@ -181,7 +181,7 @@ Format:
 - safe: root `package.json` — version bumped to `0.0.14`; `bun run test` runs contract + hooks checkpoint fixtures.
 - safe: CLI — `install.ts` → `bin/cli.js` (Bun); `install skill` / `install hooks` / `update`; hook `$hooksDir/.version` stamps; `package.json` version is SoT. Re-run `npx @dosx/agent-memory update` (or install) after upgrading the npm package. Memory migration remains `/agent-memory update` in-agent.
 
-## 0.0.15
+## 0.1.0
 
 - sensitive: `instructions.md` — ephemeral-hooks contract (hooks never write Markdown); resumable active-work only; checkpoint freshness (`Checkpoint: date @ sha`); facts vs assumptions; rejected approaches; learning/pitfall formats; on-demand decisions/log/learnings; **primary write** (in-turn) vs **catch-up** (`/agent-memory sync`, or follow `references/sync.md` without invoking the skill). Show full diff and confirm. Preserve any project-specific notes outside the method text.
 - sensitive: `active-work/TEMPLATE.md` — replace with resume sections (`Task`, `Progress`, `Next step`, `Validation`, `Assumptions / open questions`, `Blockers`, `Rejected approaches`, `References`); remove `Touched files`. For existing `active-work/*.md`: add missing sections; offer to remove legacy `## Touched files` (sensitive — show diff, confirm). Preserve semantic Task/Progress/Blockers/Notes content.
@@ -195,7 +195,7 @@ Format:
 - safe: `resolve_session_id` state fallback — prefer canonical `session_binding` over `current_session_id`; when binding is `__no_id__`, do not resurrect a stale current id. **Re-run the hooks installer** to pick up.
 - safe: session rebind — clear paths + write `session_binding` atomically under one lock; fail-open skips both. **Re-run the hooks installer** to pick up.
 - safe: `sync` / `lint` / `consolidate` / `bootstrap` references — consume hook state as evidence; resume quality checks; legacy Touched files / path-bullet cleanup; pitfall entries; sync documented as catch-up; lint `stale-resume` / `evidence-pending` warnings.
-- safe: Cross-package docs pin `hooks/README.md` / examples to `0.0.15`.
-- safe: `skills/agent-memory/SKILL.md` — version bumped to `0.0.15`.
-- safe: root `package.json` — version bumped to `0.0.15`.
+- safe: Cross-package docs pin `hooks/README.md` / examples to `0.1.0`.
+- safe: `skills/agent-memory/SKILL.md` — version bumped to `0.1.0`.
+- safe: root `package.json` — version bumped to `0.1.0`.
 - safe: `init` / `update` — explicitly ensure `.agents/memory/.gitignore` from `vendor/memory/.gitignore` (dotfiles are often omitted by Glob); `update` creates/refreshes it when missing or incomplete.

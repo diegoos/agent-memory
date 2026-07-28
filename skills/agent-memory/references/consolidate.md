@@ -25,14 +25,14 @@ Guided, conservative promotion and pruning of memory. Turns closed-session noise
    - Stale `active-work/*.md` whose branch no longer exists.
    - Closed session headings in `log.md` (all except current session).
    - Empty closed-session headings (no bullets).
-   - Legacy path-only bullets (``- `path` `` or `changed N files…`) under closed sessions — leftover from pre-0.0.15 hooks.
+   - Legacy path-only bullets (``- `path` `` or `changed N files…`) under closed sessions — leftover from pre-0.1.0 hooks.
    - Duplicate semantic bullets across sessions.
    - Local decision bodies that already have (or should have) an ADR pointer.
    - Decisions that should be marked `superseded` with `Superseded by:`.
    - Learnings/pitfalls that now have a canonical source.
    - Entries marked `pending-doc`.
    - Legacy mirror files (`vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*`) whose useful content can become a source pointer or learning.
-   - Legacy `## Touched files` sections in active-work (pre-0.0.15).
+   - Legacy `## Touched files` sections in active-work (pre-0.1.0).
 
 4. **Classify each candidate.** Propose one action per item:
    - **Reference** — replace body with a pointer to a canonical source; update `index.md` if needed.

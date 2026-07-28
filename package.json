@@ -1,6 +1,6 @@
 {
   "name": "@dosx/agent-memory",
-  "version": "0.0.15",
+  "version": "0.1.0",
   "description": "Local Markdown workspace memory for AI coding agents (Cursor, Claude Code, Codex, OpenCode, Copilot, Gemini). npx CLI installs the skill into .agents/skills/ and harness lifecycle hooks — no server, vector DB, or embeddings.",
   "bin": {
     "agent-memory": "bin/cli.js"

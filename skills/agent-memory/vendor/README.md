@@ -46,7 +46,7 @@ Install the `agent-memory` skill ([skills.sh](https://www.skills.sh/diegoos/agen
 /agent-memory update | sync | consolidate
 ```
 
-Hooks are **user-installed** (skill only prints commands) — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.0.15/hooks/README.md).
+Hooks are **user-installed** (skill only prints commands) — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.1.0/hooks/README.md).
 
 ### Manual
 

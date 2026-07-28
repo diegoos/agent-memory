@@ -8,7 +8,14 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ## [Unreleased]
 
-## [0.0.15] - 2026-07-27
+## [0.1.0] - 2026-07-27
+
+### Breaking
+
+- Hooks no longer write any Markdown under `.agents/memory/`. Consumers that relied on hook-authored `log.md` headings/path bullets, `active-work` _Touched files_, Task stubs, or `current.md` _In progress_ refresh must reinstall hooks and treat all versioned memory as agent-owned (primary write in-turn; `/agent-memory sync` is catch-up only).
+- Per-tool hook events (`postToolUse`, `afterFileEdit`, `PostToolUse`, `AfterTool`) are removed from all harness configs. Reinstall hooks so configs scrub legacy ours entries; path evidence comes only from full checkpoints via git into `.hook-sync-state`.
+- Active-work drops the `Touched files` section. Path lists live only in gitignored `.hook-sync-state` for `/agent-memory sync` / agent evidence — existing branch files should migrate via `/agent-memory update` + `consolidate`.
+- OpenCode plugin no longer synthesizes sessionStart / day-coalesced `log.md` headings. Context is the AGENTS.md carrier; idle/compact only update ephemeral state. Reinstall the OpenCode plugin + scripts.
 
 ### Added
 
@@ -26,13 +33,11 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 ### Changed
 
 - Hooks are **ephemeral evidence only** — they write `.hook-sync-state` and never edit Markdown under `.agents/memory/`.
-- Removed per-tool hook events (`postToolUse`, `afterFileEdit`, `PostToolUse`, `AfterTool`) from all harness configs; full checkpoints use git only.
-- OpenCode plugin runs idle/compact sync only (no synthetic sessionStart / day-coalescence); context comes from the AGENTS.md carrier.
+- OpenCode plugin runs idle/compact sync only; context comes from the AGENTS.md carrier.
 - `log.md` is semantic outcomes only — no path bullets or empty headings from hooks.
-- Active-work no longer has a `Touched files` section (paths stay in hook state for `/agent-memory sync` to consult).
 - Workflow clarified: **primary write** is in-turn (agent owns meaning); `/agent-memory sync` is **catch-up** (may follow `references/sync.md` without invoking the skill).
 - Agent-memory block, READMEs, and skill help aligned with primary write vs catch-up.
-- Cross-package docs pin `hooks/README.md` / examples to `0.0.15`.
+- Cross-package docs pin `hooks/README.md` / examples to `0.1.0`.
 - Bun is the sole package manager (`bun.lock`); `package-lock.json` is ignored.
 - CLI source split into `lib/cli/` modules (filesystem install, semver, detect, hooks spawn, TTY); `install.ts` remains the entrypoint.
 - Hook config merge drops legacy per-tool **ours** entries on reinstall while preserving custom hooks on those events.
@@ -48,6 +53,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 ### Removed
 
 - Hook Markdown writes: session log headings, path bullets, `Touched files` sections, Task stubs, and `current.md` _In progress_ refresh.
+- Per-tool hook events from harness configs (`postToolUse`, `afterFileEdit`, `PostToolUse`, `AfterTool`).
 
 ## [0.0.14] - 2026-07-20
 
@@ -308,8 +314,8 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 - Initial Agent Memory method, skill, and `.agents/memory/` skeleton.
 
-[unreleased]: https://github.com/diegoos/agent-memory/compare/0.0.15...HEAD
-[0.0.15]: https://github.com/diegoos/agent-memory/compare/0.0.14...0.0.15
+[unreleased]: https://github.com/diegoos/agent-memory/compare/0.1.0...HEAD
+[0.1.0]: https://github.com/diegoos/agent-memory/compare/0.0.14...0.1.0
 [0.0.14]: https://github.com/diegoos/agent-memory/compare/0.0.13...0.0.14
 [0.0.13]: https://github.com/diegoos/agent-memory/compare/0.0.12...0.0.13
 [0.0.12]: https://github.com/diegoos/agent-memory/compare/v0.0.11...v0.0.12

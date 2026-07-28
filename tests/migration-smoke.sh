@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Migration smoke: 0.0.14-shaped memory → 0.0.15 contract expectations.
+# Migration smoke: 0.0.14-shaped memory → 0.1.0 contract expectations.
 
 set -euo pipefail
 
@@ -13,9 +13,9 @@ fail() {
   exit 1
 }
 
-grep -q '## 0.0.15' "$update_md" || fail "UPDATE.md missing 0.0.15"
-grep -q 'safe:' "$update_md" || fail "UPDATE.md 0.0.15 missing safe items"
-grep -q 'sensitive:' "$update_md" || fail "UPDATE.md 0.0.15 missing sensitive items"
+grep -q '## 0.1.0' "$update_md" || fail "UPDATE.md missing 0.1.0"
+grep -q 'safe:' "$update_md" || fail "UPDATE.md 0.1.0 missing safe items"
+grep -q 'sensitive:' "$update_md" || fail "UPDATE.md 0.1.0 missing sensitive items"
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -48,15 +48,15 @@ EOF
 
 # Apply safe scaffolding refresh the way update would for templates
 cp "$skeleton/active-work/TEMPLATE.md" .agents/memory/active-work/TEMPLATE.md
-printf '0.0.15\n' >.agents/memory/.version
+printf '0.1.0\n' >.agents/memory/.version
 
 # New template contract
 grep -q 'Next step' .agents/memory/active-work/TEMPLATE.md ||
-  fail "0.0.15 template missing Next step"
+  fail "0.1.0 template missing Next step"
 grep -q 'Validation' .agents/memory/active-work/TEMPLATE.md ||
-  fail "0.0.15 template missing Validation"
+  fail "0.1.0 template missing Validation"
 ! grep -q 'Touched files' .agents/memory/active-work/TEMPLATE.md ||
-  fail "0.0.15 template still has Touched files"
+  fail "0.1.0 template still has Touched files"
 
 # Consumer semantic content preserved until confirmed prune
 grep -q 'Touched files' .agents/memory/active-work/legacy-branch.md ||
@@ -83,4 +83,4 @@ printf '{"session_id":"mig","cwd":"%s"}\n' "$TMP" |
 md_after=$(find .agents/memory -name '*.md' | sort | while read -r f; do cksum "$f"; done | cksum)
 [[ "$md_before" == "$md_after" ]] || fail "hooks altered Markdown during migration smoke"
 
-printf 'ok - migration 0.0.14→0.0.15 smoke\n'
+printf 'ok - migration 0.0.14→0.1.0 smoke\n'

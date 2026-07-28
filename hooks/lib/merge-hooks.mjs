@@ -38,7 +38,7 @@ export function scrubNestedGroup(group) {
   return next;
 }
 
-/** Per-tool events removed in 0.0.15 — drop ours on reinstall; keep custom. */
+/** Per-tool events removed in 0.1.0 — drop ours on reinstall; keep custom. */
 export const REMOVED_PER_TOOL_EVENTS = new Set([
   "postToolUse",
   "afterFileEdit",
