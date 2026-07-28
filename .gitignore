@@ -1,12 +1,17 @@
 .test-hook-memory/
 .loop-prod-state.json
 node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
-## For test purposes
+## Local dogfooding / test harness installs (not package sources)
 .cursor/
 .codex/
 .opencode/
-.github/
 .gemini/
 .claude/
 .agents/
+.github/hooks/
+.github/instructions/
+.github/copilot-instructions.md

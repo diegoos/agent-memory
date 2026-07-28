@@ -1,22 +1,36 @@
 # Active Work — Branch: `<branch>`
 
-Ephemeral per-branch scratchpad. Copy to `active-work/<branch>.md` (sanitize: non `[A-Za-z0-9._-]` → `-`), set the real `Branch:` name, delete on merge. Method: `instructions.md`.
+Ephemeral per-branch scratchpad. Copy to `active-work/<branch>.md` (sanitize: non `[A-Za-z0-9._-]` → `-`), set the real `Branch:` name, delete on merge. Create only when work is resumable. Method: `instructions.md`.
+
+Checkpoint: `YYYY-MM-DD` @ `<short-sha>` — update on every semantic sync.
 
 ## Task
 
-**Required.** Hooks may seed a branch-name stub; refine to 1–2 lines.
+**Required.** 1–2 lines: what this branch is delivering.
 
 - _No active task._
 
 ## Progress
 
-Outcomes/state — not a command diary.
+Outcomes and state — facts only, not a command diary.
 
 - _none_
 
-## Touched files
+## Next step
 
-Hooks refresh from `git`. Semantic notes go in _Progress_ / _Notes_.
+One concrete next action.
+
+- _none_
+
+## Validation
+
+Exact command and expected result. Prefer copy-pasteable lines.
+
+- _none_
+
+## Assumptions / open questions
+
+Unconfirmed hypotheses and open questions — never present as facts.
 
 - _none_
 
@@ -24,8 +38,14 @@ Hooks refresh from `git`. Semantic notes go in _Progress_ / _Notes_.
 
 - _none_
 
-## Notes
+## Rejected approaches
 
-Resume context only — links/deltas, not copied docs.
+Tried paths that failed, with why. Prevents rediscovery.
+
+- _none_
+
+## References
+
+Pointers only: `path` or link + why it matters for this task.
 
 - _none_

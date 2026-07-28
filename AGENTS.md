@@ -1,138 +1,89 @@
 # Agent instructions — agent-memory repository
 
-This repo **is** the source for the [Agent Memory](README.md) method and its
-manual-only skill. It is not a consumer install — the skeleton the skill copies
-into other projects lives under `skills/agent-memory/vendor/`; the orchestrator
-lives under `skills/agent-memory/`.
+This repo is the source for the [Agent Memory](README.md) method and its manual-only skill — not a consumer install. Skeleton: `skills/agent-memory/vendor/`; skill orchestrator: `skills/agent-memory/`; hooks: repo-root `hooks/`; CLI: `install.ts` → `bin/cli.js`.
 
-## Layout
+Package manager: **Bun** (`bun.lock`). Verify with `bun run check` (typecheck + markdownlint + tests + build + `build:check`). Shorter: `bun run test`, `bun run typecheck`, `bun run lint:md`, `bun run build`.
 
-```text
-skills/agent-memory/          # skill only (no hooks)
-├── SKILL.md
-├── vendor/                   # SoT: skeleton + UPDATE.md + method README
-└── references/
+## Permission boundaries
 
-hooks/                        # outside the skill — user-run install
-├── install-hooks.sh
-├── agent-memory-hooks/       # common / sync / session
-├── <harness>/                # cursor, claude-code, …
-└── README.md
+| Mode             | Scope                                                                                                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| READ             | Whole repo; method details in `skills/agent-memory/vendor/memory/instructions.md`                                                                                                                     |
+| WRITE            | `skills/agent-memory/`, `hooks/`, `install.ts`, `lib/cli/`, `tests/`, `bin/cli.js` (via `bun run build`), root docs (`README.md`, `CHANGELOG.md`, this file), `package.json` / `bun.lock` when asked  |
+| NEVER            | Invent a repo-root `agent-memory/` path for writes; push; create git tags or npm publish unless the user explicitly asks; install hooks into a consumer project from this agent (print commands only) |
+| HUMAN_CHECKPOINT | Version bump; release tag; npm publish; any change that rewrites consumer memory Markdown outside this meta-repo                                                                                      |
 
-install.ts                    # CLI source (Bun build)
-bin/cli.js                    # npx CLI (skill + hooks)
-package.json                  # SoT: package / skill / hooks version
+## Precedence
 
-CHANGELOG.md
+1. User explicit request (including “do not bump” / “fold into current version”).
+2. This file’s NEVER / HUMAN_CHECKPOINT.
+3. Single sources of truth below — link, do not copy.
+4. Conventional Commits in English; do not push unless asked.
+
+## Escalation
+
+If blocked (missing permission, ambiguous SemVer, conflict between docs and code): stop and ask the user. Do not invent a version bump, tag, or publish path to “unblock.” Do not skip `bun run test` / `version-parity` after a requested bump.
+
+## Single sources of truth
+
+- Agent-memory block: `skills/agent-memory/references/agent-block.md`
+- Installed memory shape: `skills/agent-memory/vendor/memory/`
+- Harness parity (hooks vs agent): `skills/agent-memory/vendor/memory/instructions.md` → _Harness parity — memory contract_
+- Migrations: `skills/agent-memory/vendor/UPDATE.md`
+- Release history: `CHANGELOG.md` ([Keep a Changelog][kac], [SemVer][semver])
+- Package / skill / hooks version: `package.json` `version` → mirror `skills/agent-memory/SKILL.md` → `metadata.version`
+- Version pin check: `tests/version-parity.sh` (run via `bun run test`)
+
+## Conventions
+
+- **Skill boundary** — `/agent-memory` is manual-only (`disable-model-invocation: true`). Never auto-trigger it. Follow `SKILL.md` + `references/<command>.md`. The skill **never** installs hooks (print instructions only).
+- **Hooks** — under `hooks/` (not inside the skill). Shared scripts in `hooks/agent-memory-hooks/`; per-host config in `hooks/<harness>/`. User installs via `hooks/install-hooks.sh` or `npx` CLI. Deterministic checkpoint: ephemeral evidence in `.hook-sync-state` only — **no Markdown writes**, no LLM loops (`followup_message` on Cursor `stop` unused). Upgrade notes: [Known issues](#known-issues).
+- **Markdown** — normal paragraphs (no hard-wrap for line length); `.markdownlint.json` (MD013 off).
+- **Content language** — English in repo docs and commits.
+
+## When bumping versions
+
+Only when the user asks. Do **not** invent a bump.
+
+**Released vs unreleased:** a version is **released** only if its git tag exists (no `v` prefix — e.g. `0.1.0`). Check with:
+
+```bash
+git tag -l '<version>'
+# or remote: git ls-remote --tags origin '<version>' 'refs/tags/<version>'
 ```
 
-## Conventions for agents working here
+If the tag is **missing**, that version was **not** launched: fold further work into the **current** `package.json` version (same `CHANGELOG.md` / `UPDATE.md` section). Do **not** bump to the next SemVer until the user asks for a new release.
 
-- **Single sources of truth** — do not duplicate or drift:
-  - Agent-memory block text: `skills/agent-memory/references/agent-block.md`
-  - Installed memory shape: `skills/agent-memory/vendor/memory/`
-  - **Harness parity (hooks vs agent):**
-    `skills/agent-memory/vendor/memory/instructions.md` → _Harness parity —
-    memory contract_ (canonical; link, do not copy)
-  - Migrations: `skills/agent-memory/vendor/UPDATE.md`
-  - Release history: `CHANGELOG.md` ([Keep a Changelog][kac], [SemVer][semver])
-  - Package / skill / hooks version: `package.json` `version` (mirror into
-    `skills/agent-memory/SKILL.md` → `metadata.version`)
-- **Always edit** `skills/agent-memory/vendor/` — never invent a repo-root
-  `agent-memory/` path for writes.
-- **Version bumps** — only when requested: bump `package.json` `version` (SoT),
-  mirror it into `skills/agent-memory/SKILL.md` → `metadata.version`, add a
-  `## <version>` section to `skills/agent-memory/vendor/UPDATE.md` when memory
-  scaffolding/migrations change, align pinned examples in `references/init.md`,
-  `references/install-hooks.md`, `hooks/README.md`, and root `README.md`, keep
-  `install-hooks.sh` fallback version in sync if present, and add a matching
-  `[<version>]` entry to `CHANGELOG.md` (human-oriented; map `safe`/`sensitive`
-  items from `UPDATE.md` into Added / Changed / Removed / Fixed / Security — do
-  not dump git logs).
-- **Skill boundary** — `/agent-memory` is manual-only
-  (`disable-model-invocation: true`). Never auto-trigger it; follow `SKILL.md`
-  and the matching `references/<command>.md` when the user invokes a subcommand.
-  The skill **never** installs hooks (print instructions only).
-- **Hooks** — live under repo-root `hooks/` (**not** inside the skill). Shared
-  scripts in `hooks/agent-memory-hooks/` (`common`, `sync`, `session`);
-  per-host config in `hooks/<harness>/`. User installs via
-  `hooks/install-hooks.sh` or `npx` CLI (`install.ts` → `bin/cli.js`).
-  Deterministic checkpoint: session-cumulative `active-work/` _Touched files_,
-  `log.md` file bullets on full checkpoints only, `current.md` _In progress_ on
-  session start — no LLM loops (`followup_message` on Cursor `stop` is
-  intentionally unused). See [Known issues](#known-issues) for hook upgrade
-  notes.
-- **Markdown** — `markdownlint` with 100-char line length
-  (`.markdownlint.json`).
-- **Commits** — English, Conventional Commits; do not push unless asked.
-- **Content Language** — English.
+When a bump **is** requested:
+
+1. Set `package.json` `version` (SoT).
+2. Mirror into `skills/agent-memory/SKILL.md` → `metadata.version`.
+3. Add or rename `## <version>` in `skills/agent-memory/vendor/UPDATE.md` when memory scaffolding/migrations change (`safe` / `sensitive` lines).
+4. Add or rename `## [<version>]` in `CHANGELOG.md` (human-oriented; map UPDATE items into Added / Changed / Removed / Fixed / Security / Breaking — do not dump git logs). Keep `[Unreleased]` and footer compare links aligned.
+5. Align pinned examples: `references/init.md`, `references/install-hooks.md`, root `README.md`, and any `blob/<ver>` / `#<ver>` / `--branch <ver>` pins; keep `hooks/install-hooks.sh` `VERSION=…` fallback in sync.
+6. Closure — `bun run test` must exit 0 (includes `tests/version-parity.sh`). Do not create the git tag or publish unless the user asks.
 
 ## Known issues
 
-### Hook checkpoint regression (0.0.8 → fixed in tree)
+### Hook Markdown writes removed (0.1.0)
 
-**Symptom (consumer projects on hooks before this fix):** `log.md` shows a
-`changed N files (see active-work Touched files)` summary plus stray
-``- `path` `` bullets with no semantic context; `active-work` _Touched files_ is
-incomplete (e.g. only files written via `Write`, not edits).
-`/agent-memory sync --auto` semantic bullets are unaffected — they come from the
-agent, not hooks.
+**Symptom (consumers on hooks before 0.1.0):** hooks may still create empty `log.md` headings, path bullets, `Touched files` sections, or refresh `current.md` _In progress_. That is superseded — semantic Markdown is agent-owned only.
 
-**Root cause:**
+**Fix:** re-run the user installer for the release tag so scripts and harness config are refreshed (per-tool events removed). Then run `/agent-memory update` and `/agent-memory consolidate` to migrate templates and prune legacy path noise.
 
-1. **0.0.8 perf change** — `postToolUse` stopped running `git` and only read
-   `tool_input.file_path` from stdin. Full git reconciliation moved to
-   end-of-turn only. If the working tree was clean at end-of-turn, `active-work`
-   was not refreshed.
-2. **Cursor wiring gap** — Cursor agent **edits** fire `afterFileEdit`
-   (top-level `file_path`), not `postToolUse`. The Cursor snippet only matched
-   `Write|Shell`, so most edits were never captured between turns.
-3. **Replace vs accumulate** — each checkpoint replaced _Touched files_ with the
-   current git delta instead of merging session paths; a later small delta could
-   shrink a list that `/agent-memory sync` had just filled.
-4. **Log noise** — `postToolUse` appended individual path bullets even after a
-   summary line for the same session.
+### Hook checkpoint regression (0.0.8 → fixed in 0.0.10; superseded by 0.1.0)
 
-**Fix (canonical sources in this repo):**
+**Symptom (consumer projects on hooks before the 0.0.10 fix):** `log.md` shows a `changed N files (see active-work Touched files)` summary plus stray ``- `path` `` bullets with no semantic context; `active-work` _Touched files_ is incomplete. Superseded by the 0.1.0 ephemeral-hooks contract (no Markdown writes at all).
 
-- Session-cumulative `session_touched_files` in `.hook-sync-state`; full
-  checkpoints flush even when git returns no new paths.
-- Cursor: add `afterFileEdit` hook; `postToolUse` no longer writes `log.md`.
-- Shared stdin parser: `tool_input.file_path`, `tool_input.path`, top-level
-  `file_path` (Cursor `afterFileEdit`, Copilot).
-- Gemini: map `AfterTool` → post-tool accumulate, `AfterAgent` → full
-  checkpoint.
-- After a summary bullet, suppress further individual path bullets in the same
-  session.
+**Consumer upgrade:** re-run the user installer for the release tag (npx or `install-hooks.sh`) so all three scripts and host config are refreshed. Or follow `/agent-memory install hooks <harness>` printed instructions.
 
-**Consumer upgrade:** re-run the user installer for the release tag (npx or
-`install-hooks.sh`) so all three scripts and host config are refreshed
-(especially `.cursor/hooks.json` — must include `afterFileEdit`). Or follow
-`/agent-memory install hooks <harness>` printed instructions.
+### OpenCode empty `log.md` headings (fixed in 0.0.11; superseded by 0.1.0)
 
-### OpenCode empty `log.md` headings (fixed in tree)
-
-**Symptom:** multiple same-day headings like `## [YYYY-MM-DD] [ses_…]` with no
-bullets — one per OpenCode `session.idle` / compaction event.
-
-**Root cause:** OpenCode rotates `ses_*` session IDs frequently; the plugin
-synthesized `sessionStart` on every idle/compaction and each ID created a new
-heading. `session.idle` carries only `sessionID` (no stable conversation id).
-
-**Fix:** bind **one log heading per calendar day** (`opencode_log_heading_id` in
-`.hook-sync-state`); map later `ses_*` IDs to that heading; prune empty
-duplicate headings; plugin skips redundant `sessionStart` only when the bound
-heading **exists in `log.md`**; compaction runs sync only (no new heading).
-Checkpoints call `ensure_log_heading_for_checkpoint` before appending bullets
-(state binding alone is insufficient). Re-run the OpenCode hook installer for
-the release tag (plugin + three `.opencode/hooks/*.sh` scripts).
+**Symptom:** multiple same-day empty headings from OpenCode `ses_*` rotation. 0.1.0 OpenCode plugin no longer synthesizes sessionStart / day headings — hooks never write `log.md`. Re-install the OpenCode plugin + scripts.
 
 ## Dogfooding
 
-To use Workspace Memory at the repo root, run `/agent-memory init` (installs
-`.agents/memory/` from `skills/agent-memory/vendor/memory/`). Until then, treat
-`skills/agent-memory/vendor/memory/instructions.md` as the method file for this
-project.
+To use Workspace Memory at the repo root, run `/agent-memory init` (installs `.agents/memory/` from `skills/agent-memory/vendor/memory/`). Until then, treat `skills/agent-memory/vendor/memory/instructions.md` as the method file for this project.
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html

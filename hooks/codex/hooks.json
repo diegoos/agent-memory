@@ -12,18 +12,6 @@
         ]
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash|apply_patch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "AGENT_MEMORY_EVENT=PostToolUse .codex/hooks/agent-memory-sync.sh",
-            "timeout": 15
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [

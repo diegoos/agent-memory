@@ -16,7 +16,7 @@ elif [[ -f "$SCRIPT_DIR/../package.json" ]] && command -v node >/dev/null 2>&1; 
     node -p 'require(process.argv[1]).version' "$SCRIPT_DIR/../package.json" 2>/dev/null || true
   )"
 fi
-VERSION="${VERSION:-0.0.14}"
+VERSION="${VERSION:-0.1.0}"
 
 # Resolve project dir (absolute). Relative AGENT_MEMORY_PROJECT_DIR is allowed.
 # Require an existing directory so realpath and python3 agree (no mkdir surprise).
@@ -157,74 +157,7 @@ safe_install_file() {
 merge_hooks_json() {
   local source=$1 target=$2 out=$3 mode=$4
   need_cmd node
-  node --input-type=module - "$source" "$target" "$out" "$mode" <<'NODE'
-import fs from 'node:fs';
-
-const [sourcePath, targetPath, outPath, mode] = process.argv.slice(2);
-const src = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
-let tgt = {};
-if (fs.existsSync(targetPath)) {
-  tgt = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
-}
-
-/**
- * Product hook entries invoke our scripts by path/basename, optionally with
- * AGENT_MEMORY_* env prefixes. Do not match mere mentions of the filenames
- * (e.g. docs/agent-memory-sync.sh.example).
- */
-const isOurs = (value) => {
-  const s = typeof value === 'string' ? value : JSON.stringify(value);
-  return /(?:^|[\s/"'=])(?:[\w./-]*\/)?agent-memory-(?:session|sync|common)\.sh(?:$|[\s"'])/.test(
-    s
-  );
-};
-
-const asHooksObject = (hooks) => {
-  if (hooks && typeof hooks === 'object' && !Array.isArray(hooks)) return hooks;
-  return {};
-};
-
-/** Nested groups: strip only our command entries; keep sibling custom hooks. */
-const scrubNestedGroup = (group) => {
-  if (!group || typeof group !== 'object' || Array.isArray(group)) return null;
-  const next = { ...group };
-  if (Array.isArray(next.hooks)) {
-    next.hooks = next.hooks.filter((entry) => !isOurs(entry));
-    if (next.hooks.length === 0) return null;
-  } else if (isOurs(group)) {
-    return null;
-  }
-  return next;
-};
-
-if (mode === 'flat') {
-  if (src.version != null && tgt.version == null) tgt.version = src.version;
-  tgt.hooks = asHooksObject(tgt.hooks);
-  const srcHooks = src.hooks || {};
-  for (const [event, entries] of Object.entries(srcHooks)) {
-    const existing = Array.isArray(tgt.hooks[event]) ? tgt.hooks[event] : [];
-    const kept = existing.filter((e) => !isOurs(e));
-    tgt.hooks[event] = [...kept, ...(Array.isArray(entries) ? entries : [])];
-  }
-} else if (mode === 'nested') {
-  tgt.hooks = asHooksObject(tgt.hooks);
-  const srcHooks = src.hooks || {};
-  for (const [event, groups] of Object.entries(srcHooks)) {
-    const existing = Array.isArray(tgt.hooks[event]) ? tgt.hooks[event] : [];
-    const kept = [];
-    for (const group of existing) {
-      const scrubbed = scrubNestedGroup(group);
-      if (scrubbed) kept.push(scrubbed);
-    }
-    tgt.hooks[event] = [...kept, ...(Array.isArray(groups) ? groups : [])];
-  }
-} else {
-  console.error(`unknown merge mode: ${mode}`);
-  process.exit(1);
-}
-
-fs.writeFileSync(outPath, `${JSON.stringify(tgt, null, 2)}\n`);
-NODE
+  node "$HOOKS_ROOT/lib/merge-hooks.mjs" "$source" "$target" "$out" "$mode"
 }
 
 # Write merged JSON to a temp file beside the target, then replace atomically.

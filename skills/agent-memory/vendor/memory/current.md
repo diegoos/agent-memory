@@ -4,7 +4,7 @@ Shared **active** snapshot. Update when shared execution state changes (PR or `/
 
 ## In progress
 
-High-level work only (detail in `active-work/<branch>.md`). Hooks refresh this list on session start; refine summaries when branch goals change:
+High-level work only (detail in `active-work/<branch>.md`). List each open branch file with a one-line goal:
 
 - [`active-work/<branch>.md`](./active-work/) — _branch goal in one line._
 

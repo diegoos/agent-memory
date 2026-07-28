@@ -1,8 +1,7 @@
 #!/bin/bash
-# agent-memory sessionStart / NewSession hook — inject context + deterministic
-# memory refresh. Captures session_id from harness stdin JSON when provided.
-# On new session: refresh current.md In progress from active-work/ + log state.
-# No-op when .agents/memory/ is absent.
+# agent-memory sessionStart / NewSession hook — inject context + ephemeral state.
+# Captures session_id from harness stdin JSON when provided.
+# Never creates or edits Markdown under .agents/memory/.
 #
 # Set AGENT_MEMORY_HOST: cursor | claude | codex | copilot | opencode | gemini
 
@@ -27,18 +26,13 @@ agent_memory_init_context || exit 0
 session_id=$(resolve_session_id "$hook_stdin_session_id" 0)
 [ -n "$session_id" ] || write_state current_session_id ""
 persist_session_id "$session_id"
-reset_logged_files_if_session_changed "$session_id" sessionStart
+reset_session_state_if_changed "$session_id" sessionStart
 
-# New session: ensure active-work, log heading, current.md in-progress list.
 if command -v git >/dev/null 2>&1 && git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
   refresh_branch_cache
-  aw=$(ensure_active_work)
-  update_task_stub "$aw"
-  ensure_session_log_heading "$session_id" sessionStart
-  refresh_current_in_progress
 fi
 
-msg="Agent Memory: recall layer in .agents/memory/ — not a docs mirror. Before tasks: read instructions.md, index.md, current.md, and your branch active-work. Write links/deltas, not copies. Hooks sync Touched files, log path bullets, and current.md In progress; you own meaning (task, outcomes, decisions, learnings). Run /agent-memory sync at checkpoints."
+msg=$(build_session_context_msg)
 
 json_escape() {
   local s=$1
@@ -86,9 +80,12 @@ case "$host" in
     ;;
   gemini)
     # Gemini CLI requires strict JSON-only stdout for hooks (no stray text).
-    # We return the memory guidance as context. The deterministic work
-    # (heading, current.md, etc.) happens as side effects before this output.
-    printf '{"context":"%s"}\n' "$(json_escape "$msg")"
+    if [ -n "$session_id" ]; then
+      # Prefer context + env when supported; always persist session in state.
+      printf '{"context":"%s"}\n' "$(json_escape "$msg")"
+    else
+      printf '{"context":"%s"}\n' "$(json_escape "$msg")"
+    fi
     ;;
   *)
     [ -n "$session_id" ] && export AGENT_MEMORY_SESSION_ID="$session_id"

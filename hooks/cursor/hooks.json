@@ -7,19 +7,6 @@
         "timeout": 5
       }
     ],
-    "postToolUse": [
-      {
-        "command": "AGENT_MEMORY_EVENT=postToolUse .cursor/hooks/agent-memory-sync.sh",
-        "matcher": "Write|Shell",
-        "timeout": 15
-      }
-    ],
-    "afterFileEdit": [
-      {
-        "command": "AGENT_MEMORY_EVENT=afterFileEdit .cursor/hooks/agent-memory-sync.sh",
-        "timeout": 15
-      }
-    ],
     "afterAgentResponse": [
       {
         "command": "AGENT_MEMORY_EVENT=afterAgentResponse .cursor/hooks/agent-memory-sync.sh",
