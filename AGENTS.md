@@ -6,12 +6,12 @@ Package manager: **Bun** (`bun.lock`). Verify with `bun run check` (typecheck + 
 
 ## Permission boundaries
 
-| Mode             | Scope                                                                                                                                                                                                 |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| READ             | Whole repo; method details in `skills/agent-memory/vendor/memory/instructions.md`                                                                                                                     |
-| WRITE            | `skills/agent-memory/`, `hooks/`, `install.ts`, `lib/cli/`, `tests/`, `bin/cli.js` (via `bun run build`), root docs (`README.md`, `CHANGELOG.md`, this file), `package.json` / `bun.lock` when asked  |
-| NEVER            | Invent a repo-root `agent-memory/` path for writes; push; create git tags or npm publish unless the user explicitly asks; install hooks into a consumer project from this agent (print commands only) |
-| HUMAN_CHECKPOINT | Version bump; release tag; npm publish; any change that rewrites consumer memory Markdown outside this meta-repo                                                                                      |
+| Mode             | Scope |
+| ---------------- | ----- |
+| READ             | Whole repo; method details in `skills/agent-memory/vendor/memory/instructions.md` |
+| WRITE            | `skills/agent-memory/`, `hooks/`, `install.ts`, `lib/cli/`, `tests/`, `bin/cli.js` (via `bun run build`), root docs (`README.md`, `CHANGELOG.md`, `SECURITY.md`, this file), `package.json` / `bun.lock` when asked |
+| NEVER            | Invent a repo-root `agent-memory/` path for writes; push; create git tags or npm publish unless the user explicitly asks; install hooks into a consumer project from this agent (print commands only); add `shell: true` on child processes; forward full `process.env` to hook children; write Markdown from hooks |
+| HUMAN_CHECKPOINT | Version bump; release tag; npm publish; any change that rewrites consumer memory Markdown outside this meta-repo |
 
 ## Precedence
 
@@ -29,6 +29,7 @@ If blocked (missing permission, ambiguous SemVer, conflict between docs and code
 - Agent-memory block: `skills/agent-memory/references/agent-block.md`
 - Installed memory shape: `skills/agent-memory/vendor/memory/`
 - Harness parity (hooks vs agent): `skills/agent-memory/vendor/memory/instructions.md` → _Harness parity — memory contract_
+- Trust boundary / intentional capabilities (CLI + hooks): `SECURITY.md`
 - Migrations: `skills/agent-memory/vendor/UPDATE.md`
 - Release history: `CHANGELOG.md` ([Keep a Changelog][kac], [SemVer][semver])
 - Package / skill / hooks version: `package.json` `version` → mirror `skills/agent-memory/SKILL.md` → `metadata.version`
@@ -37,7 +38,8 @@ If blocked (missing permission, ambiguous SemVer, conflict between docs and code
 ## Conventions
 
 - **Skill boundary** — `/agent-memory` is manual-only (`disable-model-invocation: true`). Never auto-trigger it. Follow `SKILL.md` + `references/<command>.md`. The skill **never** installs hooks (print instructions only).
-- **Hooks** — under `hooks/` (not inside the skill). Shared scripts in `hooks/agent-memory-hooks/`; per-host config in `hooks/<harness>/`. User installs via `hooks/install-hooks.sh` or `npx` CLI. Deterministic checkpoint: ephemeral evidence in `.hook-sync-state` only — **no Markdown writes**, no LLM loops (`followup_message` on Cursor `stop` unused). Upgrade notes: [Known issues](#known-issues).
+- **Hooks** — under `hooks/` (not inside the skill). Shared scripts in `hooks/agent-memory-hooks/`; per-host config in `hooks/<harness>/`. User installs via `hooks/install-hooks.sh` or `npx` CLI. Deterministic checkpoint: ephemeral evidence in `.hook-sync-state` only — **no Markdown writes**, no LLM loops (`followup_message` on Cursor `stop` unused). Trust model and audit path: `SECURITY.md`. Upgrade notes: [Known issues](#known-issues).
+- **Security (CLI / OpenCode spawn)** — details in `SECURITY.md`. Keep `ENV_ALLOWLIST_EXACT` aligned (`lib/cli/constants.ts` ↔ `hooks/opencode/agent-memory.ts`). OpenCode spawn must go through `hooks/opencode/safe-script.ts` before `execFileSync`. Do not add `--minify` to `bun run build` (auditability; `bun run build:check`). Closure for spawn/security edits: `bun run test` (includes `tests/opencode-safe-script.test.ts`).
 - **Markdown** — normal paragraphs (no hard-wrap for line length); `.markdownlint.json` (MD013 off).
 - **Content language** — English in repo docs and commits.
 

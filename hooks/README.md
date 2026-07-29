@@ -60,6 +60,8 @@ hooks/
 
 Copy **all three** files from `hooks/agent-memory-hooks/` — never sync+session alone. Re-run the installer when hook scripts change.
 
+**Trust boundary:** hooks run scripts from your project directory (same trust model as git hooks). Only install when you trust the project and the `@dosx/agent-memory` package version you install. See [SECURITY.md](../SECURITY.md).
+
 Hooks write **only** `.hook-sync-state` (session, branch, paths, HEAD). They never edit Markdown, promote decisions/learnings, or consolidate. State uses a short portable lock and atomic replace; lock contention is fail-open. The git `pre-commit` hook reminds (stderr, non-blocking) when Checkpoint is behind HEAD or staged work has no `.agents/memory/` change.
 
 OpenCode uses a Bun plugin (not `hooks.json`) that spawns the sync script on `session.idle` / `experimental.session.compacting` with an allowlisted env. Details and resolution order for project dir / session id live in the shared scripts and in `instructions.md` → _Harness parity_.
