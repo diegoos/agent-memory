@@ -14,6 +14,10 @@
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import {
+  assertSafeHookScript,
+  isValidBindingId,
+} from './safe-script';
 
 const HOOKS_DIR = '.opencode/hooks';
 const SYNC_SCRIPT = `${HOOKS_DIR}/agent-memory-sync.sh`;
@@ -35,10 +39,12 @@ function extractSessionId(input: unknown): string | undefined {
     props?.sessionID,
     props?.session_id,
   ]) {
-    if (typeof candidate === 'string' && candidate.length > 0) return candidate;
+    if (typeof candidate === 'string' && candidate.length > 0) {
+      return isValidBindingId(candidate) ? candidate : undefined;
+    }
   }
   const fromEnv = process.env.AGENT_MEMORY_SESSION_ID;
-  return fromEnv && fromEnv.length > 0 ? fromEnv : undefined;
+  return fromEnv && isValidBindingId(fromEnv) ? fromEnv : undefined;
 }
 
 function extractConversationId(input: unknown): string | undefined {
@@ -54,7 +60,9 @@ function extractConversationId(input: unknown): string | undefined {
     props?.conversationID,
     props?.conversation_id,
   ]) {
-    if (typeof candidate === 'string' && candidate.length > 0) return candidate;
+    if (typeof candidate === 'string' && candidate.length > 0) {
+      return isValidBindingId(candidate) ? candidate : undefined;
+    }
   }
   return undefined;
 }
@@ -119,8 +127,8 @@ function runScript(
   conversationId?: string
 ): boolean {
   const cwd = process.cwd();
-  const scriptPath = path.join(cwd, script);
-  if (!fs.existsSync(scriptPath)) return false;
+  const scriptPath = assertSafeHookScript(cwd, script, HOOKS_DIR);
+  if (!scriptPath) return false;
   const payload: Record<string, string> = {};
   if (sessionId) payload.session_id = sessionId;
   else if (conversationId) payload.conversation_id = conversationId;

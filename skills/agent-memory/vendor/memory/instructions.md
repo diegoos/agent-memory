@@ -4,9 +4,25 @@ Workspace Memory in `.agents/memory/` is a Git-versioned **recall layer**, not a
 
 ## Always load
 
-Harness context must load this file. Before every task, read `index.md` and `current.md`. Read the branch `active-work` file when it exists (create from `active-work/TEMPLATE.md` only when work is resumable across sessions). Follow canonical sources listed in `index.md`; load `decisions.md`, `log.md`, and optional recall only when needed. Keep always-loaded files short: one fact per bullet, update before create, link instead of copy.
+Harness context must load this file. Before every task, read `index.md` and `current.md`. Read the branch `active-work` file when it exists. Follow canonical sources in `index.md`; load `decisions.md`, `log.md`, and optional recall only when needed. Keep always-loaded files short: one fact per bullet, update before create, link instead of copy. Hot path: `index.md` + `current.md` + branch `active-work` (when present). `decisions.md`, `log.md`, and `learnings.md` are on-demand.
 
-Hot path: `index.md` + `current.md` + branch `active-work` (when present). `decisions.md`, `log.md`, and `learnings.md` are on-demand.
+## Permission boundaries
+
+| Mode             | Scope                                                                                                                  |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| READ             | `.agents/memory/**` and canonical sources listed in `index.md`                                                         |
+| WRITE            | Versioned Markdown under `.agents/memory/` — **agent only**                                                            |
+| NEVER            | Hooks/plugin create or edit Markdown; invent progress or log bullets; copy docs into memory                            |
+| HUMAN_CHECKPOINT | `/agent-memory consolidate` (promote/prune); resolve conflicting appends in `decisions.md` / `log.md` / `learnings.md` |
+
+Multi-dev: edit only your `active-work/` (delete on merge); change `current.md` with the PR that changes shared active state; keep `decisions.md` / `learnings.md` / working `log.md` oldest-first and append-oriented — on conflict keep both valid contributions and mark supersession; prune closed log only via consolidate in a dedicated change (never the current session).
+
+## Precedence
+
+1. Canonical sources, code, tests, and config beat memory.
+2. If memory diverges from an authoritative source: do not pick silently — record under `current.md` _Blockers / attention_ or branch _Blockers_; consult the source or user; then fix or remove the stale entry.
+3. Primary write in-turn beats deferring meaning to a later sync.
+4. Sync is catch-up only — never invents progress, roadmaps, or log bullets without meaning.
 
 ## Authority by information type
 
@@ -20,8 +36,6 @@ No global source of truth — authority follows the fact:
 - Recent activity → `log.md`
 - Reusable knowledge with no better source → on-demand `learnings.md`
 
-If memory diverges from an authoritative source: do not pick silently; record under `current.md` _Blockers / attention_ or branch _Blockers_; consult the source or user; then fix or remove the stale entry.
-
 ## Retention gate and lifecycle
 
 Before recording:
@@ -29,60 +43,35 @@ Before recording:
 1. Reusable in another session? If no → skip (keep in the current log only if useful to resume this session, until consolidate).
 2. Already in a canonical source? → store only `link + delta/relevance` (optional `relevant when:` / `verified: YYYY-MM-DD` for code/config inferences).
 3. Current-task state only? → branch `active-work`; shared active state → `current.md`.
-4. Non-trivial decision? → pointer to the project decision system; local fallback in `decisions.md` only when none exists.
+4. Non-trivial decision? → pointer to the project decision system; local fallback in `decisions.md` only when none exists. Formats in `decisions.md`.
 5. Stable, non-obvious, evidenced, undocumented, secret-free learning or pitfall? → `learnings.md`.
 6. Transient, Git-reconstructible, or unevidenced? → do not make durable.
 
-Lifecycle: `active-work → log → canonical pointer | decision | learning | discard`. Record decisions/learnings when discovered; never remove durable knowledge without reason. Delete branch active-work on merge. Only manual `/agent-memory consolidate` may promote or prune closed sessions — never hooks, never mid-session automation, never the current session.
-
-Legacy mirrors may exist; do not create, auto-delete, or prefer them over canonical sources. Lint/consolidate may propose pointer conversion.
+Lifecycle: `active-work → log → canonical pointer | decision | learning | discard`. Record decisions/learnings when discovered; never remove durable knowledge without reason. Delete branch active-work on merge. Only manual `/agent-memory consolidate` may promote or prune closed sessions — never hooks, never mid-session automation, never the current session. Legacy mirrors may exist; do not create, auto-delete, or prefer them over canonical sources. Lint/consolidate may propose pointer conversion.
 
 Minimum pointer line: `- [topic] useful delta — source: [doc](../../path); relevant when: trigger; verified: YYYY-MM-DD`
 
-## Branch work
+**Log** — one `## [YYYY-MM-DD] [session-id] [type] short outcome` per session with useful outcomes (oldest first); semantic bullets only; never path lists, empty headings, or transcripts. Details and types in `log.md`.
 
-One file per branch, only when work is resumable. Sanitize the real branch name (or `local`) to `active-work/<branch>.md` by replacing every character outside `[A-Za-z0-9._-]` with `-`. Copy `TEMPLATE.md`, keep the unsanitized name in the `Branch:` header, replace placeholders with a meaningful task.
+**Learning / pitfall** — create `learnings.md` only when the gate passes, link from `index.md`, one line: `- [YYYY-MM-DD] [learning|pitfall] [topic] insight — evidence: path|link; use when: trigger; verified: YYYY-MM-DD; invalidate when: condition.` Append `pending-doc` when it belongs in official docs; keep until that source exists, then pointer or remove via consolidate. Code/config inferences need evidence + date.
 
-Keep these sections current and distinct:
+## When starting or resuming work
 
-- _Progress_ — confirmed facts / outcomes
-- _Next step_ — one concrete next action
-- _Validation_ — exact command + expected result
-- _Assumptions / open questions_ — hypotheses, never presented as facts
-- _Blockers_ — shared or branch impediments
-- _Rejected approaches_ — tried paths that failed, with why
-- _References_ — path/link + why it matters (not copied docs)
-
-Update the `Checkpoint: YYYY-MM-DD @ <short-sha>` line on every semantic sync (HEAD short SHA from `git`). Do not invent roadmaps in _Handoff_ or _Next step_.
-
-## Minimum durable formats
-
-- **Log** — one `## [YYYY-MM-DD] [session-id] [type] short outcome` per session with useful outcomes (oldest first); append semantic bullets only. Never path lists, empty headings, or conversation transcripts. Types live in `log.md`.
-- **Decision** — `## [YYYY-MM-DD] Short title` with `Status`, `Source` + `Relevance` (pointer), or local `Context` / `Decision` / `Why` / `Rejected` / `Consequence` when no ADR system. Use `Supersedes` / `Superseded by` when replacing a prior decision; keep the old entry marked superseded. Details in `decisions.md`.
-- **Learning / pitfall** — create `learnings.md` only when the gate passes, link from `index.md`, one line: `- [YYYY-MM-DD] [learning|pitfall] [topic] insight — evidence: path|link; use when: trigger; verified: YYYY-MM-DD; invalidate when: condition.` Append `pending-doc` when it belongs in official docs; keep until that source exists, then pointer or remove via consolidate. Code/config inferences need evidence + date.
+Create `active-work/<branch>.md` only when work is resumable: Next step and Validation can be filled for a future session. Sanitize the real branch name (or `local`) by replacing every character outside `[A-Za-z0-9._-]` with `-`. Copy `active-work/TEMPLATE.md`, keep the unsanitized name in the `Branch:` header, replace placeholders. Keep TEMPLATE sections current and distinct; update `Checkpoint: YYYY-MM-DD @ <short-sha>` on every semantic sync (HEAD short SHA from `git`). Do not invent roadmaps in _Handoff_ or _Next step_.
 
 ## Workflow
 
-**Primary write path (agent, in the turn):** when a turn produces durable progress, update branch `active-work` resume fields (facts vs hypotheses, next step, validation) and append a semantic `log.md` outcome before stopping. Record decisions and gated learnings when discovered; align `index.md` when entry points change. Do not defer meaning to a later sync — hooks only accumulate evidence.
+**Primary write path (agent, in the turn):** when a turn produces durable progress, before stopping: update branch `active-work` resume fields (facts vs hypotheses, Next step, Validation) **and** append a semantic `log.md` outcome — or skip both only when the retention gate says the turn left nothing durable. Record decisions and gated learnings when discovered; align `index.md` when entry points change. Do not defer meaning to a later sync — hooks only accumulate evidence.
 
-**Catch-up (`/agent-memory sync`):** at end of turn / before compact / before commit / end of session, or when picking work back up — consistency pass over `current.md`, branch active-work, `log.md`, and `index.md`. It may read `.hook-sync-state` and `git` as evidence but never invents progress or log bullets without meaning. Update `current.md` only when shared active state changed; _Handoff_ must be explicit/evidenced — never an invented roadmap. Sync never replaces decision/learning duties, invents roadmaps, or copies docs.
-
-You may follow the skill's `references/sync.md` steps and edit those four files directly without invoking the skill command.
+**Catch-up (`/agent-memory sync`):** at end of turn / before compact / before commit / end of session, or when picking work back up — consistency pass over `current.md`, branch active-work, `log.md`, and `index.md`. It may read `.hook-sync-state` and `git` as evidence but never invents progress or log bullets without meaning. Update `current.md` only when shared active state changed; _Handoff_ must be explicit/evidenced. Sync never replaces decision/learning duties or copies docs. You may follow the skill's `references/sync.md` steps and edit those four files directly without invoking the skill command.
 
 ### Harness parity — memory contract
 
 Every supported harness targets the same memory shape. **Context layer** injects the obligation to read/maintain memory; **checkpoint layer** (hooks/plugin) collects **ephemeral evidence only** in `.hook-sync-state` (gitignored). Harness config controls timing, not meaning — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.1.0/hooks/README.md). Differing outcomes are bugs.
 
-**Hooks own ephemeral evidence only:** session id binding; branch cache; session-cumulative touched paths; `last_processed_head` / commit range markers. Hooks never create or edit Markdown under `.agents/memory/` (no `active-work`, `log.md`, `current.md`, decisions, learnings, or consolidation).
+**Hooks own ephemeral evidence only:** session id binding; branch cache; session-cumulative touched paths; `last_processed_head` / commit range markers. Hooks never create or edit Markdown under `.agents/memory/`.
 
-**Agent owns all versioned Markdown:** create/refine active-work and shared state; semantic log outcomes and headings; progress / next step / validation / assumptions / blockers / rejected approaches / references; source/recall links; decisions; gated learnings/pitfalls. Meaning is written in-turn (primary); sync is catch-up. Without hooks, use the same checkpoints and supply both evidence (from `git`) and meaning — via `/agent-memory sync` or by following `references/sync.md` directly.
-
-## Multi-developer safety
-
-- `active-work/` — per branch; edit only yours; delete on merge.
-- `current.md` — shared; change with the PR that changes shared active state.
-- `decisions.md` / `learnings.md` / working `log.md` — oldest-first, append-oriented; on conflict keep both valid contributions and mark supersession when one replaces another.
-- Prune closed log only via consolidate in a dedicated change — never hooks, never the current session.
+**Agent owns all versioned Markdown:** create/refine active-work and shared state; semantic log outcomes; resume fields (see `active-work/TEMPLATE.md`); source/recall links; decisions; gated learnings/pitfalls. Meaning is written in-turn (primary); sync is catch-up. Without hooks, use the same checkpoints and supply both evidence (from `git`) and meaning — via `/agent-memory sync` or by following `references/sync.md` directly.
 
 ## Memory lint boundaries
 

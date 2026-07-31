@@ -6,11 +6,11 @@
     "agent-memory": "bin/cli.js"
   },
   "scripts": {
-    "build": "bun build ./install.ts --outfile bin/cli.js --target node --format cjs --banner '#!/usr/bin/env node' --minify",
+    "build": "bun build ./install.ts --outfile bin/cli.js --target node --format cjs --banner '#!/usr/bin/env node'",
     "typecheck": "bunx tsc -p tsconfig.json --noEmit",
     "lint:md": "command -v markdownlint >/dev/null && markdownlint '**/*.md' --ignore node_modules --ignore bin || printf 'skip: markdownlint not installed\\n'",
-    "build:check": "bun build ./install.ts --outfile /tmp/agent-memory-cli-check.js --target node --format cjs --banner '#!/usr/bin/env node' --minify && cmp -s bin/cli.js /tmp/agent-memory-cli-check.js",
-    "test": "bash tests/reference-first-contract.sh && bash tests/hooks-checkpoint.sh && bash tests/version-parity.sh && bash tests/hooks-merge.sh && bash tests/cli-install.sh && bash tests/lockfile-only.sh && bash tests/migration-smoke.sh",
+    "build:check": "bun build ./install.ts --outfile /tmp/agent-memory-cli-check.js --target node --format cjs --banner '#!/usr/bin/env node' && cmp -s bin/cli.js /tmp/agent-memory-cli-check.js",
+    "test": "bash tests/reference-first-contract.sh && bash tests/hooks-checkpoint.sh && bash tests/version-parity.sh && bash tests/hooks-merge.sh && bash tests/cli-install.sh && bash tests/lockfile-only.sh && bash tests/migration-smoke.sh && bun test tests/opencode-safe-script.test.ts",
     "check": "bun run typecheck && bun run lint:md && bun run test && bun run build && bun run build:check",
     "prepublishOnly": "bun run build"
   },

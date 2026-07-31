@@ -7,7 +7,7 @@ Keep aligned with useful entry points only (what they own + when to read). `/age
 ## Read first
 
 - [current.md](./current.md) — shared active state.
-- `active-work/<branch>.md` — branch scratchpad when work is resumable (see `instructions.md` → _Branch work_).
+- `active-work/<branch>.md` — branch scratchpad when work is resumable (see `instructions.md` → _When starting or resuming work_).
 
 ## Canonical project sources
 

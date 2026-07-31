@@ -8,6 +8,16 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ## [Unreleased]
 
+### Security
+
+- OpenCode plugin: refuse symlink hook scripts, confine resolved paths under `.opencode/hooks`, and validate session/conversation binding IDs before env/stdin.
+- Document trust boundary and intentional capabilities in `SECURITY.md`.
+
+### Changed
+
+- `instructions.md` slimmed for always-load: permission boundaries, numbered precedence, task-organized sections, observable turn closure, and formats linked to templates (`TEMPLATE.md`, `log.md`, `decisions.md`) instead of duplicated inventories.
+- CLI build publishes `bin/cli.js` without minify for supply-chain auditability.
+
 ## [0.1.0] - 2026-07-27
 
 ### Breaking

@@ -1,36 +1,1116 @@
 #!/usr/bin/env node
-var _y=Object.create;var{getPrototypeOf:vy,defineProperty:s,getOwnPropertyNames:Ay}=Object;var My=Object.prototype.hasOwnProperty;function Ly(y){return this[y]}var Vy,Dy,D=(y,j,J)=>{var F=y!=null&&typeof y==="object";if(F){var q=j?Vy??=new WeakMap:Dy??=new WeakMap,z=q.get(y);if(z)return z}J=y!=null?_y(vy(y)):{};let Q=j||!y||!y.__esModule?s(J,"default",{value:y,enumerable:!0}):J;for(let B of Ay(y))if(!My.call(Q,B))s(Q,B,{get:Ly.bind(y,B),enumerable:!0});if(F)q.set(y,Q);return Q};var h=D(require("node:fs")),T=D(require("node:path"));var I=["cursor","claude","codex","opencode","copilot","gemini"],e={"claude-code":"claude",github:"copilot"},yy=new Set(I),m={cursor:".cursor/hooks",claude:".claude/hooks",codex:".codex/hooks",opencode:".opencode/hooks",copilot:".github/hooks",gemini:".gemini/hooks"},jy=new Set(["PATH","HOME","USER","SHELL","TMPDIR","TMP","TEMP","LANG","TZ","SystemRoot","SYSTEMROOT","windir","WINDIR","USERPROFILE","HOMEDRIVE","HOMEPATH","ComSpec","COMSPEC","PATHEXT","XDG_CONFIG_HOME","XDG_DATA_HOME","GIT_CONFIG_GLOBAL","GIT_CONFIG_SYSTEM","GIT_CONFIG"]);var U=D(require("node:fs")),P=D(require("node:path"));function A(){return process.env.AGENT_MEMORY_PROJECT_DIR||process.cwd()}function o(){return P.default.join(A(),".agents","skills","agent-memory")}function Cy(y){let j=P.default.join(y,"SKILL.md");if(!U.default.existsSync(j))return null;let J=U.default.readFileSync(j,"utf8"),F=J.match(/^metadata:\s*\n(?:[ \t]+.+\n)*?[ \t]+version:\s*["']?([0-9]+\.[0-9]+\.[0-9]+)["']?/m);if(F)return F[1];let q=J.match(/version:\s*["']([0-9]+\.[0-9]+\.[0-9]+)["']/);return q?q[1]:null}function Jy(){return Cy(o())}function Fy(y){let j=P.default.join(A(),m[y],".version");if(!U.default.existsSync(j))return null;return U.default.readFileSync(j,"utf8").trim()||null}function xy(y,j){try{return U.default.readFileSync(y,"utf8").includes(j)}catch{return!1}}function qy(){let y=A(),j=[],J=(F,q)=>{if(q)j.push(F)};return J("cursor",U.default.existsSync(P.default.join(y,".cursor","hooks","agent-memory-sync.sh"))||xy(P.default.join(y,".cursor","hooks.json"),"agent-memory")),J("claude",U.default.existsSync(P.default.join(y,".claude","hooks","agent-memory-sync.sh"))),J("codex",U.default.existsSync(P.default.join(y,".codex","hooks","agent-memory-sync.sh"))),J("opencode",U.default.existsSync(P.default.join(y,".opencode","plugin","agent-memory.ts"))||U.default.existsSync(P.default.join(y,".opencode","hooks","agent-memory-sync.sh"))),J("copilot",U.default.existsSync(P.default.join(y,".github","hooks","agent-memory.json"))||U.default.existsSync(P.default.join(y,".github","hooks","agent-memory-sync.sh"))),J("gemini",U.default.existsSync(P.default.join(y,".gemini","hooks","agent-memory-sync.sh"))||xy(P.default.join(y,".gemini","settings.json"),"agent-memory")),j}function S(){return U.default.existsSync(P.default.join(A(),".agents","memory"))}function n(y){if(yy.has(y))return y;return e[y]??null}var $=D(require("node:fs")),_=D(require("node:path"));function zy(y){try{return $.default.lstatSync(y).isSymbolicLink()}catch{return!1}}function Hy(y,j){let J=_.default.resolve(A()),F=_.default.resolve(y);while(!0){if(zy(F))j(`refusing symlink in destination path: ${F}`);if(F===J||F===_.default.parse(F).root)break;let q=_.default.dirname(F);if(q===F)break;F=q}}function fy(y){let j=_.default.resolve(A()),J=_.default.resolve(y);if(J===j)return".";if(J.startsWith(j+_.default.sep))return _.default.relative(j,J);return J}function gy(y){let j=0,J=(F)=>{for(let q of $.default.readdirSync(F,{withFileTypes:!0})){let z=_.default.join(F,q.name);if(q.isDirectory())J(z);else if(q.isFile())j+=1}};return J(y),j}function uy(y,j){if(!$.default.existsSync(y))return{ok:$.default.existsSync(j),method:"none"};if($.default.existsSync(j))try{$.default.rmSync(j,{recursive:!0,force:!0})}catch{return{ok:!1,method:"none"}}try{return $.default.renameSync(y,j),{ok:!0,method:"rename"}}catch{try{return $.default.cpSync(y,j,{recursive:!0,force:!0}),{ok:!0,method:"copy"}}catch{return{ok:!1,method:"none"}}}}function Qy(y){let{skillSource:j,onError:J}=y;if(!$.default.existsSync(j))J(`missing skill at ${j}`);let F=_.default.join(A(),".agents","skills","agent-memory");if(Hy(F,J),$.default.existsSync(F)&&zy(F))J(`refusing to overwrite symlink: ${F}`);let q=$.default.existsSync(F),z=_.default.dirname(F);$.default.mkdirSync(z,{recursive:!0});let Q=$.default.mkdtempSync(_.default.join(z,".agent-memory-skill-")),B=`${F}.bak-${process.pid}-${Date.now()}`,K=!1;try{$.default.cpSync(j,Q,{recursive:!0,force:!0})}catch(Z){$.default.rmSync(Q,{recursive:!0,force:!0}),J(`skill install failed: ${Z instanceof Error?Z.message:String(Z)}`)}if(q)try{$.default.renameSync(F,B),K=!0}catch(Z){$.default.rmSync(Q,{recursive:!0,force:!0}),J(`skill install failed: ${Z instanceof Error?Z.message:String(Z)}`)}try{$.default.renameSync(Q,F)}catch{try{$.default.cpSync(Q,F,{recursive:!0,force:!0}),$.default.rmSync(Q,{recursive:!0,force:!0})}catch(Z){if(K){let W=uy(B,F);if($.default.rmSync(Q,{recursive:!0,force:!0}),!W.ok)J(`skill install failed and restore failed; previous skill left at ${B}`);J(`skill install failed: ${Z instanceof Error?Z.message:String(Z)}`)}if(!$.default.existsSync(F)&&$.default.existsSync(Q))try{$.default.renameSync(Q,F)}catch{try{$.default.cpSync(Q,F,{recursive:!0,force:!0}),$.default.rmSync(Q,{recursive:!0,force:!0})}catch{$.default.rmSync(Q,{recursive:!0,force:!0}),J(`skill install failed: ${Z instanceof Error?Z.message:String(Z)}`)}}else $.default.rmSync(Q,{recursive:!0,force:!0}),J(`skill install failed: ${Z instanceof Error?Z.message:String(Z)}`)}}if(K&&$.default.existsSync(B))try{$.default.rmSync(B,{recursive:!0,force:!0})}catch{}return{destRel:fy(F),files:gy(F),existed:q}}var Zy=require("node:child_process");function $y(y,j,J){let F=Zy.spawnSync(y,j,{encoding:"utf8",env:J.env,shell:!1});if(F.error)J.onSpawnError(F.error.message);if(F.signal)process.exit(1);let q=F.stdout??"",z=F.stderr??"";if(F.status===null||F.status!==0)J.onCommandFail(z,F.status);return{stdout:q,stderr:z}}function By(y){let j={AGENT_MEMORY_PROJECT_DIR:A(),AGENT_MEMORY_VERSION:y};for(let J of Object.keys(process.env))if(jy.has(J)||J.startsWith("LC_")){let F=process.env[J];if(F!==void 0)j[J]=F}return j}var R=D(require("node:fs")),f=D(require("node:path"));function Gy(){let y=process.argv[1];if(y){let j=f.default.resolve(y);try{j=R.default.realpathSync(j)}catch{}let J=f.default.dirname(j);if(f.default.basename(J)==="bin")return f.default.resolve(J,"..");let F=J;for(;;){let q=f.default.join(F,"package.json");if(R.default.existsSync(q))try{if(JSON.parse(R.default.readFileSync(q,"utf8")).name==="@dosx/agent-memory")return F}catch{}let z=f.default.dirname(F);if(z===F)break;F=z}}console.error("error: unable to resolve @dosx/agent-memory package root from process.argv[1]"),process.exit(1)}function p(y,j){let J=y.split(".").map((q)=>parseInt(q,10)||0),F=j.split(".").map((q)=>parseInt(q,10)||0);for(let q=0;q<3;q++){let z=J[q]??0,Q=F[q]??0;if(z<Q)return-1;if(z>Q)return 1}return 0}function b(){return process.stdin.isTTY===!0&&process.stdout.isTTY===!0}function wy(){if(process.env.NO_COLOR!==void 0&&process.env.NO_COLOR!=="")return!1;if(process.env.FORCE_COLOR!==void 0&&process.env.FORCE_COLOR!=="")return process.env.FORCE_COLOR!=="0";return process.stdout.isTTY===!0}var Iy=wy();function L(y,j){if(!Iy)return j;return`\x1B[${y}m${j}\x1B[0m`}var x={bold:(y)=>L("1",y),dim:(y)=>L("2",y),cyan:(y)=>L("36",y),green:(y)=>L("32",y),yellow:(y)=>L("33",y),red:(y)=>L("31",y),magenta:(y)=>L("35",y),boldCyan:(y)=>L("1;36",y),boldGreen:(y)=>L("1;32",y),boldMagenta:(y)=>L("1;35",y)};function my(y,j,J){let F=[x.bold(y),""];for(let q=0;q<j.length;q++){let z=q===J,Q=z?`${x.cyan("›")} `:"  ",B=z?x.bold(j[q].label):j[q].label;F.push(`${Q}${B}`)}return F.push("",x.dim("↑/↓ or j/k · Enter confirm · Ctrl+C/Esc cancel")),F}function Ry(y,j,J,F){let q=[x.bold(y),""];for(let z=0;z<j.length;z++){let Q=z===J,B=F.has(z)?x.green("[x]"):"[ ]",K=Q?`${x.cyan("›")} `:"  ",Z=Q?x.bold(j[z].label):j[z].label;q.push(`${K}${B} ${Z}`)}return q.push("",x.dim("↑/↓ or j/k · Space toggle · Enter confirm · Ctrl+C/Esc cancel")),q}function Wy(y){for(let j=0;j<y;j++)process.stdout.write("\x1B[1A\x1B[2K")}function Xy(y){let j="normal",J=null,F=!1,q=process.stdin;function z(){if(F&&typeof q.setRawMode==="function")q.setRawMode(!1),F=!1}function Q(){if(J)clearTimeout(J),J=null}function B(G){let u=G.charCodeAt(0);return u>=64&&u<=126}function K(G){return/[0-9A-Za-z]/.test(G)}function Z(){Q(),J=setTimeout(()=>{if(J=null,j==="esc"){j="normal",y.onAbort();return}if(j==="csi"||j==="ss3")j="normal"},50)}function W(){Q(),z(),q.pause(),q.removeListener("data",V),q.removeListener("end",E)}function v(G){if(j==="esc"){if(Q(),G==="["){j="csi",Z();return}if(G==="O"){j="ss3",Z();return}if(K(G))j="normal";else{j="normal",y.onAbort();return}}if(j==="csi"){if(!B(G)){Z();return}if(Q(),j="normal",G==="A"){y.onUp();return}if(G==="B"){y.onDown();return}return}if(j==="ss3"){if(!B(G)){Z();return}if(Q(),j="normal",G==="A"){y.onUp();return}if(G==="B"){y.onDown();return}return}if(G==="\x03"){y.onAbort();return}if(G==="\x1B"){j="esc",Z();return}if(G==="k"){y.onUp();return}if(G==="j"){y.onDown();return}if(G===" "&&y.onSpace){y.onSpace();return}if(G==="\r"||G===`
-`)y.onConfirm()}function V(G){for(let u=0;u<G.length;u++)v(G[u])}function E(){y.onAbort()}function Py(){let G=!1;try{if(typeof q.setRawMode==="function")q.setRawMode(!0),F=!0;q.resume(),q.setEncoding("utf8"),q.on("data",V),q.on("end",E),y.onRedraw(),G=!0}finally{if(!G)z()}}return{start:Py,cleanup:W}}function k(y,j){return new Promise((J)=>{let F=0,q=0,z;function Q(){z.cleanup(),process.stdout.write(`
-`),process.exit(1)}function B(){let Z=my(y,j,F);Z.forEach((W)=>process.stdout.write(`${W}
-`)),q=Z.length}function K(){Wy(q),B()}z=Xy({onAbort:Q,onRedraw:B,onUp:()=>{F=(F-1+j.length)%j.length,K()},onDown:()=>{F=(F+1)%j.length,K()},onConfirm:()=>{z.cleanup(),process.stdout.write(`
-`),J(j[F].value)}}),z.start()})}function c(y,j){return new Promise((J)=>{let F=0,q=new Set,z=0,Q="",B;function K(){B.cleanup(),process.stdout.write(`
-`),process.exit(1)}function Z(){let v=Ry(y,j,F,q);if(Q)v.push(x.yellow(Q));v.forEach((V)=>process.stdout.write(`${V}
-`)),z=v.length}function W(){Wy(z),Z()}B=Xy({onAbort:K,onRedraw:Z,onUp:()=>{F=(F-1+j.length)%j.length,Q="",W()},onDown:()=>{F=(F+1)%j.length,Q="",W()},onSpace:()=>{if(q.has(F))q.delete(F);else q.add(F);Q="",W()},onConfirm:()=>{if(q.size===0){Q="Select at least one harness (Space), then Enter.",W();return}B.cleanup(),process.stdout.write(`
-`);let v=[...q].sort((V,E)=>V-E).map((V)=>j[V].value);J(v)}}),B.start()})}var l=Gy(),X=JSON.parse(h.default.readFileSync(T.default.join(l,"package.json"),"utf8")).version,a=T.default.join(l,"hooks","install-hooks.sh"),by=T.default.join(l,"skills","agent-memory");function i(y){console.error(`${x.red("error:")} ${y}`),process.exit(1)}function H(){console.log("")}function g(y){H(),console.log(`${x.boldMagenta("agent-memory")} ${x.dim(`v${X}`)}  ${x.dim("·")}  ${x.cyan(y)}`),console.log(x.dim(`project  ${T.default.resolve(A())}`))}function r(y){H(),console.log(`${x.cyan("●")} ${x.bold(y)}`)}function Y(y,j){let J=y.padEnd(10);console.log(`  ${x.dim(J)} ${j}`)}function M(y){console.log(`  ${x.dim("·")} ${y}`)}function Ky(y){console.log(`  ${x.green("✓")} ${y}`)}function Ny(y){if(H(),console.log(`${x.boldGreen("✓")} ${x.bold("Install complete")} ${x.dim(`v${X}`)}`),y.skillPath)Y("skill",y.skillPath);if(y.hooks.length>0)Y("hooks",y.hooks.map((j)=>`${j} ${x.dim(`(${m[j]})`)}`).join(", "));t(S()?"update":"init")}function t(y){if(H(),console.log(x.bold("Next steps")),console.log(`  ${x.dim("In your coding agent chat")} ${x.dim("(Cursor, Claude Code, Codex, … — not this terminal):")}`),y==="update")M(`${x.cyan("/agent-memory update")}  migrate .agents/memory/ via vendor/UPDATE.md`);else M(`${x.cyan("/agent-memory init")}    create .agents/memory/ and wire the agent block`);M(`${x.dim("/agent-memory help")}    list skill subcommands`),H()}function N(){let y=I.join(", ");console.log(`${x.boldMagenta("agent-memory")} ${x.dim(X)}
+var __create = Object.create;
+var __getProtoOf = Object.getPrototypeOf;
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+function __accessProp(key) {
+  return this[key];
+}
+var __toESMCache_node;
+var __toESMCache_esm;
+var __toESM = (mod, isNodeMode, target) => {
+  var canCache = mod != null && typeof mod === "object";
+  if (canCache) {
+    var cache = isNodeMode ? __toESMCache_node ??= new WeakMap : __toESMCache_esm ??= new WeakMap;
+    var cached = cache.get(mod);
+    if (cached)
+      return cached;
+  }
+  target = mod != null ? __create(__getProtoOf(mod)) : {};
+  const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
+  for (let key of __getOwnPropNames(mod))
+    if (!__hasOwnProp.call(to, key))
+      __defProp(to, key, {
+        get: __accessProp.bind(mod, key),
+        enumerable: true
+      });
+  if (canCache)
+    cache.set(mod, to);
+  return to;
+};
 
-${x.cyan("Installer")} for @dosx/agent-memory — copies the skill into the
+// install.ts
+var import_node_fs4 = __toESM(require("node:fs"));
+var import_node_path4 = __toESM(require("node:path"));
+
+// lib/cli/constants.ts
+var CANONICAL_HARNESSES = [
+  "cursor",
+  "claude",
+  "codex",
+  "opencode",
+  "copilot",
+  "gemini"
+];
+var HARNESS_ALIASES = {
+  "claude-code": "claude",
+  github: "copilot"
+};
+var HARNESS_SET = new Set(CANONICAL_HARNESSES);
+var HARNESS_HOOKS_DIR = {
+  cursor: ".cursor/hooks",
+  claude: ".claude/hooks",
+  codex: ".codex/hooks",
+  opencode: ".opencode/hooks",
+  copilot: ".github/hooks",
+  gemini: ".gemini/hooks"
+};
+var ENV_ALLOWLIST_EXACT = new Set([
+  "PATH",
+  "HOME",
+  "USER",
+  "SHELL",
+  "TMPDIR",
+  "TMP",
+  "TEMP",
+  "LANG",
+  "TZ",
+  "SystemRoot",
+  "SYSTEMROOT",
+  "windir",
+  "WINDIR",
+  "USERPROFILE",
+  "HOMEDRIVE",
+  "HOMEPATH",
+  "ComSpec",
+  "COMSPEC",
+  "PATHEXT",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "GIT_CONFIG_GLOBAL",
+  "GIT_CONFIG_SYSTEM",
+  "GIT_CONFIG"
+]);
+
+// lib/cli/detect.ts
+var import_node_fs = __toESM(require("node:fs"));
+var import_node_path = __toESM(require("node:path"));
+function projectDir() {
+  return process.env.AGENT_MEMORY_PROJECT_DIR || process.cwd();
+}
+function installedSkillDir() {
+  return import_node_path.default.join(projectDir(), ".agents", "skills", "agent-memory");
+}
+function readSkillVersionFromDir(skillDir) {
+  const skillMd = import_node_path.default.join(skillDir, "SKILL.md");
+  if (!import_node_fs.default.existsSync(skillMd))
+    return null;
+  const text = import_node_fs.default.readFileSync(skillMd, "utf8");
+  const m = text.match(/^metadata:\s*\n(?:[ \t]+.+\n)*?[ \t]+version:\s*["']?([0-9]+\.[0-9]+\.[0-9]+)["']?/m);
+  if (m)
+    return m[1];
+  const loose = text.match(/version:\s*["']([0-9]+\.[0-9]+\.[0-9]+)["']/);
+  return loose ? loose[1] : null;
+}
+function readInstalledSkillVersion() {
+  return readSkillVersionFromDir(installedSkillDir());
+}
+function readInstalledHooksVersion(harness) {
+  const stamp = import_node_path.default.join(projectDir(), HARNESS_HOOKS_DIR[harness], ".version");
+  if (!import_node_fs.default.existsSync(stamp))
+    return null;
+  const v = import_node_fs.default.readFileSync(stamp, "utf8").trim();
+  return v || null;
+}
+function fileContains(filePath, needle) {
+  try {
+    return import_node_fs.default.readFileSync(filePath, "utf8").includes(needle);
+  } catch {
+    return false;
+  }
+}
+function detectInstalledHarnesses() {
+  const root = projectDir();
+  const found = [];
+  const check = (harness, ok) => {
+    if (ok)
+      found.push(harness);
+  };
+  check("cursor", import_node_fs.default.existsSync(import_node_path.default.join(root, ".cursor", "hooks", "agent-memory-sync.sh")) || fileContains(import_node_path.default.join(root, ".cursor", "hooks.json"), "agent-memory"));
+  check("claude", import_node_fs.default.existsSync(import_node_path.default.join(root, ".claude", "hooks", "agent-memory-sync.sh")));
+  check("codex", import_node_fs.default.existsSync(import_node_path.default.join(root, ".codex", "hooks", "agent-memory-sync.sh")));
+  check("opencode", import_node_fs.default.existsSync(import_node_path.default.join(root, ".opencode", "plugin", "agent-memory.ts")) || import_node_fs.default.existsSync(import_node_path.default.join(root, ".opencode", "hooks", "agent-memory-sync.sh")));
+  check("copilot", import_node_fs.default.existsSync(import_node_path.default.join(root, ".github", "hooks", "agent-memory.json")) || import_node_fs.default.existsSync(import_node_path.default.join(root, ".github", "hooks", "agent-memory-sync.sh")));
+  check("gemini", import_node_fs.default.existsSync(import_node_path.default.join(root, ".gemini", "hooks", "agent-memory-sync.sh")) || fileContains(import_node_path.default.join(root, ".gemini", "settings.json"), "agent-memory"));
+  return found;
+}
+function memoryExists() {
+  return import_node_fs.default.existsSync(import_node_path.default.join(projectDir(), ".agents", "memory"));
+}
+function normalizeHarness(name) {
+  if (HARNESS_SET.has(name))
+    return name;
+  return HARNESS_ALIASES[name] ?? null;
+}
+
+// lib/cli/fs-install.ts
+var import_node_fs2 = __toESM(require("node:fs"));
+var import_node_path2 = __toESM(require("node:path"));
+function isSymlink(p) {
+  try {
+    return import_node_fs2.default.lstatSync(p).isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+function refuseSymlinkComponents(dest, onError) {
+  const project = import_node_path2.default.resolve(projectDir());
+  let cur = import_node_path2.default.resolve(dest);
+  while (true) {
+    if (isSymlink(cur)) {
+      onError(`refusing symlink in destination path: ${cur}`);
+    }
+    if (cur === project || cur === import_node_path2.default.parse(cur).root)
+      break;
+    const parent = import_node_path2.default.dirname(cur);
+    if (parent === cur)
+      break;
+    cur = parent;
+  }
+}
+function relPath(p) {
+  const root = import_node_path2.default.resolve(projectDir());
+  const abs = import_node_path2.default.resolve(p);
+  if (abs === root)
+    return ".";
+  if (abs.startsWith(root + import_node_path2.default.sep))
+    return import_node_path2.default.relative(root, abs);
+  return abs;
+}
+function countFiles(dir) {
+  let n = 0;
+  const walk = (d) => {
+    for (const ent of import_node_fs2.default.readdirSync(d, { withFileTypes: true })) {
+      const full = import_node_path2.default.join(d, ent.name);
+      if (ent.isDirectory())
+        walk(full);
+      else if (ent.isFile())
+        n += 1;
+    }
+  };
+  walk(dir);
+  return n;
+}
+function restoreBackup(backup, dest) {
+  if (!import_node_fs2.default.existsSync(backup)) {
+    return { ok: import_node_fs2.default.existsSync(dest), method: "none" };
+  }
+  if (import_node_fs2.default.existsSync(dest)) {
+    try {
+      import_node_fs2.default.rmSync(dest, { recursive: true, force: true });
+    } catch {
+      return { ok: false, method: "none" };
+    }
+  }
+  try {
+    import_node_fs2.default.renameSync(backup, dest);
+    return { ok: true, method: "rename" };
+  } catch {
+    try {
+      import_node_fs2.default.cpSync(backup, dest, { recursive: true, force: true });
+      return { ok: true, method: "copy" };
+    } catch {
+      return { ok: false, method: "none" };
+    }
+  }
+}
+function installSkillAtomic(opts) {
+  const { skillSource, onError } = opts;
+  if (!import_node_fs2.default.existsSync(skillSource)) {
+    onError(`missing skill at ${skillSource}`);
+  }
+  const dest = import_node_path2.default.join(projectDir(), ".agents", "skills", "agent-memory");
+  refuseSymlinkComponents(dest, onError);
+  if (import_node_fs2.default.existsSync(dest) && isSymlink(dest)) {
+    onError(`refusing to overwrite symlink: ${dest}`);
+  }
+  const existed = import_node_fs2.default.existsSync(dest);
+  const parent = import_node_path2.default.dirname(dest);
+  import_node_fs2.default.mkdirSync(parent, { recursive: true });
+  const staging = import_node_fs2.default.mkdtempSync(import_node_path2.default.join(parent, ".agent-memory-skill-"));
+  const backup = `${dest}.bak-${process.pid}-${Date.now()}`;
+  let movedAside = false;
+  try {
+    import_node_fs2.default.cpSync(skillSource, staging, { recursive: true, force: true });
+  } catch (err) {
+    import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+    onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (existed) {
+    try {
+      import_node_fs2.default.renameSync(dest, backup);
+      movedAside = true;
+    } catch (err) {
+      import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+      onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  try {
+    import_node_fs2.default.renameSync(staging, dest);
+  } catch {
+    try {
+      import_node_fs2.default.cpSync(staging, dest, { recursive: true, force: true });
+      import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+    } catch (err) {
+      if (movedAside) {
+        const restored = restoreBackup(backup, dest);
+        import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+        if (!restored.ok) {
+          onError(`skill install failed and restore failed; previous skill left at ${backup}`);
+        }
+        onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      if (!import_node_fs2.default.existsSync(dest) && import_node_fs2.default.existsSync(staging)) {
+        try {
+          import_node_fs2.default.renameSync(staging, dest);
+        } catch {
+          try {
+            import_node_fs2.default.cpSync(staging, dest, { recursive: true, force: true });
+            import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+          } catch {
+            import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+            onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
+      } else {
+        import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+        onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+  if (movedAside && import_node_fs2.default.existsSync(backup)) {
+    try {
+      import_node_fs2.default.rmSync(backup, { recursive: true, force: true });
+    } catch {}
+  }
+  return {
+    destRel: relPath(dest),
+    files: countFiles(dest),
+    existed
+  };
+}
+
+// lib/cli/hooks-run.ts
+var import_node_child_process = require("node:child_process");
+function runCaptured(command, args, options) {
+  const result = import_node_child_process.spawnSync(command, args, {
+    encoding: "utf8",
+    env: options.env,
+    shell: false
+  });
+  if (result.error) {
+    options.onSpawnError(result.error.message);
+  }
+  if (result.signal) {
+    process.exit(1);
+  }
+  const stdout = result.stdout ?? "";
+  const stderr = result.stderr ?? "";
+  if (result.status === null || result.status !== 0) {
+    options.onCommandFail(stderr, result.status);
+  }
+  return { stdout, stderr };
+}
+function buildInstallerEnv(version) {
+  const env = {
+    AGENT_MEMORY_PROJECT_DIR: projectDir(),
+    AGENT_MEMORY_VERSION: version
+  };
+  for (const key of Object.keys(process.env)) {
+    if (ENV_ALLOWLIST_EXACT.has(key) || key.startsWith("LC_")) {
+      const val = process.env[key];
+      if (val !== undefined)
+        env[key] = val;
+    }
+  }
+  return env;
+}
+
+// lib/cli/package-root.ts
+var import_node_fs3 = __toESM(require("node:fs"));
+var import_node_path3 = __toESM(require("node:path"));
+function resolvePackageRoot() {
+  const entry = process.argv[1];
+  if (entry) {
+    let scriptPath = import_node_path3.default.resolve(entry);
+    try {
+      scriptPath = import_node_fs3.default.realpathSync(scriptPath);
+    } catch {}
+    const dir = import_node_path3.default.dirname(scriptPath);
+    if (import_node_path3.default.basename(dir) === "bin") {
+      return import_node_path3.default.resolve(dir, "..");
+    }
+    let cur = dir;
+    for (;; ) {
+      const pkgPath = import_node_path3.default.join(cur, "package.json");
+      if (import_node_fs3.default.existsSync(pkgPath)) {
+        try {
+          const name = JSON.parse(import_node_fs3.default.readFileSync(pkgPath, "utf8")).name;
+          if (name === "@dosx/agent-memory")
+            return cur;
+        } catch {}
+      }
+      const parent = import_node_path3.default.dirname(cur);
+      if (parent === cur)
+        break;
+      cur = parent;
+    }
+  }
+  console.error("error: unable to resolve @dosx/agent-memory package root from process.argv[1]");
+  process.exit(1);
+}
+
+// lib/cli/semver.ts
+function compareSemver(a, b) {
+  const pa = a.split(".").map((n) => parseInt(n, 10) || 0);
+  const pb = b.split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0;i < 3; i++) {
+    const x = pa[i] ?? 0;
+    const y = pb[i] ?? 0;
+    if (x < y)
+      return -1;
+    if (x > y)
+      return 1;
+  }
+  return 0;
+}
+
+// lib/cli/tty.ts
+var ESC = "\x1B";
+var CSI = `${ESC}[`;
+function isTTY() {
+  return process.stdin.isTTY === true && process.stdout.isTTY === true;
+}
+function useColor() {
+  if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== "") {
+    return false;
+  }
+  if (process.env.FORCE_COLOR !== undefined && process.env.FORCE_COLOR !== "") {
+    return process.env.FORCE_COLOR !== "0";
+  }
+  return process.stdout.isTTY === true;
+}
+var colorEnabled = useColor();
+function wrap(code, text) {
+  if (!colorEnabled)
+    return text;
+  return `${CSI}${code}m${text}${CSI}0m`;
+}
+var c = {
+  bold: (t) => wrap("1", t),
+  dim: (t) => wrap("2", t),
+  cyan: (t) => wrap("36", t),
+  green: (t) => wrap("32", t),
+  yellow: (t) => wrap("33", t),
+  red: (t) => wrap("31", t),
+  magenta: (t) => wrap("35", t),
+  boldCyan: (t) => wrap("1;36", t),
+  boldGreen: (t) => wrap("1;32", t),
+  boldMagenta: (t) => wrap("1;35", t)
+};
+function renderSelectLines(title, options, selected) {
+  const lines = [c.bold(title), ""];
+  for (let i = 0;i < options.length; i++) {
+    const active = i === selected;
+    const prefix = active ? `${c.cyan("›")} ` : "  ";
+    const label = active ? c.bold(options[i].label) : options[i].label;
+    lines.push(`${prefix}${label}`);
+  }
+  lines.push("", c.dim("↑/↓ or j/k · Enter confirm · Ctrl+C/Esc cancel"));
+  return lines;
+}
+function renderMultiSelectLines(title, options, cursor, checked) {
+  const lines = [c.bold(title), ""];
+  for (let i = 0;i < options.length; i++) {
+    const active = i === cursor;
+    const box = checked.has(i) ? c.green("[x]") : "[ ]";
+    const prefix = active ? `${c.cyan("›")} ` : "  ";
+    const label = active ? c.bold(options[i].label) : options[i].label;
+    lines.push(`${prefix}${box} ${label}`);
+  }
+  lines.push("", c.dim("↑/↓ or j/k · Space toggle · Enter confirm · Ctrl+C/Esc cancel"));
+  return lines;
+}
+function clearRenderedLines(lineCount) {
+  for (let i = 0;i < lineCount; i++) {
+    process.stdout.write(`${CSI}1A${CSI}2K`);
+  }
+}
+function createRawMenuController(opts) {
+  let escState = "normal";
+  let escTimer = null;
+  let rawModeEnabled = false;
+  const stdin = process.stdin;
+  function disableRawMode() {
+    if (rawModeEnabled && typeof stdin.setRawMode === "function") {
+      stdin.setRawMode(false);
+      rawModeEnabled = false;
+    }
+  }
+  function clearEscTimer() {
+    if (escTimer) {
+      clearTimeout(escTimer);
+      escTimer = null;
+    }
+  }
+  function isCsiFinal(ch) {
+    const code = ch.charCodeAt(0);
+    return code >= 64 && code <= 126;
+  }
+  function isAlphanumeric(ch) {
+    return /[0-9A-Za-z]/.test(ch);
+  }
+  function startEscTimer() {
+    clearEscTimer();
+    escTimer = setTimeout(() => {
+      escTimer = null;
+      if (escState === "esc") {
+        escState = "normal";
+        opts.onAbort();
+        return;
+      }
+      if (escState === "csi" || escState === "ss3") {
+        escState = "normal";
+      }
+    }, 50);
+  }
+  function cleanup() {
+    clearEscTimer();
+    disableRawMode();
+    stdin.pause();
+    stdin.removeListener("data", onData);
+    stdin.removeListener("end", onEnd);
+  }
+  function processChar(ch) {
+    if (escState === "esc") {
+      clearEscTimer();
+      if (ch === "[") {
+        escState = "csi";
+        startEscTimer();
+        return;
+      }
+      if (ch === "O") {
+        escState = "ss3";
+        startEscTimer();
+        return;
+      }
+      if (isAlphanumeric(ch)) {
+        escState = "normal";
+      } else {
+        escState = "normal";
+        opts.onAbort();
+        return;
+      }
+    }
+    if (escState === "csi") {
+      if (!isCsiFinal(ch)) {
+        startEscTimer();
+        return;
+      }
+      clearEscTimer();
+      escState = "normal";
+      if (ch === "A") {
+        opts.onUp();
+        return;
+      }
+      if (ch === "B") {
+        opts.onDown();
+        return;
+      }
+      return;
+    }
+    if (escState === "ss3") {
+      if (!isCsiFinal(ch)) {
+        startEscTimer();
+        return;
+      }
+      clearEscTimer();
+      escState = "normal";
+      if (ch === "A") {
+        opts.onUp();
+        return;
+      }
+      if (ch === "B") {
+        opts.onDown();
+        return;
+      }
+      return;
+    }
+    if (ch === "\x03") {
+      opts.onAbort();
+      return;
+    }
+    if (ch === ESC) {
+      escState = "esc";
+      startEscTimer();
+      return;
+    }
+    if (ch === "k") {
+      opts.onUp();
+      return;
+    }
+    if (ch === "j") {
+      opts.onDown();
+      return;
+    }
+    if (ch === " " && opts.onSpace) {
+      opts.onSpace();
+      return;
+    }
+    if (ch === "\r" || ch === `
+`) {
+      opts.onConfirm();
+    }
+  }
+  function onData(chunk) {
+    for (let i = 0;i < chunk.length; i++) {
+      processChar(chunk[i]);
+    }
+  }
+  function onEnd() {
+    opts.onAbort();
+  }
+  function start() {
+    let setupComplete = false;
+    try {
+      if (typeof stdin.setRawMode === "function") {
+        stdin.setRawMode(true);
+        rawModeEnabled = true;
+      }
+      stdin.resume();
+      stdin.setEncoding("utf8");
+      stdin.on("data", onData);
+      stdin.on("end", onEnd);
+      opts.onRedraw();
+      setupComplete = true;
+    } finally {
+      if (!setupComplete) {
+        disableRawMode();
+      }
+    }
+  }
+  return { start, cleanup };
+}
+function selectPrompt(title, options) {
+  return new Promise((resolve) => {
+    let selected = 0;
+    let renderedLineCount = 0;
+    let controller;
+    function abort() {
+      controller.cleanup();
+      process.stdout.write(`
+`);
+      process.exit(1);
+    }
+    function printMenu() {
+      const lines = renderSelectLines(title, options, selected);
+      lines.forEach((line) => process.stdout.write(`${line}
+`));
+      renderedLineCount = lines.length;
+    }
+    function redraw() {
+      clearRenderedLines(renderedLineCount);
+      printMenu();
+    }
+    controller = createRawMenuController({
+      onAbort: abort,
+      onRedraw: printMenu,
+      onUp: () => {
+        selected = (selected - 1 + options.length) % options.length;
+        redraw();
+      },
+      onDown: () => {
+        selected = (selected + 1) % options.length;
+        redraw();
+      },
+      onConfirm: () => {
+        controller.cleanup();
+        process.stdout.write(`
+`);
+        resolve(options[selected].value);
+      }
+    });
+    controller.start();
+  });
+}
+function multiSelectPrompt(title, options) {
+  return new Promise((resolve) => {
+    let cursor = 0;
+    const checked = new Set;
+    let renderedLineCount = 0;
+    let hint = "";
+    let controller;
+    function abort() {
+      controller.cleanup();
+      process.stdout.write(`
+`);
+      process.exit(1);
+    }
+    function printMenu() {
+      const lines = renderMultiSelectLines(title, options, cursor, checked);
+      if (hint)
+        lines.push(c.yellow(hint));
+      lines.forEach((line) => process.stdout.write(`${line}
+`));
+      renderedLineCount = lines.length;
+    }
+    function redraw() {
+      clearRenderedLines(renderedLineCount);
+      printMenu();
+    }
+    controller = createRawMenuController({
+      onAbort: abort,
+      onRedraw: printMenu,
+      onUp: () => {
+        cursor = (cursor - 1 + options.length) % options.length;
+        hint = "";
+        redraw();
+      },
+      onDown: () => {
+        cursor = (cursor + 1) % options.length;
+        hint = "";
+        redraw();
+      },
+      onSpace: () => {
+        if (checked.has(cursor))
+          checked.delete(cursor);
+        else
+          checked.add(cursor);
+        hint = "";
+        redraw();
+      },
+      onConfirm: () => {
+        if (checked.size === 0) {
+          hint = "Select at least one harness (Space), then Enter.";
+          redraw();
+          return;
+        }
+        controller.cleanup();
+        process.stdout.write(`
+`);
+        const values = [...checked].sort((a, b) => a - b).map((i) => options[i].value);
+        resolve(values);
+      }
+    });
+    controller.start();
+  });
+}
+
+// install.ts
+var ROOT = resolvePackageRoot();
+var VERSION = JSON.parse(import_node_fs4.default.readFileSync(import_node_path4.default.join(ROOT, "package.json"), "utf8")).version;
+var INSTALL_HOOKS_SH = import_node_path4.default.join(ROOT, "hooks", "install-hooks.sh");
+var SKILL_SOURCE = import_node_path4.default.join(ROOT, "skills", "agent-memory");
+function fatal(message) {
+  console.error(`${c.red("error:")} ${message}`);
+  process.exit(1);
+}
+function blank() {
+  console.log("");
+}
+function printHeader(action) {
+  blank();
+  console.log(`${c.boldMagenta("agent-memory")} ${c.dim(`v${VERSION}`)}  ${c.dim("·")}  ${c.cyan(action)}`);
+  console.log(c.dim(`project  ${import_node_path4.default.resolve(projectDir())}`));
+}
+function printSection(title) {
+  blank();
+  console.log(`${c.cyan("●")} ${c.bold(title)}`);
+}
+function printDetail(label, value) {
+  const pad = label.padEnd(10);
+  console.log(`  ${c.dim(pad)} ${value}`);
+}
+function printStep(line) {
+  console.log(`  ${c.dim("·")} ${line}`);
+}
+function printOk(message) {
+  console.log(`  ${c.green("✓")} ${message}`);
+}
+function printSummary(report) {
+  blank();
+  console.log(`${c.boldGreen("✓")} ${c.bold("Install complete")} ${c.dim(`v${VERSION}`)}`);
+  if (report.skillPath) {
+    printDetail("skill", report.skillPath);
+  }
+  if (report.hooks.length > 0) {
+    printDetail("hooks", report.hooks.map((h) => `${h} ${c.dim(`(${HARNESS_HOOKS_DIR[h]})`)}`).join(", "));
+  }
+  printAgentNextSteps(memoryExists() ? "update" : "init");
+}
+function printAgentNextSteps(primary) {
+  blank();
+  console.log(c.bold("Next steps"));
+  console.log(`  ${c.dim("In your coding agent chat")} ${c.dim("(Cursor, Claude Code, Codex, … — not this terminal):")}`);
+  if (primary === "update") {
+    printStep(`${c.cyan("/agent-memory update")}  migrate .agents/memory/ via vendor/UPDATE.md`);
+  } else {
+    printStep(`${c.cyan("/agent-memory init")}    create .agents/memory/ and wire the agent block`);
+  }
+  printStep(`${c.dim("/agent-memory help")}    list skill subcommands`);
+  blank();
+}
+function printHelp() {
+  const harnessList = CANONICAL_HARNESSES.join(", ");
+  console.log(`${c.boldMagenta("agent-memory")} ${c.dim(VERSION)}
+
+${c.cyan("Installer")} for @dosx/agent-memory — copies the skill into the
 project and installs harness lifecycle hooks.
 
-${x.bold("Usage")}
-  ${x.cyan("agent-memory install")}                    ${x.dim("# TTY: pick harnesses + skill/hooks")}
-  ${x.cyan("agent-memory install skill")}              ${x.dim("# copy skill → .agents/skills/")}
-  ${x.cyan("agent-memory install hooks")}              ${x.dim("# TTY: multi-select harnesses")}
-  ${x.cyan("agent-memory install hooks <harness>")}    ${x.dim("# headless: one harness")}
-  ${x.cyan("agent-memory install <harness>")}          ${x.dim("# TTY menu for that harness")}
-  ${x.cyan("agent-memory update")}                     ${x.dim("# refresh skill + installed hooks")}
-  ${x.cyan("agent-memory update --yes")}               ${x.dim("# non-interactive update")}
-  ${x.cyan("agent-memory help")}
+${c.bold("Usage")}
+  ${c.cyan("agent-memory install")}                    ${c.dim("# TTY: pick harnesses + skill/hooks")}
+  ${c.cyan("agent-memory install skill")}              ${c.dim("# copy skill → .agents/skills/")}
+  ${c.cyan("agent-memory install hooks")}              ${c.dim("# TTY: multi-select harnesses")}
+  ${c.cyan("agent-memory install hooks <harness>")}    ${c.dim("# headless: one harness")}
+  ${c.cyan("agent-memory install <harness>")}          ${c.dim("# TTY menu for that harness")}
+  ${c.cyan("agent-memory update")}                     ${c.dim("# refresh skill + installed hooks")}
+  ${c.cyan("agent-memory update --yes")}               ${c.dim("# non-interactive update")}
+  ${c.cyan("agent-memory help")}
 
-${x.bold("Harnesses")}  ${y}
-  ${x.dim("aliases: claude-code → claude, github → copilot")}
+${c.bold("Harnesses")}  ${harnessList}
+  ${c.dim("aliases: claude-code → claude, github → copilot")}
 
-${x.bold("Examples")}
-  ${x.dim("npx @dosx/agent-memory install")}
-  ${x.dim("npx @dosx/agent-memory install skill")}
-  ${x.dim("npx @dosx/agent-memory install hooks cursor")}
-  ${x.dim("npx @dosx/agent-memory update")}
-  ${x.dim("npx @dosx/agent-memory update --yes")}
-`)}function w(){let y=Qy({skillSource:by,onError:i});return r("Skill"),Y("name",x.bold("agent-memory")),Y("version",X),Y("path",y.destRel),Y("files",`${y.files} files ${x.dim(y.existed?"(updated)":"(new)")}`),Ky(`skill ready at ${x.cyan(y.destRel)}`),y.destRel}function O(y){if(!h.default.existsSync(a))i(`missing installer at ${a}`);let j=process.platform==="win32"?"bash.exe":"bash";r(`Hooks · ${y}`),Y("target",m[y]);let{stdout:J,stderr:F}=$y(j,[a,y],{env:By(X),onSpawnError:i,onCommandFail:(q,z)=>{if(q.trim())for(let Q of q.trim().split(`
-`))console.error(`  ${x.red("✗")} ${Q}`);process.exit(z??1)}});for(let q of J.split(`
-`)){let z=q.trim();if(!z)continue;if(z.startsWith("done:"))continue;if(z.startsWith("error:")){console.error(`  ${x.red("✗")} ${z}`);continue}M(z)}for(let q of F.split(`
-`)){let z=q.trim();if(!z)continue;console.error(`  ${x.red("✗")} ${z}`)}Ky(`hooks ready for ${x.bold(y)}`)}function Uy(y){for(let j of y)O(j)}function C(y){Ny(y)}async function Oy(y){return await k(y,[{label:"Yes, update",value:"yes"},{label:"Cancel",value:"no"}])==="yes"}function Ty(y){if(H(),console.log(`${x.boldGreen("✓")} ${x.bold("Update complete")} ${x.dim(`cli ${X}`)}`),y.skillMissing)Y("skill",x.dim("not installed (skipped)"));else if(y.skillUpdated)Y("skill",`${y.skillFrom??"?"} → ${y.skillTo} ${x.dim("(.agents/skills/agent-memory)")}`);else Y("skill",`${y.skillTo} ${x.dim("(already current)")}`);if(y.hooksRefreshed.length>0)Y("hooks",y.hooksRefreshed.map((j)=>`${j} ${x.dim(`→ ${X}`)}`).join(", "));if(y.hooksSkipped.length>0)Y("skipped",y.hooksSkipped.map((j)=>`${j} ${x.dim("(current)")}`).join(", "));t(S()?"update":"init")}async function Ey(y){let j=Jy(),J=o(),F=!h.default.existsSync(J)||!j;if(g("update"),r("Versions"),Y("package",X),F)Y("skill",x.dim("not installed")),M(x.yellow("skill missing — hooks-only update; install with: npx @dosx/agent-memory install skill"));else Y("skill",`${j} ${x.dim("installed")} · ${X} ${x.dim("package")}`);Y("hooks",`${X} ${x.dim("package")}`);let q=!1;if(!F&&j){let W=p(X,j);if(W>0)q=!0,M(`skill upgrade available ${x.yellow(`${j} → ${X}`)}`);else if(W<0)console.log(`  ${x.yellow("!")} installed skill (${j}) is newer than package (${X}); will not downgrade`);else M(`skill already at ${X}`)}let z=qy(),Q=[],B=[];if(z.length===0)M(x.dim("no hooks detected"));else for(let W of z){let v=Fy(W);if(!v||p(X,v)>0)Q.push(W),M(`hooks ${W}: ${x.yellow(`${v??"none"} → ${X}`)}`);else B.push(W),M(`hooks ${W}: ${v} ${x.dim("(current)")}`)}if(F&&Q.length===0&&z.length===0)console.error(`${x.red("error:")} nothing to update — install the skill and/or hooks first`),console.error(`  ${x.dim("npx @dosx/agent-memory install skill")}`),console.error(`  ${x.dim("npx @dosx/agent-memory install hooks <harness>")}`),process.exit(1);if(!q&&Q.length===0){if(H(),console.log(`${x.boldGreen("✓")} ${x.bold("Already up to date")} ${x.dim(X)}`),F)M(x.dim("optional: npx @dosx/agent-memory install skill"));t(S()?"update":"init");return}let K=[];if(q)K.push(`skill ${j} → ${X}`);if(Q.length>0)K.push(`hooks ${Q.join(", ")} → ${X}`);if(!y.yes){if(!b())d("interactive update requires a TTY (or pass --yes).",["npx @dosx/agent-memory update --yes"]);if(H(),!await Oy(`Apply update? (${K.join("; ")})`))console.log(x.dim("Cancelled.")),process.exit(0)}let Z=!1;if(q)w(),Z=!0;for(let W of Q)O(W);Ty({skillUpdated:Z,skillFrom:j,skillTo:X,skillMissing:F,hooksRefreshed:Q,hooksSkipped:B})}function Sy(y){let j=!1;for(let J of y){if(J==="--yes"||J==="-y"){j=!0;continue}console.error(`${x.red("error:")} unexpected argument: ${J}`),N(),process.exit(1)}return{yes:j}}function Yy(){return I.map((y)=>({label:y,value:y}))}function d(y,j){console.error(`${x.red("error:")} ${y}`);for(let J of j)console.error(`  ${x.dim(J)}`);process.exit(1)}async function ky(y){if(!b())d("interactive install requires a TTY.",[`Hooks: npx @dosx/agent-memory install hooks ${y}`,"Skill: npx @dosx/agent-memory install skill"]);let j=await k(`Install agent-memory for ${y}:`,[{label:"Skill + hooks",value:"both"},{label:"Skill only",value:"skill"},{label:"Hooks only",value:"hooks"}]);if(g(`install · ${y}`),j==="both"){let J=w();O(y),C({skillPath:J,hooks:[y]});return}if(j==="skill"){C({skillPath:w(),hooks:[]});return}O(y),C({hooks:[y]})}async function hy(){if(!b())d("interactive install requires a TTY.",["Skill: npx @dosx/agent-memory install skill","Hooks: npx @dosx/agent-memory install hooks <harness>"]);let y=await k("What do you want to install?",[{label:"Skill + hooks",value:"both"},{label:"Skill only",value:"skill"},{label:"Hooks only",value:"hooks"}]);if(y==="skill"){g("install · skill"),C({skillPath:w(),hooks:[]});return}let j=await c("Select harnesses (Space to toggle):",Yy());g(y==="both"?`install · skill + ${j.join(", ")}`:`install · hooks · ${j.join(", ")}`);let J={hooks:j};if(y==="both")J.skillPath=w();Uy(j),C(J)}async function dy(){if(!b())d("interactive install hooks requires a TTY.",["Hooks: npx @dosx/agent-memory install hooks <harness>"]);let y=await c("Select harnesses (Space to toggle):",Yy());g(`install · hooks · ${y.join(", ")}`),Uy(y),C({hooks:y})}async function oy(y){let j=y.slice(2);if(j.length===0||j[0]==="help"||j[0]==="--help"||j[0]==="-h"){N();return}if(j[0]==="update"){await Ey(Sy(j.slice(1)));return}if(j[0]!=="install")console.error(`${x.red("error:")} unknown command: ${j[0]}`),N(),process.exit(1);let J=j.slice(1);if(J.length===0){await hy();return}if(J[0]==="skill"){if(J.length>1)console.error(`${x.red("error:")} install skill does not accept arguments`),process.exit(1);g("install · skill"),C({skillPath:w(),hooks:[]});return}if(J[0]==="hooks"){if(J.length===1){await dy();return}let q=J[1];if(J.length>2)console.error(`${x.red("error:")} unexpected argument: ${J[2]}`),process.exit(1);let z=n(q);if(!z)console.error(`${x.red("error:")} unknown harness: ${q}`),N(),process.exit(1);g(`install · hooks · ${z}`),O(z),C({hooks:[z]});return}let F=n(J[0]);if(F){if(J.length>1)console.error(`${x.red("error:")} unexpected argument: ${J[1]}`),process.exit(1);await ky(F);return}console.error(`${x.red("error:")} unknown install target: ${J[0]}`),N(),process.exit(1)}oy(process.argv).catch((y)=>{console.error(y),process.exit(1)});
+${c.bold("Examples")}
+  ${c.dim("npx @dosx/agent-memory install")}
+  ${c.dim("npx @dosx/agent-memory install skill")}
+  ${c.dim("npx @dosx/agent-memory install hooks cursor")}
+  ${c.dim("npx @dosx/agent-memory update")}
+  ${c.dim("npx @dosx/agent-memory update --yes")}
+`);
+}
+function installSkill() {
+  const result = installSkillAtomic({
+    skillSource: SKILL_SOURCE,
+    onError: fatal
+  });
+  printSection("Skill");
+  printDetail("name", c.bold("agent-memory"));
+  printDetail("version", VERSION);
+  printDetail("path", result.destRel);
+  printDetail("files", `${result.files} files ${c.dim(result.existed ? "(updated)" : "(new)")}`);
+  printOk(`skill ready at ${c.cyan(result.destRel)}`);
+  return result.destRel;
+}
+function installHooks(harness) {
+  if (!import_node_fs4.default.existsSync(INSTALL_HOOKS_SH)) {
+    fatal(`missing installer at ${INSTALL_HOOKS_SH}`);
+  }
+  const bash = process.platform === "win32" ? "bash.exe" : "bash";
+  printSection(`Hooks · ${harness}`);
+  printDetail("target", HARNESS_HOOKS_DIR[harness]);
+  const { stdout, stderr } = runCaptured(bash, [INSTALL_HOOKS_SH, harness], {
+    env: buildInstallerEnv(VERSION),
+    onSpawnError: fatal,
+    onCommandFail: (errText, status) => {
+      if (errText.trim()) {
+        for (const line of errText.trim().split(`
+`)) {
+          console.error(`  ${c.red("✗")} ${line}`);
+        }
+      }
+      process.exit(status ?? 1);
+    }
+  });
+  for (const line of stdout.split(`
+`)) {
+    const trimmed = line.trim();
+    if (!trimmed)
+      continue;
+    if (trimmed.startsWith("done:"))
+      continue;
+    if (trimmed.startsWith("error:")) {
+      console.error(`  ${c.red("✗")} ${trimmed}`);
+      continue;
+    }
+    printStep(trimmed);
+  }
+  for (const line of stderr.split(`
+`)) {
+    const trimmed = line.trim();
+    if (!trimmed)
+      continue;
+    console.error(`  ${c.red("✗")} ${trimmed}`);
+  }
+  printOk(`hooks ready for ${c.bold(harness)}`);
+}
+function installHooksMany(harnesses) {
+  for (const h of harnesses) {
+    installHooks(h);
+  }
+}
+function finishInstall(report) {
+  printSummary(report);
+}
+async function confirmPrompt(message) {
+  const choice = await selectPrompt(message, [
+    { label: "Yes, update", value: "yes" },
+    { label: "Cancel", value: "no" }
+  ]);
+  return choice === "yes";
+}
+function printUpdateSummary(opts) {
+  blank();
+  console.log(`${c.boldGreen("✓")} ${c.bold("Update complete")} ${c.dim(`cli ${VERSION}`)}`);
+  if (opts.skillMissing) {
+    printDetail("skill", c.dim("not installed (skipped)"));
+  } else if (opts.skillUpdated) {
+    printDetail("skill", `${opts.skillFrom ?? "?"} → ${opts.skillTo} ${c.dim("(.agents/skills/agent-memory)")}`);
+  } else {
+    printDetail("skill", `${opts.skillTo} ${c.dim("(already current)")}`);
+  }
+  if (opts.hooksRefreshed.length > 0) {
+    printDetail("hooks", opts.hooksRefreshed.map((h) => `${h} ${c.dim(`→ ${VERSION}`)}`).join(", "));
+  }
+  if (opts.hooksSkipped.length > 0) {
+    printDetail("skipped", opts.hooksSkipped.map((h) => `${h} ${c.dim("(current)")}`).join(", "));
+  }
+  printAgentNextSteps(memoryExists() ? "update" : "init");
+}
+async function cmdUpdate(flags) {
+  const installedSkill = readInstalledSkillVersion();
+  const skillDir = installedSkillDir();
+  const skillMissing = !import_node_fs4.default.existsSync(skillDir) || !installedSkill;
+  printHeader("update");
+  printSection("Versions");
+  printDetail("package", VERSION);
+  if (skillMissing) {
+    printDetail("skill", c.dim("not installed"));
+    printStep(c.yellow(`skill missing — hooks-only update; install with: npx @dosx/agent-memory install skill`));
+  } else {
+    printDetail("skill", `${installedSkill} ${c.dim("installed")} · ${VERSION} ${c.dim("package")}`);
+  }
+  printDetail("hooks", `${VERSION} ${c.dim("package")}`);
+  let needSkill = false;
+  if (!skillMissing && installedSkill) {
+    const skillCmp = compareSemver(VERSION, installedSkill);
+    if (skillCmp > 0) {
+      needSkill = true;
+      printStep(`skill upgrade available ${c.yellow(`${installedSkill} → ${VERSION}`)}`);
+    } else if (skillCmp < 0) {
+      console.log(`  ${c.yellow("!")} installed skill (${installedSkill}) is newer than package (${VERSION}); will not downgrade`);
+    } else {
+      printStep(`skill already at ${VERSION}`);
+    }
+  }
+  const installedHarnesses = detectInstalledHarnesses();
+  const hooksToRefresh = [];
+  const hooksSkipped = [];
+  if (installedHarnesses.length === 0) {
+    printStep(c.dim("no hooks detected"));
+  } else {
+    for (const h of installedHarnesses) {
+      const stamp = readInstalledHooksVersion(h);
+      if (!stamp || compareSemver(VERSION, stamp) > 0) {
+        hooksToRefresh.push(h);
+        printStep(`hooks ${h}: ${c.yellow(`${stamp ?? "none"} → ${VERSION}`)}`);
+      } else {
+        hooksSkipped.push(h);
+        printStep(`hooks ${h}: ${stamp} ${c.dim("(current)")}`);
+      }
+    }
+  }
+  if (skillMissing && hooksToRefresh.length === 0 && installedHarnesses.length === 0) {
+    console.error(`${c.red("error:")} nothing to update — install the skill and/or hooks first`);
+    console.error(`  ${c.dim("npx @dosx/agent-memory install skill")}`);
+    console.error(`  ${c.dim("npx @dosx/agent-memory install hooks <harness>")}`);
+    process.exit(1);
+  }
+  if (!needSkill && hooksToRefresh.length === 0) {
+    blank();
+    console.log(`${c.boldGreen("✓")} ${c.bold("Already up to date")} ${c.dim(VERSION)}`);
+    if (skillMissing) {
+      printStep(c.dim(`optional: npx @dosx/agent-memory install skill`));
+    }
+    printAgentNextSteps(memoryExists() ? "update" : "init");
+    return;
+  }
+  const planParts = [];
+  if (needSkill)
+    planParts.push(`skill ${installedSkill} → ${VERSION}`);
+  if (hooksToRefresh.length > 0) {
+    planParts.push(`hooks ${hooksToRefresh.join(", ")} → ${VERSION}`);
+  }
+  if (!flags.yes) {
+    if (!isTTY()) {
+      failNonTTY("interactive update requires a TTY (or pass --yes).", [
+        "npx @dosx/agent-memory update --yes"
+      ]);
+    }
+    blank();
+    const ok = await confirmPrompt(`Apply update? (${planParts.join("; ")})`);
+    if (!ok) {
+      console.log(c.dim("Cancelled."));
+      process.exit(0);
+    }
+  }
+  let skillUpdated = false;
+  if (needSkill) {
+    installSkill();
+    skillUpdated = true;
+  }
+  for (const h of hooksToRefresh) {
+    installHooks(h);
+  }
+  printUpdateSummary({
+    skillUpdated,
+    skillFrom: installedSkill,
+    skillTo: VERSION,
+    skillMissing,
+    hooksRefreshed: hooksToRefresh,
+    hooksSkipped
+  });
+}
+function parseUpdateFlags(args) {
+  let yes = false;
+  for (const a of args) {
+    if (a === "--yes" || a === "-y") {
+      yes = true;
+      continue;
+    }
+    console.error(`${c.red("error:")} unexpected argument: ${a}`);
+    printHelp();
+    process.exit(1);
+  }
+  return { yes };
+}
+function harnessOptions() {
+  return CANONICAL_HARNESSES.map((h) => ({ label: h, value: h }));
+}
+function failNonTTY(message, hints) {
+  console.error(`${c.red("error:")} ${message}`);
+  for (const h of hints) {
+    console.error(`  ${c.dim(h)}`);
+  }
+  process.exit(1);
+}
+async function promptInstallChoice(harness) {
+  if (!isTTY()) {
+    failNonTTY("interactive install requires a TTY.", [
+      `Hooks: npx @dosx/agent-memory install hooks ${harness}`,
+      "Skill: npx @dosx/agent-memory install skill"
+    ]);
+  }
+  const choice = await selectPrompt(`Install agent-memory for ${harness}:`, [
+    { label: "Skill + hooks", value: "both" },
+    { label: "Skill only", value: "skill" },
+    { label: "Hooks only", value: "hooks" }
+  ]);
+  printHeader(`install · ${harness}`);
+  if (choice === "both") {
+    const skillPath = installSkill();
+    installHooks(harness);
+    finishInstall({ skillPath, hooks: [harness] });
+    return;
+  }
+  if (choice === "skill") {
+    finishInstall({ skillPath: installSkill(), hooks: [] });
+    return;
+  }
+  installHooks(harness);
+  finishInstall({ hooks: [harness] });
+}
+async function promptInstallBare() {
+  if (!isTTY()) {
+    failNonTTY("interactive install requires a TTY.", [
+      "Skill: npx @dosx/agent-memory install skill",
+      "Hooks: npx @dosx/agent-memory install hooks <harness>"
+    ]);
+  }
+  const mode = await selectPrompt("What do you want to install?", [
+    { label: "Skill + hooks", value: "both" },
+    { label: "Skill only", value: "skill" },
+    { label: "Hooks only", value: "hooks" }
+  ]);
+  if (mode === "skill") {
+    printHeader("install · skill");
+    finishInstall({ skillPath: installSkill(), hooks: [] });
+    return;
+  }
+  const selected = await multiSelectPrompt("Select harnesses (Space to toggle):", harnessOptions());
+  printHeader(mode === "both" ? `install · skill + ${selected.join(", ")}` : `install · hooks · ${selected.join(", ")}`);
+  const report = { hooks: selected };
+  if (mode === "both") {
+    report.skillPath = installSkill();
+  }
+  installHooksMany(selected);
+  finishInstall(report);
+}
+async function promptHooksMultiSelect() {
+  if (!isTTY()) {
+    failNonTTY("interactive install hooks requires a TTY.", [
+      "Hooks: npx @dosx/agent-memory install hooks <harness>"
+    ]);
+  }
+  const selected = await multiSelectPrompt("Select harnesses (Space to toggle):", harnessOptions());
+  printHeader(`install · hooks · ${selected.join(", ")}`);
+  installHooksMany(selected);
+  finishInstall({ hooks: selected });
+}
+async function main(argv) {
+  const args = argv.slice(2);
+  if (args.length === 0 || args[0] === "help" || args[0] === "--help" || args[0] === "-h") {
+    printHelp();
+    return;
+  }
+  if (args[0] === "update") {
+    await cmdUpdate(parseUpdateFlags(args.slice(1)));
+    return;
+  }
+  if (args[0] !== "install") {
+    console.error(`${c.red("error:")} unknown command: ${args[0]}`);
+    printHelp();
+    process.exit(1);
+  }
+  const rest = args.slice(1);
+  if (rest.length === 0) {
+    await promptInstallBare();
+    return;
+  }
+  if (rest[0] === "skill") {
+    if (rest.length > 1) {
+      console.error(`${c.red("error:")} install skill does not accept arguments`);
+      process.exit(1);
+    }
+    printHeader("install · skill");
+    finishInstall({ skillPath: installSkill(), hooks: [] });
+    return;
+  }
+  if (rest[0] === "hooks") {
+    if (rest.length === 1) {
+      await promptHooksMultiSelect();
+      return;
+    }
+    const raw = rest[1];
+    if (rest.length > 2) {
+      console.error(`${c.red("error:")} unexpected argument: ${rest[2]}`);
+      process.exit(1);
+    }
+    const harness2 = normalizeHarness(raw);
+    if (!harness2) {
+      console.error(`${c.red("error:")} unknown harness: ${raw}`);
+      printHelp();
+      process.exit(1);
+    }
+    printHeader(`install · hooks · ${harness2}`);
+    installHooks(harness2);
+    finishInstall({ hooks: [harness2] });
+    return;
+  }
+  const harness = normalizeHarness(rest[0]);
+  if (harness) {
+    if (rest.length > 1) {
+      console.error(`${c.red("error:")} unexpected argument: ${rest[1]}`);
+      process.exit(1);
+    }
+    await promptInstallChoice(harness);
+    return;
+  }
+  console.error(`${c.red("error:")} unknown install target: ${rest[0]}`);
+  printHelp();
+  process.exit(1);
+}
+main(process.argv).catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
