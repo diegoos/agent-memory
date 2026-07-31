@@ -37,7 +37,9 @@ Guided, conservative promotion and pruning of memory. Turns closed-session noise
 4. **Classify each candidate.** Propose one action per item:
    - **Reference** — replace body with a pointer to a canonical source; update `index.md` if needed.
    - **Decision** — add/replace pointer in `decisions.md` (or local fallback if no ADR system); mark superseded entries instead of deleting them.
-   - **Learning / pitfall** — promote to `learnings.md` with evidence + use trigger (+ `invalidate when` when useful).
+   - **Learning / pitfall** — promote to `learnings.md` or an existing `learnings-<topic>.md` using the H2 format in `instructions.md` (evidence + use when + verified + invalidate when). Prefer an existing topic split when the theme matches; otherwise `learnings.md`. Apply the duplicate rule from `instructions.md` — skip when the insight already exists in the target file (H2 or legacy one-liner).
+   - **Split** — when `learnings.md` is large or thematically clustered, propose moving entries into `learnings-<topic>.md` and updating `index.md` (optional `when editing:` hints). Convert moved entries to the H2 form as part of the move (do not move raw one-liners unless the user declines conversion). Confirm; never auto-split.
+   - **Merge** — when a topic split is tiny or redundant with another, propose merging back into `learnings.md` or a sibling split; same H2 conversion and duplicate rule (confirm).
    - **Current** — keep in `current.md` / active-work because still active.
    - **Discard** — remove because transient, reconstructible from Git, or duplicated (including legacy path bullets and empty headings).
    - **Defer** — preserve when unsure or waiting on external doc promotion (`pending-doc`).
@@ -45,14 +47,15 @@ Guided, conservative promotion and pruning of memory. Turns closed-session noise
 5. **Show the classification plan** to the user (table or grouped list). Do not write yet.
 
 6. **Apply in safe order** — confirm each diff (approve / skip / abort):
-   1. Additions/promotions first: `decisions.md`, `learnings.md`, `current.md` (shared blockers only if still active), `index.md`.
-   2. Only after a promotion is **approved**, propose removing its origin from `log.md` or a legacy file body. If promotion is declined, **keep** the origin.
+   1. Additions/promotions first: `decisions.md`, `learnings.md` / `learnings-*.md`, `current.md` (shared blockers only if still active), `index.md` (including new/updated learnings links and `when editing:` hints).
+   2. Only after a promotion is **approved**, propose removing its origin from `log.md` or a legacy file body. If promotion is declined, **keep** the origin. Apply approved split/merge moves only after the destination write is confirmed.
    3. Propose removal of legacy path-only bullets, empty closed-session headings, and legacy _Touched files_ sections (Git available; evidence reconstructible).
    4. Propose deleting stale `active-work/<branch>.md` one-by-one, or with an explicit "delete all stale" approval. Never delete `TEMPLATE.md`.
    5. For legacy mirrors: prefer converting to pointers / learnings over delete; deleting a legacy file is sensitive and must be confirmed.
 
 7. **Report.** Summarize separately:
    - **promoted** — decision or learning/pitfall bodies added;
+   - **split / merged** — learnings moved between `learnings.md` and topic splits;
    - **referenced** — pointers to canonical sources (no body copy);
    - **superseded** — prior decisions marked with `Superseded by:`;
    - **discarded** — transient / reconstructible / duplicated removed;

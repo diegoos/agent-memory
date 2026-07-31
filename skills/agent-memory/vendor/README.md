@@ -16,21 +16,21 @@ Any project where AI agents do meaningful work across multiple sessions, and whe
 
 Agents **read AND write** the memory. Full workflow and multi-developer rules: [`memory/instructions.md`](./memory/instructions.md) (canonical method file).
 
-Short version: before a task read `index.md`, `current.md`, and the branch `active-work` when it exists; **primary write** is in-turn (resume fields + semantic `log.md`); **catch-up** via `/agent-memory sync` (or follow `references/sync.md` without the skill); periodically `/agent-memory consolidate`. Hooks write only `.hook-sync-state` — never Markdown.
+Short version: before a task read `index.md`, `current.md`, and the branch `active-work` when it exists (plus recall files matching `when editing:`); **primary write** is in-turn (resume fields + semantic `log.md`); **catch-up** via `/agent-memory sync` (or follow `references/sync.md` without the skill); `/agent-memory learn` for gated capture; periodically `/agent-memory consolidate`. Hooks write only `.hook-sync-state` — never Markdown.
 
 ## What's inside (`.agents/memory/`)
 
-| File              | Role                                                    |
-| ----------------- | ------------------------------------------------------- |
-| `instructions.md` | Canonical method (read first).                          |
-| `index.md`        | Map of canonical sources + recall files.                |
-| `current.md`      | Shared active state (in progress / blockers handoff).   |
-| `active-work/`    | Per-branch resume scratchpad (create when resumable).   |
-| `decisions.md`    | Decision pointers or local fallback ADRs.               |
-| `log.md`          | Recent semantic session deltas.                         |
-| `.gitignore`      | Ignores hook-local state.                               |
+| File              | Role                                                  |
+| ----------------- | ----------------------------------------------------- |
+| `instructions.md` | Canonical method (read first).                        |
+| `index.md`        | Map of canonical sources + recall files.              |
+| `current.md`      | Shared active state (in progress / blockers handoff). |
+| `active-work/`    | Per-branch resume scratchpad (create when resumable). |
+| `decisions.md`    | Decision pointers or local fallback ADRs.             |
+| `log.md`          | Recent semantic session deltas.                       |
+| `.gitignore`      | Ignores hook-local state.                             |
 
-Optional on demand: `learnings.md`. Do not create parallel vision/architecture copies — link project docs instead.
+Optional on demand: `learnings.md` / `learnings-<topic>.md` (optional `when editing:` in `index.md`). Do not create parallel vision/architecture copies — link project docs instead.
 
 ## Install
 
@@ -43,7 +43,7 @@ Install the `agent-memory` skill ([skills.sh](https://www.skills.sh/diegoos/agen
 /agent-memory init <harness>    # one harness (directory must exist)
 /agent-memory bootstrap         # optional inventory
 /agent-memory install hooks <harness>  # print hook install commands
-/agent-memory update | sync | consolidate
+/agent-memory update | sync | learn | consolidate
 ```
 
 Hooks are **user-installed** (skill only prints commands) — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.1.0/hooks/README.md).

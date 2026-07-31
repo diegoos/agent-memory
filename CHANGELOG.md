@@ -8,6 +8,12 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ## [Unreleased]
 
+### Added
+
+- `/agent-memory learn [>topic] <clue>` — gated capture of one learning/pitfall into `learnings.md` or `learnings-<topic>.md` (confirm; no `--auto`); conflict/dirty guards, slug sanitizing, deterministic target routing, and duplicate-rule skip.
+- Topic-split convention for learnings (`learnings-<topic>.md`) with optional `when editing:` scope hints in `index.md` — normative match contract in `instructions.md` (_Always load_).
+- H2 learning/pitfall entry format (aligned with decisions), legacy one-liner kept valid, duplicate rule across formats, and writing guidance (generalize; prefer correct patterns).
+
 ### Security
 
 - OpenCode plugin: refuse symlink hook scripts, confine resolved paths under `.opencode/hooks`, and validate session/conversation binding IDs before env/stdin.
@@ -16,6 +22,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 ### Changed
 
 - `instructions.md` slimmed for always-load: permission boundaries, numbered precedence, task-organized sections, observable turn closure, and formats linked to templates (`TEMPLATE.md`, `log.md`, `decisions.md`) instead of duplicated inventories.
+- Learning/pitfall format and topic-split / scope-hint policy documented in `instructions.md` and `index.md`; `bootstrap` / `sync` / `lint` / `consolidate` aligned.
 - CLI build publishes `bin/cli.js` without minify for supply-chain auditability.
 
 ## [0.1.0] - 2026-07-27

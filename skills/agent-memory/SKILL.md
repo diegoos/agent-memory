@@ -19,8 +19,10 @@ description: >-
   (check the memory for broken links, orphans, duplication, and consistency;
   accepts `--fix` to also delete stale per-branch `active-work` files),
   `consolidate` (guided promotion/pruning of closed-session noise — no `--auto`),
-  or `help` (list the commands and how to use them). Never trigger automatically;
-  this skill must be invoked on demand only.
+  `learn` (capture one gated learning/pitfall into `learnings.md` or
+  `learnings-<topic>.md` — no `--auto`), or `help` (list the commands and how
+  to use them). Never trigger automatically; this skill must be invoked on
+  demand only.
 metadata:
   invocation: manual
   version: "0.1.0"
@@ -87,6 +89,7 @@ Read the subcommand from the invocation, load **only** the matching reference, a
 | `sync`          | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state.                      | `references/sync.md`          |
 | `lint`          | Check the memory for structural and consistency problems.                                        | `references/lint.md`          |
 | `consolidate`   | Guided promotion/pruning of closed-session noise (confirm each diff; no `--auto`).               | `references/consolidate.md`   |
+| `learn`         | Capture one gated learning/pitfall into `learnings.md` or a topic split (confirm; no `--auto`).  | `references/learn.md`         |
 | `help`          | List the commands and how to use them.                                                           | _Help_ section below          |
 
 If no subcommand is given, or it is not one of those above, run `help` (below) and stop. Do not guess the user's intent.
@@ -107,6 +110,7 @@ For `/agent-memory help` (and for any empty or unknown invocation), output the f
 
 | Command                       | Does                                                                                                                                                              |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/agent-memory help`          | Show this guide.                                                                                                                                                  |
 | `/agent-memory init`          | Create `.agents/memory/`; auto-detect harnesses and write the native instruction file (`.mdc`, `.instructions.md`, or agent `*.md`), or `init <harness>` for one. |
 | `/agent-memory install hooks` | Print how to install or refresh hooks for one harness — `cursor`, `claude`, `codex`, `opencode`, `copilot`, `gemini` (memory must exist).                         |
 | `/agent-memory bootstrap`     | Inventory canonical sources and gaps (up to 3 subagents); populate pointers — not doc copies.                                                                     |
@@ -114,7 +118,7 @@ For `/agent-memory help` (and for any empty or unknown invocation), output the f
 | `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. `--auto` applies all diffs without per-file prompts.                                  |
 | `/agent-memory lint`          | Check for broken links, orphans, duplication, stale branches, and consistency. `--fix` also deletes stale per-branch `active-work` files.                         |
 | `/agent-memory consolidate`   | Promote useful facts and prune closed-session noise (guided; confirm each diff; no `--auto`).                                                                     |
-| `/agent-memory help`          | Show this guide.                                                                                                                                                  |
+| `/agent-memory learn`         | Capture one gated learning/pitfall (`learn [>topic] <clue>`). Confirm before write; no `--auto`.                                                                  |
 
 **Getting started**
 
@@ -122,6 +126,7 @@ For `/agent-memory help` (and for any empty or unknown invocation), output the f
 - Memory exists but hooks missing or stale? Run `install hooks <harness>` for instructions, or re-run the installer from the release tag.
 - Keeping the memory current? Write resume fields + semantic `log.md` in the turn (primary); run `sync` at checkpoints for catch-up (or follow `references/sync.md` without invoking the skill). Use `sync --auto` for low-friction routine flushes.
 - Pruning noise? Run `consolidate` periodically (guided; never automatic).
+- Capture a lesson now? Run `learn [>topic] <clue>` (retention gate; confirm).
 - Already set up? Use `lint` to check health (`lint --fix` also removes stale per-branch files), `update` to upgrade memory scaffolding, then refresh hooks with the user-run installer if needed.
 
 Method & conventions: `.agents/memory/instructions.md`
@@ -130,7 +135,7 @@ Method & conventions: `.agents/memory/instructions.md`
 
 ## Shared rules (apply to every command)
 
-- **Never modify project memory content** — `current.md`, `active-work/*`, `decisions.md`, `log.md`, `learnings.md`, legacy `domains/*` / `features/*`, and other user-authored recall — unless a command explicitly says so, and only after the user confirms. Never edit project docs/ADRs outside `.agents/memory/`.
+- **Never modify project memory content** — `current.md`, `active-work/*`, `decisions.md`, `log.md`, `learnings.md`, `learnings-*.md`, legacy `domains/*` / `features/*`, and other user-authored recall — unless a command explicitly says so, and only after the user confirms. **Exception:** primary write in-turn and `bootstrap` follow `instructions.md` directly (gated learnings/decisions are written when discovered, without this skill's per-entry confirmation); per-diff confirmation applies to `/agent-memory learn`, `consolidate`, and `lint --fix` edits. Never edit project docs/ADRs outside `.agents/memory/`.
 - Run memory/orchestration steps inside the user's current agent. **Do not download, clone, or execute hook installers** — only print instructions for the user to run.
 - If the host ignores `allowed-tools` granularity: still **never** run `git clone`, `git fetch`, `git pull`, or any network fetch for this skill.
 - All paths are relative to the target project root unless stated otherwise (vendor paths are relative to this skill directory).

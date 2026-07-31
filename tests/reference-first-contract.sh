@@ -94,10 +94,15 @@ assert_contains "$instructions" '**Catch-up (`/agent-memory sync`):**' \
 assert_contains "$instructions" 'without invoking the skill command' \
   "sync may be followed without skill invoke"
 assert_contains "$instructions" '## Memory lint boundaries' "lint boundaries summary"
-assert_contains "$instructions" \
-  '- [YYYY-MM-DD] [learning|pitfall] [topic] insight — evidence: path|link; use when: trigger; verified: YYYY-MM-DD; invalidate when: condition.' \
-  "learning/pitfall entry format"
+assert_contains "$instructions" '## [YYYY-MM-DD] [learning|pitfall] Short topic' \
+  "learning/pitfall H2 entry format"
+assert_contains "$instructions" '- Insight: reusable pattern in one or two sentences.' \
+  "learning Insight field"
+assert_contains "$instructions" 'learnings-<topic>.md' "topic split convention"
+assert_contains "$instructions" 'when editing:' "scope hint convention"
+assert_contains "$instructions" 'prefer what to do' "learning writing guidance"
 assert_contains "$instructions" 'pending-doc' "pending-doc lifecycle"
+assert_contains "$instructions" '/agent-memory learn' "learn command named in method"
 assert_absent "$instructions" 'Soft warning budgets:' \
   "soft budgets stay in lint reference, not always-load"
 
@@ -112,13 +117,15 @@ assert_contains "$update" 'Ensure `.agents/memory/.gitignore` exists' \
   "update ensures .gitignore"
 assert_contains "$update" 'do **not** rely on directory listings' \
   "update does not rely on Glob for .gitignore"
+assert_contains "$update" '`when editing:` scope hints' \
+  "update preserves when-editing hints on index merge"
 assert_contains "$lint" '.agents/memory/.gitignore' "lint checks .gitignore"
 
 # --- Bootstrap ---
 assert_contains "$bootstrap" 'A — Source inventory.' "bootstrap inventories sources"
 assert_contains "$bootstrap" 'never paste' "bootstrap does not copy bodies"
 assert_contains "$bootstrap" 'Do **not** create `vision.md`' "bootstrap forbids vision mirrors"
-assert_contains "$bootstrap" '[learning]' "bootstrap mentions learning tag"
+assert_contains "$bootstrap" 'H2 learning/pitfall format' "bootstrap uses H2 learning format"
 
 # --- Lint ---
 assert_contains "$lint" 'Legacy mirrors' "lint identifies mirrors"
@@ -130,6 +137,8 @@ assert_contains "$lint" 'legacy-path-bullet' "lint checks legacy path bullets"
 assert_contains "$lint" 'Soft budgets (warnings only)' "soft budgets live in lint"
 assert_contains "$lint" 'stale-resume:' "lint checks checkpoint freshness vs HEAD"
 assert_contains "$lint" 'evidence-pending:' "lint checks pending hook path evidence"
+assert_contains "$lint" 'Legacy learning one-liner' "lint warns on legacy learning one-liners"
+assert_contains "$lint" 'when editing:' "lint mentions scope hints"
 
 # --- Sync ---
 assert_contains "$sync" 'Sync writes only to:' "sync four-file boundary"
@@ -138,6 +147,7 @@ for target in 'current.md' 'active-work/<branch>.md' 'log.md' 'index.md'; do
 done
 assert_contains "$sync" 'It **never** touches `decisions.md`, `learnings.md`,' \
   "sync excludes durable recall"
+assert_contains "$sync" 'learnings-*.md' "sync excludes topic splits"
 assert_contains "$sync" 'Hooks never write Markdown' "sync documents ephemeral hooks"
 assert_contains "$sync" '_Validation_' "sync fills Validation"
 assert_contains "$sync" '_Workflow_' "sync links live Workflow section"
@@ -156,6 +166,47 @@ assert_before "$consolidate" \
   "consolidate promotes before pruning"
 assert_contains "$consolidate" 'Legacy `## Touched files`' \
   "consolidate cleans legacy Touched files"
+assert_contains "$consolidate" '**Split**' "consolidate can propose topic splits"
+assert_contains "$consolidate" 'learnings-<topic>.md' "consolidate targets topic splits"
+
+# --- Learn ---
+learn="$repo_root/skills/agent-memory/references/learn.md"
+assert_contains "$learn" 'retention gate' "learn applies retention gate"
+assert_contains "$learn" 'learnings-<topic>.md' "learn supports topic splits"
+assert_contains "$learn" 'Does **not** accept `--auto`' "learn has no auto"
+assert_contains "$learn" 'when editing:' "learn may set scope hints"
+assert_contains "$learn" 'merge conflict markers' "learn guards on conflicts"
+assert_contains "$learn" 'uncommitted changes' "learn warns on dirty memory"
+assert_contains "$learn" 'sanitized' "learn sanitizes topic slug"
+assert_contains "$learn" 'do not guess' "learn does not guess ambiguous target"
+assert_contains "$learn" 'already listed **without** a `when editing:` hint' \
+  "learn updates existing index line"
+assert_contains "$learn" '## [YYYY-MM-DD] [learning|pitfall] Short topic' \
+  "learn uses canonical H2 entry"
+skill="$repo_root/skills/agent-memory/SKILL.md"
+assert_contains "$skill" '`learn`' "SKILL routes learn"
+assert_contains "$skill" 'references/learn.md' "SKILL points at learn reference"
+assert_contains "$skill" '| `/agent-memory learn`' "SKILL help lists learn"
+assert_contains "$skill" '**Exception:** primary write in-turn' \
+  "SKILL allows in-turn gated capture"
+index="$repo_root/skills/agent-memory/vendor/memory/index.md"
+assert_contains "$index" 'when editing:' "index documents scope hints"
+assert_contains "$index" 'learnings-<topic>.md' "index documents topic splits"
+assert_contains "$index" 'shape only' "index example marked as shape placeholder"
+assert_absent "$index" 'learnings-hooks.md' \
+  "index skeleton has no repo-specific example file"
+assert_contains "$instructions" 'gitignore-style' \
+  "when-editing glob dialect pinned"
+assert_contains "$instructions" 'Match rule: load the file when any task path' \
+  "when-editing match rule pinned"
+assert_contains "$instructions" '**Duplicate rule**' "duplicate rule in SoT"
+assert_contains "$instructions" '**Legacy one-liner**' "legacy one-liner documented in SoT"
+assert_contains "$sync" 'never remove or reformat `when editing:` hints' \
+  "sync preserves existing hints"
+assert_contains "$consolidate" 'duplicate rule' \
+  "consolidate applies duplicate rule"
+assert_contains "$consolidate" 'Convert moved entries to the H2 form' \
+  "consolidate converts on split"
 
 # --- Context layer stays short ---
 assert_contains "$agent_block" 'Read `.agents/memory/instructions.md`' \

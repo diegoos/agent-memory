@@ -15,14 +15,14 @@ Analyze the project and populate the memory as a **source inventory + gaps** —
 
 4. **Synthesize and write (inventory-first, skip empties).** Wait for all three, then fill memory **without copying docs**:
 
-   | Source       | Writes to                                                   |
-   | ------------ | ----------------------------------------------------------- |
-   | A (sources)  | `index.md` → _Canonical project sources_ (few entry points) |
-   | A (ADRs)     | `decisions.md` — optional single pointer to ADR index/dir   |
-   |              | when a decision system exists and is useful for continuity  |
-   | B + C (gaps) | `learnings.md` — **only** stable, evidenced, undocumented   |
-   |              | facts that pass the gate in `instructions.md`               |
-   | synthesis    | `log.md` — one bootstrap session entry                      |
+   | Source       | Writes to                                                     |
+   | ------------ | ------------------------------------------------------------- |
+   | A (sources)  | `index.md` → _Canonical project sources_ (few entry points)   |
+   | A (ADRs)     | `decisions.md` — optional single pointer to ADR index/dir     |
+   |              | when a decision system exists and is useful for continuity    |
+   | B + C (gaps) | `learnings.md` (or a clear `learnings-<topic>.md`) — **only** |
+   |              | stable, evidenced, undocumented facts that pass the gate      |
+   | synthesis    | `log.md` — one bootstrap session entry                        |
 
    Rules:
    - Do **not** create `vision.md`, `architecture.md`, `patterns.md`, `mistakes.md`, `known-issues.md`, `domains/*`, or `features/*`.
@@ -30,7 +30,7 @@ Analyze the project and populate the memory as a **source inventory + gaps** —
    - Leave `current.md` with empty placeholders if there is no active work — do not invent milestones, Done lists, or roadmaps.
    - Leave `active-work/` with only its `TEMPLATE.md`.
    - Do **not** invent decisions — only point at an existing ADR index/dir when helpful, or leave `decisions.md` empty.
-   - Create `learnings.md` only when at least one fact passes the gate (reusable, undocumented, non-obvious, evidenced, no secrets). Use `[learning]` or `[pitfall]` tags per `instructions.md`. Mark facts that should become official docs with `pending-doc`. Link `learnings.md` from `index.md` when created.
+   - Create `learnings.md` (or a topic split) only when at least one fact passes the gate (reusable, undocumented, non-obvious, evidenced, no secrets). Use the H2 learning/pitfall format in `instructions.md`. Mark facts that should become official docs with `pending-doc`. Link every new learnings file from `index.md` (optional `when editing:` when paths are clear). Prefer one `learnings.md` on first bootstrap unless a single theme dominates.
    - Append to `log.md` using the per-session format in `instructions.md`, e.g. `## [YYYY-MM-DD] [docs] bootstrap source inventory` with bullets listing sources indexed / learnings created / gaps reported.
    - Keep every `index.md` source line to: link + what it owns + when to read.
 
