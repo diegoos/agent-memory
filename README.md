@@ -103,7 +103,7 @@ npx skills add diegoos/agent-memory --skill agent-memory
 ### Manual skeleton (no skill CLI)
 
 ```bash
-git clone --branch 0.1.0 --depth 1 \
+git clone --branch 0.1.1 --depth 1 \
   https://github.com/diegoos/agent-memory /tmp/agent-memory
 mkdir -p .agents/skills/
 cp -R /tmp/agent-memory/skills/agent-memory .agents/skills/

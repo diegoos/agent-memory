@@ -199,3 +199,16 @@ Format:
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.1.0`.
 - safe: root `package.json` — version bumped to `0.1.0`.
 - safe: `init` / `update` — explicitly ensure `.agents/memory/.gitignore` from `vendor/memory/.gitignore` (dotfiles are often omitted by Glob); `update` creates/refreshes it when missing or incomplete.
+
+## 0.1.1
+
+- sensitive: `instructions.md` — slimmed always-load (permission boundaries, numbered precedence, task-organized sections, observable turn closure); formats linked to templates; normative `when editing:` contract; H2 learning/pitfall format + legacy one-liner + duplicate rule; topic-split / scope-hint policy; `/agent-memory learn` as gated capture path. Show full diff and confirm. Preserve any project-specific notes outside the method text.
+- sensitive: `index.md` — recall files document topic splits (`learnings-<topic>.md`) and optional `when editing:` hints (generic shape). Preserve user source/recall lists.
+- safe: `learn` command (`references/learn.md`) — gated capture into `learnings.md` / `learnings-<topic>.md`; conflict/dirty guards; slug sanitize; deterministic routing; duplicate-rule skip. Skill routing + help updated; shared-rules exception for in-turn / bootstrap / learn primary write.
+- safe: `bootstrap` / `sync` / `lint` / `consolidate` / `update` references — H2 format; topic splits; `when editing:` preserve/validate; consolidate split/merge converts moved entries to H2.
+- safe: OpenCode plugin — refuse symlink hook scripts; confine resolved paths under `.opencode/hooks`; validate session/conversation binding IDs. **User must re-run the hooks installer** for OpenCode.
+- safe: Document trust boundary in `SECURITY.md` (package docs; no consumer memory change).
+- safe: CLI build publishes `bin/cli.js` without minify for supply-chain auditability. Re-run `npx @dosx/agent-memory update` (or install) after upgrading the npm package. Memory migration remains `/agent-memory update` in-agent.
+- safe: Cross-package docs pin `hooks/README.md` / examples to `0.1.1`.
+- safe: `skills/agent-memory/SKILL.md` — version bumped to `0.1.1`.
+- safe: root `package.json` — version bumped to `0.1.1`.
