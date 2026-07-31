@@ -4,7 +4,7 @@ Migrate an existing `.agents/memory/` to the latest structure from this skill's 
 
 ## Boundary (read before doing anything)
 
-- **Project memory (NEVER touch):** `current.md`, `active-work/*`, `decisions.md`, `log.md`, `learnings.md`, legacy `domains/*` / `features/*`, and any other user-authored recall content.
+- **Project memory (NEVER touch):** `current.md`, `active-work/*`, `decisions.md`, `log.md`, `learnings.md`, `learnings-*.md`, legacy `domains/*` / `features/*`, and any other user-authored recall content.
 - **Scaffolding (may change, see rules):** `instructions.md`, the structural sections of `index.md`, the `.version` file, brand-new core files, and the agent-memory block in harness instruction files.
 - **Outside the block (NEVER touch):** any content in instruction files outside the agent-memory delimiters (`<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain tags). For `.cursor/rules/agent-memory.mdc`, preserve YAML frontmatter — refresh only the delimited body.
 
@@ -37,7 +37,7 @@ The exact block `init` writes and `update` refreshes is defined in [`references/
      - `current.md` structural cleanup from `UPDATE.md` (e.g. 0.0.14 removal of legacy `Version / milestone` / `Done` / `Next steps`) — preserve `## In progress` and any still-useful bullets the user wants kept.
      - `active-work/*.md` and `TEMPLATE.md` from 0.1.0 — add missing resume sections (`Next step`, `Validation`, `Assumptions / open questions`, `Rejected approaches`, `References`, `Checkpoint:`); offer removal of legacy `## Touched files` (sensitive — show diff, confirm). Preserve existing semantic content.
      - `log.md` / `decisions.md` scaffolding from 0.1.0 — refresh format docs only; preserve entries; do not invent headings. Legacy path-only bullets and empty closed-session headings are consolidate candidates (confirm).
-     - Any change to a file that can hold user content — including `index.md` (merge structural sections; **preserve** the user's _Canonical project sources_ and _Recall files_ lists, including `learnings.md` / topic splits). Legacy Domains/Features sections are not auto-preserved — convert them to pointers via `lint` / `consolidate`.
+     - Any change to a file that can hold user content — including `index.md` (merge structural sections; **preserve** the user's _Canonical project sources_ and _Recall files_ lists, including `learnings.md` / topic splits and any `when editing:` scope hints on existing learnings link lines). Legacy Domains/Features sections are not auto-preserved — convert them to pointers via `lint` / `consolidate`.
      - Any rename, move, or deletion.
    - **Skip superseded items** — e.g. do **not** agent-merge `.cursor/hooks.json` for `afterFileEdit` when `UPDATE.md` marks that 0.0.10 sensitive step as superseded (hooks refresh is user-run installer only).
    - Present each sensitive change as a unified diff and ask the user to approve, skip, or abort. Apply only what is approved.

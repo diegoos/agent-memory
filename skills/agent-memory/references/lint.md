@@ -159,7 +159,7 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    - each `active-work/*.md` (except TEMPLATE) > 60 → warn bloat.
    - `index.md` > 100 → warn bloat.
    - `log.md` > 30 session headings (`^## \[`) → suggest consolidate.
-   - `decisions.md` or `learnings.md` > 200 → suggest topic splits (do not auto-split).
+   - `decisions.md` or any `learnings.md` / `learnings-*.md` > 200 → suggest topic splits or consolidate merge (do not auto-split).
 
 4. **Semantic checks (judgment — report as warnings to review).** These need reading, not grepping; surface them for the user to confirm rather than auto-fixing:
    - **Stale `current.md`** — does _In progress_ still match open active-work?
@@ -168,7 +168,9 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    - **Duplication** — paraphrased facts also in AGENTS/README/docs/ADR (exact long-line overlap is handled deterministically above).
    - **Local decision with ADR** — local fallback body that should be a pointer.
    - **Superseded without link** — `Status: superseded` without `Superseded by:`, or a newer decision that should mark an older one superseded.
-   - **Learning/pitfall without evidence / use trigger / verified.**
+   - **Learning/pitfall without evidence / use trigger / verified** — missing fields on H2 entries or legacy one-liners.
+   - **Legacy learning one-liner** — `- [YYYY-MM-DD] [learning|pitfall] …` without an H2 heading; suggest migrating to the H2 form when editing (do not auto-rewrite).
+   - **Invalid or stale `when editing:`** — per the contract in `instructions.md` → _Always load_: glob that matches no repo path, non-repo-root-relative glob, or a topic split with no hint when evidence paths are obvious. Cross-cutting `learnings.md` without a hint is fine.
    - **Stale `pending-doc` learnings.**
    - **Contradictions** — memory vs canonical source or code.
    - **Legacy path-only bullets / empty headings / Touched files** — candidates for consolidate.
@@ -178,7 +180,7 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
 
 5. **Report.** Group findings as **errors** (broken links, missing required headings, orphans, stale per-branch files) and **warnings** (semantic, budgets, legacy). For each, name the file and the problem.
 
-6. **Fix offer.** Offer to fix only safe issues (e.g. remove a dead link, add an orphan recall file to `index.md`). Any fix that edits user content (`current.md`, `decisions.md`, `learnings.md`, …) must be confirmed first — show the diff. For stale `current.md` / active-work / `log.md`, suggest `/agent-memory sync` rather than editing by hand. For promotion/pruning / converting legacy mirrors / removing path-only bullets, suggest `/agent-memory consolidate` — **do not** do that work in `lint --fix`.
+6. **Fix offer.** Offer to fix only safe issues (e.g. remove a dead link, add an orphan recall file to `index.md`). Any fix that edits user content (`current.md`, `decisions.md`, `learnings.md`, `learnings-*.md`, …) must be confirmed first — show the diff. For stale `current.md` / active-work / `log.md`, suggest `/agent-memory sync` rather than editing by hand. For promotion/pruning / converting legacy mirrors / removing path-only bullets / learnings split-merge, suggest `/agent-memory consolidate` — **do not** do that work in `lint --fix`. For capturing a new gated learning now, suggest `/agent-memory learn`.
 
    `--fix` — with this flag, also offer to **delete stale per-branch `active-work/<branch>.md` files** (files whose branch no longer exists) and, for **delegation-canary** findings (step 2), offer to remove the redundant block from `CLAUDE.md`/`GEMINI.md` that delegate via `@AGENTS.md` (each removal sensitive — show diff, confirm). Each deletion is still confirmed one by one (it removes a file, so it is sensitive) unless combined with an explicit "delete all stale" approval. `--fix` never deletes anything other than stale `active-work` files, never touches `TEMPLATE.md`, never deletes legacy mirror files. Delegation-canary block removal edits only the agent-memory delimiters in `CLAUDE.md`/`GEMINI.md` (with confirmation).
 

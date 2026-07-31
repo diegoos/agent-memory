@@ -26,9 +26,9 @@ Memory lives at `.agents/memory/` and separates **canonical project sources** fr
 | `decisions.md`            | Decision **pointers** (or local fallback when no ADR system).      |
 | `log.md`                  | Recent **semantic** session deltas (append at the bottom).         |
 
-Optional on demand: `learnings.md` — evidenced learnings/pitfalls with no better source. Do **not** create parallel vision/architecture/patterns/domains copies; link the project's own docs instead.
+Optional on demand: `learnings.md` or `learnings-<topic>.md` — evidenced learnings/pitfalls with no better source; optional `when editing:` hints in `index.md`. Capture explicitly with `/agent-memory learn`. Do **not** create parallel vision/architecture/patterns/domains copies; link the project's own docs instead.
 
-**Workflow:** before a task, agents read `index.md`, `current.md`, and their branch's `active-work` file when it exists; **primary write** is in-turn (resume fields + semantic `log.md` outcomes); **catch-up** at checkpoints via `/agent-memory sync` (or follow the skill's `references/sync.md` without invoking the skill); periodically `/agent-memory consolidate` to promote useful facts and prune closed-session noise. Hooks store ephemeral path/session evidence in `.hook-sync-state` only — never Markdown.
+**Workflow:** before a task, agents read `index.md`, `current.md`, and their branch's `active-work` file when it exists (plus any recall file whose `when editing:` hint matches task paths — contract in `instructions.md`); **primary write** is in-turn (resume fields + semantic `log.md` outcomes); **catch-up** at checkpoints via `/agent-memory sync` (or follow the skill's `references/sync.md` without invoking the skill); `/agent-memory learn` to capture a gated learning now; periodically `/agent-memory consolidate` to promote useful facts and prune closed-session noise. Hooks store ephemeral path/session evidence in `.hook-sync-state` only — never Markdown.
 
 Full method: [`skills/agent-memory/vendor/README.md`](./skills/agent-memory/vendor/README.md) and [`instructions.md`](./skills/agent-memory/vendor/memory/instructions.md).
 
@@ -81,6 +81,7 @@ Use `init <harness>` when you already know the agent.
 | `/agent-memory bootstrap`     | Inventory canonical sources and gaps; populate pointers.         |
 | `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md`.      |
 | `/agent-memory lint`          | Broken links, orphans, duplication, stale branches, consistency. |
+| `/agent-memory learn`         | Capture one gated learning/pitfall (`learn [>topic] <clue>`).    |
 | `/agent-memory consolidate`   | Promote useful facts; prune closed-session noise (guided).       |
 
 ## Hooks

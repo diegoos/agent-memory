@@ -17,6 +17,6 @@ Keep aligned with useful entry points only (what they own + when to read). `/age
 
 - [decisions.md](./decisions.md) — decision pointers or local fallback.
 - [log.md](./log.md) — recent semantic session deltas.
-- `learnings.md` — optional; create when the gate in `instructions.md` passes, then link here. Supports `learning` and `pitfall` entries.
+- `learnings.md` — optional; create when the gate in `instructions.md` passes, then link here. Topic splits: `learnings-<topic>.md` (same gate). Any learnings link may carry a `when editing:` hint — syntax and match rule in `instructions.md` → _Always load_. Shape: `- [learnings-<topic>.md](./learnings-<topic>.md) — when editing: <path-glob>; what it covers.` (shape only — add globs from evidence, never copy placeholder globs into a real memory).
 
 Older installs may still have legacy mirror files — convert via `lint` / `consolidate`; do not recreate.
