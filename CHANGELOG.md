@@ -8,6 +8,8 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-31
+
 ### Added
 
 - `/agent-memory learn [>topic] <clue>` — gated capture of one learning/pitfall into `learnings.md` or `learnings-<topic>.md` (confirm; no `--auto`); conflict/dirty guards, slug sanitizing, deterministic target routing, and duplicate-rule skip.
@@ -24,6 +26,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - `instructions.md` slimmed for always-load: permission boundaries, numbered precedence, task-organized sections, observable turn closure, and formats linked to templates (`TEMPLATE.md`, `log.md`, `decisions.md`) instead of duplicated inventories.
 - Learning/pitfall format and topic-split / scope-hint policy documented in `instructions.md` and `index.md`; `bootstrap` / `sync` / `lint` / `consolidate` aligned.
 - CLI build publishes `bin/cli.js` without minify for supply-chain auditability.
+- Cross-package docs pin `hooks/README.md` / examples to `0.1.1`.
 
 ## [0.1.0] - 2026-07-27
 
@@ -331,7 +334,8 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 - Initial Agent Memory method, skill, and `.agents/memory/` skeleton.
 
-[unreleased]: https://github.com/diegoos/agent-memory/compare/0.1.0...HEAD
+[unreleased]: https://github.com/diegoos/agent-memory/compare/0.1.1...HEAD
+[0.1.1]: https://github.com/diegoos/agent-memory/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/diegoos/agent-memory/compare/0.0.14...0.1.0
 [0.0.14]: https://github.com/diegoos/agent-memory/compare/0.0.13...0.0.14
 [0.0.13]: https://github.com/diegoos/agent-memory/compare/0.0.12...0.0.13

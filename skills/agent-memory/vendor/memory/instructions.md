@@ -87,7 +87,7 @@ Create `active-work/<branch>.md` only when work is resumable: Next step and Vali
 
 ### Harness parity — memory contract
 
-Every supported harness targets the same memory shape. **Context layer** injects the obligation to read/maintain memory; **checkpoint layer** (hooks/plugin) collects **ephemeral evidence only** in `.hook-sync-state` (gitignored). Harness config controls timing, not meaning — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.1.0/hooks/README.md). Differing outcomes are bugs.
+Every supported harness targets the same memory shape. **Context layer** injects the obligation to read/maintain memory; **checkpoint layer** (hooks/plugin) collects **ephemeral evidence only** in `.hook-sync-state` (gitignored). Harness config controls timing, not meaning — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.1.1/hooks/README.md). Differing outcomes are bugs.
 
 **Hooks own ephemeral evidence only:** session id binding; branch cache; session-cumulative touched paths; `last_processed_head` / commit range markers. Hooks never create or edit Markdown under `.agents/memory/`.
 

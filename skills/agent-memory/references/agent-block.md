@@ -47,5 +47,5 @@ applyTo: "**"
 ## Notes
 
 - Delimiters `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` let `update` replace only this block. Legacy plain `<agent-memory>` tags migrate to comments.
-- Explicit **Read** `instructions.md` covers plain-Markdown / Cursor rules; `@import` covers Claude/Gemini/Codex. Keep the block short — method details stay in `instructions.md` → _Harness parity — memory contract_ and the [hooks README](https://github.com/diegoos/agent-memory/blob/0.1.0/hooks/README.md).
+- Explicit **Read** `instructions.md` covers plain-Markdown / Cursor rules; `@import` covers Claude/Gemini/Codex. Keep the block short — method details stay in `instructions.md` → _Harness parity — memory contract_ and the [hooks README](https://github.com/diegoos/agent-memory/blob/0.1.1/hooks/README.md).
 - Compare installed vs canonical byte-for-byte (body only for `.mdc`); identical → skip; different → confirm before replace.
