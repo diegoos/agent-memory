@@ -318,6 +318,72 @@ grep -q 'session_binding=s-new' .agents/memory/.hook-sync-state ||
 ! grep -q 'stale-session.txt' .agents/memory/.hook-sync-state ||
   fail "distinct cursor sessions must clear session_touched_files"
 
+# --- sync without AGENT_MEMORY_HOST preserves session_binding_host ---
+printf '%s\n' \
+  'session_binding=s-old-host' \
+  'session_binding_host=cursor' \
+  "session_binding_day=$today" \
+  'session_touched_files=host-preserve-test.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"session_id":"s-new-host","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=afterAgentResponse AGENT_MEMORY_SESSION_ID=s-new-host \
+  ./agent-memory-sync.sh >/dev/null
+grep -q 'session_binding=s-new-host' .agents/memory/.hook-sync-state ||
+  fail "sync without host should rebind session"
+grep -q 'session_binding_host=cursor' .agents/memory/.hook-sync-state ||
+  fail "sync without AGENT_MEMORY_HOST must preserve session_binding_host from state"
+! grep -q 'host-preserve-test.txt' .agents/memory/.hook-sync-state ||
+  fail "distinct session without host must still clear paths"
+
+# --- explicit AGENT_MEMORY_HOST overrides preserved host ---
+printf '%s\n' \
+  'session_binding=s-old-override' \
+  'session_binding_host=cursor' \
+  "session_binding_day=$today" \
+  'session_touched_files=override-test.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"session_id":"s-new-override","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=opencode AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-new-override \
+  ./agent-memory-sync.sh >/dev/null
+grep -q 'session_binding_host=opencode' .agents/memory/.hook-sync-state ||
+  fail "explicit AGENT_MEMORY_HOST must override session_binding_host"
+
+# --- branch cache refresh fail-open skips branch + path clear ---
+current_branch=$(git branch --show-current)
+fake_branch="stale-branch-name"
+printf '%s\n' \
+  'session_binding=s-branch' \
+  "branch=$fake_branch" \
+  'session_touched_files=branch-atomic-keep.txt' \
+  >.agents/memory/.hook-sync-state
+mkdir -p .agents/memory/.hook-sync-state.lock
+printf '%s\n' "$$" >.agents/memory/.hook-sync-state.lock/pid
+printf '{"session_id":"s-branch","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=afterAgentResponse AGENT_MEMORY_SESSION_ID=s-branch \
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/branch-lock.err" || true
+grep -qi 'skip branch cache\|fail-open\|lock busy' "$TMP/branch-lock.err" ||
+  fail "branch refresh under lock contention should log skip/fail-open"
+grep -q "branch=$fake_branch" .agents/memory/.hook-sync-state ||
+  fail "fail-open branch refresh must not update branch"
+grep -q 'branch-atomic-keep.txt' .agents/memory/.hook-sync-state ||
+  fail "fail-open branch refresh must not clear paths without updating branch"
+[[ -d .agents/memory/.hook-sync-state.lock ]] ||
+  fail "branch fail-open must not remove foreign lock"
+rm -rf .agents/memory/.hook-sync-state.lock
+
+# Successful branch refresh after lock release updates branch + clears paths
+printf '{"session_id":"s-branch","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=afterAgentResponse AGENT_MEMORY_SESSION_ID=s-branch \
+  ./agent-memory-sync.sh >/dev/null
+grep -q "branch=$current_branch" .agents/memory/.hook-sync-state ||
+  fail "unlocked branch refresh should update branch to git head"
+! grep -q 'branch-atomic-keep.txt' .agents/memory/.hook-sync-state ||
+  fail "branch change must clear session_touched_files"
+
 # --- sync without session id keeps existing binding/paths (e.g. pre-commit) ---
 printf '%s\n' \
   'session_binding=s-active' \

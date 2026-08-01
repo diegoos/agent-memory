@@ -8,6 +8,11 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ## [Unreleased]
 
+### Fixed
+
+- Hooks: `_rebind_session_state_unlocked` preserves `session_binding_host` from `.hook-sync-state` when `AGENT_MEMORY_HOST` is unset; sync harness configs now set `AGENT_MEMORY_HOST` on checkpoint commands (re-run hooks installer to pick up).
+- Hooks: `refresh_branch_cache` updates `branch` and clears `session_touched_files` under one lock; fail-open skips both (no path wipe without branch update).
+
 ## [0.1.1] - 2026-07-31
 
 ### Added

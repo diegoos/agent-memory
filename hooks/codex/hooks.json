@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "AGENT_MEMORY_EVENT=Stop .codex/hooks/agent-memory-sync.sh",
+            "command": "AGENT_MEMORY_HOST=codex AGENT_MEMORY_EVENT=Stop .codex/hooks/agent-memory-sync.sh",
             "timeout": 15
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "AGENT_MEMORY_EVENT=PreCompact .codex/hooks/agent-memory-sync.sh",
+            "command": "AGENT_MEMORY_HOST=codex AGENT_MEMORY_EVENT=PreCompact .codex/hooks/agent-memory-sync.sh",
             "timeout": 15
           }
         ]

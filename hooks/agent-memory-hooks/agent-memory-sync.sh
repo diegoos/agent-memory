@@ -6,6 +6,9 @@
 #
 # Reads harness stdin JSON when present (session_id, cwd).
 # Session ID also from AGENT_MEMORY_SESSION_ID env or state.
+# Set AGENT_MEMORY_HOST to the harness name when possible (cursor | claude |
+# codex | copilot | opencode | gemini); when omitted, rebind preserves
+# session_binding_host from .hook-sync-state.
 #
 # Set AGENT_MEMORY_EVENT (any host naming):
 #   afterAgentResponse | Stop | agentStop | AfterAgent — end of turn

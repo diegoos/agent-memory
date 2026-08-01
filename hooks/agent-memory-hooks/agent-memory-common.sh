@@ -250,6 +250,9 @@ _rebind_session_state_unlocked() {
   local host="${AGENT_MEMORY_HOST:-}"
   local day tmp
   day=$(_today_ymd)
+  if [ -z "$host" ]; then
+    host=$(read_state session_binding_host "")
+  fi
   case "$sid" in
     *$'\n'* | *$'\r'*)
       printf 'agent-memory: write_session_binding refused newline in sid\n' >&2
@@ -377,13 +380,25 @@ reset_session_state_if_changed() {
 
 refresh_branch_cache() {
   [ -n "${cwd:-}" ] || return 0
-  local b last
+  local b
   b=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
   [ -n "$b" ] || return 0
+  agent_memory_with_state_lock _refresh_branch_cache_unlocked "$b"
+}
+
+_refresh_branch_cache_unlocked() {
+  local b=$1 last
+  if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
+    printf 'agent-memory: skip branch cache refresh (lock not held)\n' >&2
+    return 0
+  fi
   last=$(read_state branch "")
-  write_state branch "$b"
-  if [ -n "$last" ] && [ "$last" != "$b" ]; then
-    _clear_session_path_state
+  if [ "$last" = "$b" ]; then
+    return 0
+  fi
+  _write_state_unlocked branch "$b"
+  if [ -n "$last" ]; then
+    _write_state_unlocked session_touched_files ""
   fi
 }
 

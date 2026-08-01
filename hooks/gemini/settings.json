@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "AGENT_MEMORY_EVENT=AfterAgent .gemini/hooks/agent-memory-sync.sh",
+            "command": "AGENT_MEMORY_HOST=gemini AGENT_MEMORY_EVENT=AfterAgent .gemini/hooks/agent-memory-sync.sh",
             "timeout": 15000
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "AGENT_MEMORY_EVENT=PreCompress .gemini/hooks/agent-memory-sync.sh",
+            "command": "AGENT_MEMORY_HOST=gemini AGENT_MEMORY_EVENT=PreCompress .gemini/hooks/agent-memory-sync.sh",
             "timeout": 15000
           }
         ]
