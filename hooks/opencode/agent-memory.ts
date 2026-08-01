@@ -81,6 +81,14 @@ const ENV_ALLOWLIST_EXACT = new Set([
   'TEMP',
   'LANG',
   'TZ',
+  // Locale (exact keys only — do not forward arbitrary LC_* names)
+  'LC_ALL',
+  'LC_CTYPE',
+  'LC_MESSAGES',
+  'LC_COLLATE',
+  'LC_MONETARY',
+  'LC_NUMERIC',
+  'LC_TIME',
   // Windows
   'SystemRoot',
   'SYSTEMROOT',
@@ -92,7 +100,7 @@ const ENV_ALLOWLIST_EXACT = new Set([
   'ComSpec',
   'COMSPEC',
   'PATHEXT',
-  // Git / XDG
+  // Git / XDG (paths to config files — intentional; see SECURITY.md)
   'XDG_CONFIG_HOME',
   'XDG_DATA_HOME',
   'GIT_CONFIG_GLOBAL',
@@ -107,7 +115,7 @@ function buildChildEnv(
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const key of Object.keys(process.env)) {
-    if (ENV_ALLOWLIST_EXACT.has(key) || key.startsWith('LC_')) {
+    if (ENV_ALLOWLIST_EXACT.has(key)) {
       const val = process.env[key];
       if (val !== undefined) env[key] = val;
     }

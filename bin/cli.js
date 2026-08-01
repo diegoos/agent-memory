@@ -66,6 +66,13 @@ var ENV_ALLOWLIST_EXACT = new Set([
   "TEMP",
   "LANG",
   "TZ",
+  "LC_ALL",
+  "LC_CTYPE",
+  "LC_MESSAGES",
+  "LC_COLLATE",
+  "LC_MONETARY",
+  "LC_NUMERIC",
+  "LC_TIME",
   "SystemRoot",
   "SYSTEMROOT",
   "windir",
@@ -318,7 +325,7 @@ function buildInstallerEnv(version) {
     AGENT_MEMORY_VERSION: version
   };
   for (const key of Object.keys(process.env)) {
-    if (ENV_ALLOWLIST_EXACT.has(key) || key.startsWith("LC_")) {
+    if (ENV_ALLOWLIST_EXACT.has(key)) {
       const val = process.env[key];
       if (val !== undefined)
         env[key] = val;

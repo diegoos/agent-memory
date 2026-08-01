@@ -28,9 +28,16 @@ The OpenCode plugin spawns the same shared bash sync script as other harnesses; 
 
 - No network calls from the CLI or hook scripts.
 - No `shell: true` on child processes.
-- No full parent `process.env` forwarded to hook children.
 - No Markdown writes from hooks (semantic memory is agent-owned only).
 - No trusting harness stdin `cwd` alone to select the project root (env or install-site anchor first).
+
+## Environment forwarding
+
+- **CLI → `install-hooks.sh` and OpenCode → bash hooks:** only `ENV_ALLOWLIST_EXACT` (exact keys; locale via named `LC_*` entries, not a prefix). See `lib/cli/constants.ts` (mirrored in the OpenCode plugin; parity tested).
+- **Stock Cursor / Claude / Codex / Copilot / Gemini / git `pre-commit`:** the harness or git invokes the script directly, so the child **inherits the full parent environment** (same model as ordinary git hooks). Stock scripts do not dump or forward secrets to logs or Markdown.
+- **`PATH` and `GIT_CONFIG*`** on the filtered path are intentional so git/locale tooling works under a restricted env. Treat a compromised parent env as already inside the project trust boundary.
+
+`.hook-sync-state` is gitignored ephemeral evidence. Hooks own writes under the method contract; agents with Write access to `.agents/memory/` can still edit it on disk — treat forged state as untrusted and validate hex SHAs before passing them to git (hooks and `/agent-memory sync`).
 
 ## Publish
 

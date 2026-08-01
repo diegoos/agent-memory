@@ -32,7 +32,8 @@ Hooks never write Markdown. They may populate `.hook-sync-state` (gitignored) wi
    git diff --stat <base>..HEAD          # base: main/master or origin/<branch>@{u}
    git status --porcelain
    git rev-parse --short HEAD
-   git diff --name-only <last-log-sha>..HEAD 2>/dev/null || true
+   # Only when <last-log-sha> matches ^[0-9a-fA-F]{4,40}$ :
+   git diff --name-only --end-of-options <last-log-sha>..HEAD 2>/dev/null || true
    ```
 
    Session ID: `AGENT_MEMORY_SESSION_ID`, harness stdin (`session_id` / `conversation_id` / `sessionId`), or `current_session_id` from `.agents/memory/.hook-sync-state`.
@@ -43,7 +44,7 @@ Hooks never write Markdown. They may populate `.hook-sync-state` (gitignored) wi
 
    `<last-log-date>` comes from the newest `## [YYYY-MM-DD]` in `log.md`. If empty, use the repo's first commit or `HEAD~20` as a sane default.
 
-   `<last-log-sha>` is `last_processed_head` from `.agents/memory/.hook-sync-state` (written by hooks after each checkpoint). If empty, skip the `git diff --name-only <last-log-sha>..HEAD` line — there is no prior processed commit to diff from.
+   `<last-log-sha>` is `last_processed_head` from `.agents/memory/.hook-sync-state` (written by hooks after each checkpoint). **Validate before use:** accept only hex SHAs matching `^[0-9a-fA-F]{4,40}$` (same rule as hooks). If empty or non-hex, skip the `git diff --name-only <last-log-sha>..HEAD` line — do not pass the raw value to git (avoids option smuggling from a forged state file). When the SHA is valid, prefer `git diff --name-only --end-of-options <last-log-sha>..HEAD`.
 
 5. **Propose updates (one diff per file).** Show each as a unified diff. Unless `--auto` is set, confirm via `AskQuestion` before writing — sync touches project memory, so the "confirm before editing user content" rule applies. Allow approve / skip per file. Under `--auto`, apply all proposed diffs without prompting and report them after.
    - **`active-work/<branch>.md`** — fill/refresh _Task_, _Progress_ (facts only), _Next step_, _Validation_ (command + expected result), _Assumptions / open questions_, _Blockers_, _Rejected approaches_, and _References_ (path/link + why). Update `Checkpoint: YYYY-MM-DD @ <short-sha>` from `git rev-parse --short HEAD`. Do **not** write path-only _Touched files_ sections. Overwrite only fields the evidence supports.

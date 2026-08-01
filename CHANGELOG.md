@@ -16,12 +16,16 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - Hooks: when install-site resolves, it wins over a mismatched inherited `*_PROJECT_DIR` (stale shell env cannot retarget `.hook-sync-state`).
 - Hooks: external session binding IDs validated (charset + length; reject reserved `__no_id__` from stdin/env); `sessionStart` Status uses sanitized branch and hex-only Checkpoint SHAs.
 - Hooks: git `pre-commit` and commit-range evidence ignore non-hex Checkpoint / `last_processed_head` values (no `git rev-parse` option smuggling); `lint` stale-resume snippet aligned.
+- Hooks: `resolve_session_id` re-validates `session_binding` / `current_session_id` from state with the same charset rules as external IDs.
+- `/agent-memory sync`: require hex-only `last_processed_head` before `git diff` (parity with hooks; forged state cannot option-smuggle).
 
 ### Security
 
 - Document publish guidance: `prepublishOnly` runs `bun run check`; avoid `npm publish --ignore-scripts`.
 - CI runs on `push` to `main` as well as pull requests; `permissions: contents: read`; pin Actions to commit SHAs and Bun `1.3.14`; `markdownlint-cli` via `devDependencies` / `bunx` (no silent skip).
 - Test asserts `ENV_ALLOWLIST_EXACT` parity between CLI constants and OpenCode plugin.
+- Clarify env forwarding in `SECURITY.md`: allowlist applies to CLI/OpenCode spawns; stock harness/git invocations inherit full parent env (git-hooks trust model). Drop open `LC_*` prefix forward — only named locale keys.
+- `tests/test-runner.sh` is the single entry for `bun run test`.
 
 ## [0.1.1] - 2026-07-31
 

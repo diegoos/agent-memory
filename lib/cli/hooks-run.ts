@@ -38,7 +38,7 @@ export function buildInstallerEnv(version: string): NodeJS.ProcessEnv {
     AGENT_MEMORY_VERSION: version,
   };
   for (const key of Object.keys(process.env)) {
-    if (ENV_ALLOWLIST_EXACT.has(key) || key.startsWith("LC_")) {
+    if (ENV_ALLOWLIST_EXACT.has(key)) {
       const val = process.env[key];
       if (val !== undefined) env[key] = val;
     }

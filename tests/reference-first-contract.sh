@@ -149,6 +149,10 @@ assert_contains "$sync" 'It **never** touches `decisions.md`, `learnings.md`,' \
   "sync excludes durable recall"
 assert_contains "$sync" 'learnings-*.md' "sync excludes topic splits"
 assert_contains "$sync" 'Hooks never write Markdown' "sync documents ephemeral hooks"
+assert_contains "$sync" '^[0-9a-fA-F]{4,40}$' \
+  "sync validates last_processed_head as hex before git"
+assert_contains "$sync" '--end-of-options' \
+  "sync prefers end-of-options for last-log-sha diff"
 assert_contains "$sync" '_Validation_' "sync fills Validation"
 assert_contains "$sync" '_Workflow_' "sync links live Workflow section"
 assert_contains "$sync" '**Catch-up**' "sync is catch-up not primary write"

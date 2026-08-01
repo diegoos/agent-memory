@@ -265,16 +265,26 @@ resolve_session_id() {
     local from_current from_binding
     from_binding=$(read_state session_binding "")
     if [ -n "$from_binding" ]; then
-      if [ "$from_binding" != "$NO_ID_SESSION_SENTINEL" ]; then
+      if [ "$from_binding" = "$NO_ID_SESSION_SENTINEL" ]; then
+        printf ''
+        return
+      fi
+      if is_valid_external_binding_id "$from_binding"; then
         printf '%s' "$from_binding"
       else
+        printf 'agent-memory: ignoring invalid session_binding in state\n' >&2
         printf ''
       fi
       return
     fi
     from_current=$(read_state current_session_id "")
     if [ -n "$from_current" ] && [ "$from_current" != "$NO_ID_SESSION_SENTINEL" ]; then
-      printf '%s' "$from_current"
+      if is_valid_external_binding_id "$from_current"; then
+        printf '%s' "$from_current"
+      else
+        printf 'agent-memory: ignoring invalid current_session_id in state\n' >&2
+        printf ''
+      fi
       return
     fi
     printf ''
