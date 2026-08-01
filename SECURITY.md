@@ -22,7 +22,7 @@ Installing agent-memory hooks is equivalent to trusting the project directory â€
 - Cursor, Claude Code, Codex, Copilot, Gemini, and OpenCode all run those local scripts on lifecycle events.
 - Anyone who can modify hook scripts or the project working directory already has local code execution in that project.
 
-The OpenCode plugin spawns the same shared bash sync script as other harnesses; it adds runtime checks (regular file only, `realpath` confinement under `.opencode/hooks`, binding ID charset validation) before `execFileSync`.
+The OpenCode plugin spawns the same shared bash sync script as other harnesses; it adds runtime checks (regular file only, `realpath` confinement under `.opencode/hooks`, binding ID charset validation) before `execFileSync`. Shared bash hooks also validate external session binding IDs, prefer project env / install-site root over harness stdin `cwd`, and refuse symlink memory paths.
 
 ## What we do not do
 
@@ -30,6 +30,11 @@ The OpenCode plugin spawns the same shared bash sync script as other harnesses; 
 - No `shell: true` on child processes.
 - No full parent `process.env` forwarded to hook children.
 - No Markdown writes from hooks (semantic memory is agent-owned only).
+- No trusting harness stdin `cwd` alone to select the project root (env or install-site anchor first).
+
+## Publish
+
+Prefer `bun run check` before publish (`prepublishOnly` runs it). Do not publish with `npm publish --ignore-scripts` â€” that skips the rebuild/`check` gate and can ship a stale or tampered `bin/cli.js`.
 
 ## How to audit
 

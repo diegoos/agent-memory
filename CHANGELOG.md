@@ -12,6 +12,13 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 - Hooks: `_rebind_session_state_unlocked` preserves `session_binding_host` from `.hook-sync-state` when `AGENT_MEMORY_HOST` is unset; sync harness configs now set `AGENT_MEMORY_HOST` on checkpoint commands (re-run hooks installer to pick up).
 - Hooks: `refresh_branch_cache` updates `branch` and clears `session_touched_files` under one lock; fail-open skips both (no path wipe without branch update).
+- Hooks: project root prefers env / install-site (`<project>/.cursor/hooks` etc.) over harness stdin `cwd`; stdin alone no longer selects another workspace.
+- Hooks: external session binding IDs validated (charset + length; reject reserved `__no_id__` from stdin/env); `sessionStart` Status uses sanitized branch and hex-only Checkpoint SHAs.
+
+### Security
+
+- Document publish guidance: `prepublishOnly` runs `bun run check`; avoid `npm publish --ignore-scripts`.
+- CI runs on `push` to `main` as well as pull requests; pin `markdownlint-cli@0.45.0` in the workflow.
 
 ## [0.1.1] - 2026-07-31
 

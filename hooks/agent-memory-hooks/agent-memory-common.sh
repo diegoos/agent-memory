@@ -141,28 +141,109 @@ agent_memory_init_context() {
   state_file="$memory/.hook-sync-state"
 }
 
+# When hooks live under <project>/.cursor/hooks (etc.), return <project>.
+# Relies on script_dir set by the caller before sourcing this file.
+derive_install_project_dir() {
+  local hooks="${script_dir:-}"
+  [ -n "$hooks" ] || return 1
+  case "$hooks" in
+    */.cursor/hooks | */.claude/hooks | */.codex/hooks | */.gemini/hooks | \
+      */.opencode/hooks | */.github/hooks | */.git/hooks)
+      # dirname twice: .../<harness>/hooks → project root
+      local parent project
+      parent=$(dirname -- "$hooks")
+      project=$(dirname -- "$parent")
+      [ -n "$project" ] && [ "$project" != "/" ] && [ "$project" != "." ] || return 1
+      printf '%s' "$project"
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+# Prefer explicit env, then install-site anchor; never trust stdin cwd alone.
 resolve_project_dir() {
   local stdin_cwd="${1:-}"
-  if [ -n "${AGENT_MEMORY_PROJECT_DIR:-}" ]; then printf '%s' "$AGENT_MEMORY_PROJECT_DIR"; return; fi
-  if [ -n "${CURSOR_PROJECT_DIR:-}" ]; then printf '%s' "$CURSOR_PROJECT_DIR"; return; fi
-  if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then printf '%s' "$CLAUDE_PROJECT_DIR"; return; fi
-  if [ -n "${CODEX_PROJECT_DIR:-}" ]; then printf '%s' "$CODEX_PROJECT_DIR"; return; fi
-  if [ -n "${GITHUB_WORKSPACE:-}" ]; then printf '%s' "$GITHUB_WORKSPACE"; return; fi
-  if [ -n "${GEMINI_PROJECT_DIR:-}" ]; then printf '%s' "$GEMINI_PROJECT_DIR"; return; fi
-  if [ -n "$stdin_cwd" ]; then printf '%s' "$stdin_cwd"; return; fi
-  printf '%s' "${PWD:-.}"
+  local chosen="" install="" chosen_real stdin_real
+
+  if [ -n "${AGENT_MEMORY_PROJECT_DIR:-}" ]; then
+    chosen="${AGENT_MEMORY_PROJECT_DIR}"
+  elif [ -n "${CURSOR_PROJECT_DIR:-}" ]; then
+    chosen="${CURSOR_PROJECT_DIR}"
+  elif [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
+    chosen="${CLAUDE_PROJECT_DIR}"
+  elif [ -n "${CODEX_PROJECT_DIR:-}" ]; then
+    chosen="${CODEX_PROJECT_DIR}"
+  elif [ -n "${GITHUB_WORKSPACE:-}" ]; then
+    chosen="${GITHUB_WORKSPACE}"
+  elif [ -n "${GEMINI_PROJECT_DIR:-}" ]; then
+    chosen="${GEMINI_PROJECT_DIR}"
+  elif install=$(derive_install_project_dir); then
+    chosen="$install"
+  else
+    chosen="${PWD:-.}"
+    if [ -n "$stdin_cwd" ]; then
+      printf 'agent-memory: ignoring stdin cwd without project env or install anchor\n' >&2
+    fi
+    printf '%s' "$chosen"
+    return 0
+  fi
+
+  if [ -n "$stdin_cwd" ]; then
+    chosen_real=$(agent_memory_resolve_realpath "$chosen" 2>/dev/null || true)
+    stdin_real=$(agent_memory_resolve_realpath "$stdin_cwd" 2>/dev/null || true)
+    if [ -n "$chosen_real" ] && [ -n "$stdin_real" ] && [ "$chosen_real" != "$stdin_real" ]; then
+      printf 'agent-memory: ignoring stdin cwd outside project root\n' >&2
+    fi
+  fi
+  printf '%s' "$chosen"
 }
 
 # Second arg: allow_state_fallback (1=sync default, 0=sessionStart — no stale ID).
 NO_ID_SESSION_SENTINEL="__no_id__"
 
+# External binding ids (env/stdin) — mirrors hooks/opencode/safe-script.ts BINDING_ID_RE.
+# Rejects reserved sentinel so clients cannot force a __no_id__ rebind.
+is_valid_external_binding_id() {
+  local id="${1:-}"
+  case "$id" in
+    '' | *$'\n'* | *$'\r'*) return 1 ;;
+  esac
+  [ "${#id}" -ge 1 ] && [ "${#id}" -le 128 ] || return 1
+  [[ "$id" =~ ^[A-Za-z0-9._:@/-]+$ ]] || return 1
+  [ "$id" = "$NO_ID_SESSION_SENTINEL" ] && return 1
+  return 0
+}
+
+_pick_external_session_id() {
+  local cand="${1:-}"
+  is_valid_external_binding_id "$cand" || return 1
+  printf '%s' "$cand"
+}
+
 resolve_session_id() {
   local stdin_sid="${1:-}"
   local allow_state_fallback="${2:-1}"
-  if [ -n "${AGENT_MEMORY_SESSION_ID:-}" ]; then printf '%s' "$AGENT_MEMORY_SESSION_ID"; return; fi
-  if [ -n "${CURSOR_SESSION_ID:-}" ]; then printf '%s' "$CURSOR_SESSION_ID"; return; fi
-  if [ -n "${GEMINI_SESSION_ID:-}" ]; then printf '%s' "$GEMINI_SESSION_ID"; return; fi
-  if [ -n "$stdin_sid" ]; then printf '%s' "$stdin_sid"; return; fi
+  local picked
+  if picked=$(_pick_external_session_id "${AGENT_MEMORY_SESSION_ID:-}"); then
+    printf '%s' "$picked"
+    return
+  fi
+  if picked=$(_pick_external_session_id "${CURSOR_SESSION_ID:-}"); then
+    printf '%s' "$picked"
+    return
+  fi
+  if picked=$(_pick_external_session_id "${GEMINI_SESSION_ID:-}"); then
+    printf '%s' "$picked"
+    return
+  fi
+  if picked=$(_pick_external_session_id "$stdin_sid"); then
+    printf '%s' "$picked"
+    return
+  fi
+  if [ -n "$stdin_sid" ] && ! is_valid_external_binding_id "$stdin_sid"; then
+    printf 'agent-memory: ignoring invalid session id from stdin/env\n' >&2
+  fi
   if [ "$allow_state_fallback" = "1" ]; then
     # session_binding is canonical (reset_session_state_if_changed). Prefer it
     # over current_session_id so a stale current cannot resurrect the wrong
@@ -178,7 +259,10 @@ resolve_session_id() {
       return
     fi
     from_current=$(read_state current_session_id "")
-    if [ -n "$from_current" ]; then printf '%s' "$from_current"; return; fi
+    if [ -n "$from_current" ] && [ "$from_current" != "$NO_ID_SESSION_SENTINEL" ]; then
+      printf '%s' "$from_current"
+      return
+    fi
     printf ''
   else
     printf ''
@@ -663,12 +747,16 @@ build_session_context_msg() {
   sanitized=$(sanitize_branch "$branch")
   [ -n "$sanitized" ] || sanitized="local"
 
-  status="branch=${branch}"
+  status="branch=${sanitized}"
   aw="${memory}/active-work/${sanitized}.md"
   if [ -f "$aw" ]; then
     status="${status}; active-work=yes"
     ck_line=$(grep -E '^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ ' "$aw" 2>/dev/null | head -1 || true)
     ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ //' | tr -d '`"')
+    # Only trust hex SHAs in status text (avoid prompt-injection via active-work).
+    if ! [[ "$ck_sha" =~ ^[0-9a-fA-F]{4,40}$ ]]; then
+      ck_sha=""
+    fi
     head_full=""
     head_short=""
     if command -v git >/dev/null 2>&1 && [ -n "${cwd:-}" ]; then

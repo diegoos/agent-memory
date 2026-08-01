@@ -2,6 +2,8 @@ name: PR checks
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 jobs:
   check:
@@ -26,7 +28,7 @@ jobs:
 
       - name: Markdown lint
         run: |
-          npm install -g markdownlint-cli
+          npm install -g markdownlint-cli@0.45.0
           bun run lint:md
 
       - name: Tests
