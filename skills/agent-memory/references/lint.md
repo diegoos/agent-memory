@@ -95,10 +95,11 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    if [ -f "$aw" ] && [ -n "$head_full" ]; then
      ck_line=$(grep -E '^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ ' "$aw" | head -1 || true)
      ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ //' | tr -d '`"')
-     if [ -z "$ck_sha" ] || [ "$ck_sha" = "<short-sha>" ]; then
-       echo "stale-resume: $aw Checkpoint missing or placeholder (HEAD $head_short)"
+     # Only trust hex SHAs (align with hooks sessionStart / pre-commit).
+     if ! printf '%s' "$ck_sha" | grep -Eq '^[0-9a-fA-F]{4,40}$'; then
+       echo "stale-resume: $aw Checkpoint missing, placeholder, or non-hex (HEAD $head_short)"
      else
-       ck_full=$(git rev-parse "$ck_sha" 2>/dev/null || true)
+       ck_full=$(git rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)
        if [ -z "$ck_full" ] || [ "$ck_full" != "$head_full" ]; then
          echo "stale-resume: $aw Checkpoint@$ck_sha != HEAD@$head_short — suggest /agent-memory sync"
        fi

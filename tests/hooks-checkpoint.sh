@@ -522,6 +522,19 @@ grep -q 'session_binding=s-anchor2' .agents/memory/.hook-sync-state ||
 grep -qi 'ignoring stdin cwd outside project root' "$TMP/anchor.err" ||
   fail "expected mismatch warning for stdin cwd vs install root"
 
+# --- security: install-site wins over stale AGENT_MEMORY_PROJECT_DIR ---
+printf '%s\n' 'session_binding=s-env-stale' >.agents/memory/.hook-sync-state
+printf '{"session_id":"s-env-anchor","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$VICTIM" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-env-anchor \
+  .cursor/hooks/agent-memory-sync.sh >/dev/null 2>"$TMP/env-anchor.err" || true
+grep -q 'session_binding=s-env-anchor' .agents/memory/.hook-sync-state ||
+  fail "install-site must win over stale AGENT_MEMORY_PROJECT_DIR"
+! test -f "$VICTIM/.agents/memory/.hook-sync-state" ||
+  fail "stale PROJECT_DIR must not write foreign .hook-sync-state"
+grep -qi 'preferring install-site' "$TMP/env-anchor.err" ||
+  fail "expected install-site preference warning"
+
 # --- security: reject reserved / invalid external session ids ---
 printf '%s\n' \
   'session_binding=s-keep-valid' \
@@ -587,6 +600,24 @@ printf '%s\n' "$out" | grep -q 'Checkpoint' ||
   fail "pre-commit should remind when Checkpoint is behind HEAD"
 printf '%s\n' "$out" | grep -q 'reminder, not a block' ||
   fail "pre-commit reminder must be non-blocking wording"
+
+# --- security: pre-commit ignores non-hex Checkpoint (no git option smuggling) ---
+cat >.agents/memory/active-work/feat-status.md <<'EOF'
+# Active Work — Branch: `feat-status`
+
+Checkpoint: 2026-07-01 @ --show-toplevel; do evil
+
+## Task
+- inject pre-commit
+EOF
+md_snap=$(md_checksum)
+printf 'remind2\n' >remind2.txt
+git add remind2.txt
+out2=$(git commit -q -m remind2 2>&1 || true)
+! printf '%s\n' "$out2" | grep -Fq 'do evil' ||
+  fail "pre-commit must not echo non-hex Checkpoint payload"
+! printf '%s\n' "$out2" | grep -Fq -- '--show-toplevel' ||
+  fail "pre-commit must not pass option-like Checkpoint to git/reminder"
 
 # Session + pre-commit must not alter Markdown (active-work was written by the test)
 md_after=$(md_checksum)

@@ -162,9 +162,13 @@ derive_install_project_dir() {
 }
 
 # Prefer explicit env, then install-site anchor; never trust stdin cwd alone.
+# When install-site resolves and env points elsewhere, prefer install-site
+# (stale shell AGENT_MEMORY_PROJECT_DIR / CURSOR_PROJECT_DIR must not retarget state).
 resolve_project_dir() {
   local stdin_cwd="${1:-}"
-  local chosen="" install="" chosen_real stdin_real
+  local chosen="" install="" chosen_real stdin_real install_real
+
+  install=$(derive_install_project_dir 2>/dev/null || true)
 
   if [ -n "${AGENT_MEMORY_PROJECT_DIR:-}" ]; then
     chosen="${AGENT_MEMORY_PROJECT_DIR}"
@@ -178,7 +182,7 @@ resolve_project_dir() {
     chosen="${GITHUB_WORKSPACE}"
   elif [ -n "${GEMINI_PROJECT_DIR:-}" ]; then
     chosen="${GEMINI_PROJECT_DIR}"
-  elif install=$(derive_install_project_dir); then
+  elif [ -n "$install" ]; then
     chosen="$install"
   else
     chosen="${PWD:-.}"
@@ -187,6 +191,16 @@ resolve_project_dir() {
     fi
     printf '%s' "$chosen"
     return 0
+  fi
+
+  if [ -n "$install" ]; then
+    install_real=$(agent_memory_resolve_realpath "$install" 2>/dev/null || true)
+    chosen_real=$(agent_memory_resolve_realpath "$chosen" 2>/dev/null || true)
+    if [ -n "$install_real" ] && [ -n "$chosen_real" ] &&
+      [ "$install_real" != "$chosen_real" ]; then
+      printf 'agent-memory: preferring install-site project root over env\n' >&2
+      chosen="$install"
+    fi
   fi
 
   if [ -n "$stdin_cwd" ]; then
@@ -625,6 +639,11 @@ list_non_memory_changes() {
       local current_head last_head
       current_head=$(git -C "$cwd" rev-parse HEAD 2>/dev/null || true)
       last_head=$(read_state last_processed_head "")
+      # Reject poisoned state (option injection) — only hex SHAs.
+      if [ -n "$last_head" ] && ! [[ "$last_head" =~ ^[0-9a-fA-F]{4,40}$ ]]; then
+        printf 'agent-memory: ignoring invalid last_processed_head in state\n' >&2
+        last_head=""
+      fi
       if [ -n "$current_head" ] && [ -n "$last_head" ] && [ "$current_head" != "$last_head" ]; then
         if git -C "$cwd" merge-base --is-ancestor "$last_head" "$current_head" 2>/dev/null; then
           git -C "$cwd" diff --name-only "$last_head".."$current_head" 2>/dev/null || true
@@ -764,7 +783,7 @@ build_session_context_msg() {
       head_short=$(git -C "$cwd" rev-parse --short HEAD 2>/dev/null || true)
     fi
     if [ -n "$ck_sha" ] && [ "$ck_sha" != "<short-sha>" ] && [ -n "$head_full" ]; then
-      if [ "$(git -C "$cwd" rev-parse "$ck_sha" 2>/dev/null || true)" = "$head_full" ]; then
+      if [ "$(git -C "$cwd" rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)" = "$head_full" ]; then
         status="${status}; Checkpoint=${head_short} (fresh)"
       else
         status="${status}; Checkpoint=${ck_sha} (behind HEAD ${head_short})"

@@ -13,12 +13,15 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - Hooks: `_rebind_session_state_unlocked` preserves `session_binding_host` from `.hook-sync-state` when `AGENT_MEMORY_HOST` is unset; sync harness configs now set `AGENT_MEMORY_HOST` on checkpoint commands (re-run hooks installer to pick up).
 - Hooks: `refresh_branch_cache` updates `branch` and clears `session_touched_files` under one lock; fail-open skips both (no path wipe without branch update).
 - Hooks: project root prefers env / install-site (`<project>/.cursor/hooks` etc.) over harness stdin `cwd`; stdin alone no longer selects another workspace.
+- Hooks: when install-site resolves, it wins over a mismatched inherited `*_PROJECT_DIR` (stale shell env cannot retarget `.hook-sync-state`).
 - Hooks: external session binding IDs validated (charset + length; reject reserved `__no_id__` from stdin/env); `sessionStart` Status uses sanitized branch and hex-only Checkpoint SHAs.
+- Hooks: git `pre-commit` and commit-range evidence ignore non-hex Checkpoint / `last_processed_head` values (no `git rev-parse` option smuggling); `lint` stale-resume snippet aligned.
 
 ### Security
 
 - Document publish guidance: `prepublishOnly` runs `bun run check`; avoid `npm publish --ignore-scripts`.
-- CI runs on `push` to `main` as well as pull requests; pin `markdownlint-cli@0.45.0` in the workflow.
+- CI runs on `push` to `main` as well as pull requests; `permissions: contents: read`; pin Actions to commit SHAs and Bun `1.3.14`; `markdownlint-cli` via `devDependencies` / `bunx` (no silent skip).
+- Test asserts `ENV_ALLOWLIST_EXACT` parity between CLI constants and OpenCode plugin.
 
 ## [0.1.1] - 2026-07-31
 
