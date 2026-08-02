@@ -60,7 +60,15 @@ In your agent:
 /agent-memory install hooks cursor # print hook-install commands (skill never runs them)
 ```
 
-From a checkout you can also run `bash hooks/install-hooks.sh cursor`.
+From a checkout you can also run the local CLI (installs **this tree**, including unreleased changes at the current SemVer — do not use `npx @dosx/agent-memory` / `github:…#tag` for dogfooding):
+
+```bash
+node ./bin/cli.js install skill
+node ./bin/cli.js install hooks cursor
+node ./bin/cli.js update --yes
+```
+
+Or: `bash hooks/install-hooks.sh cursor`.
 
 `init` wires each harness's **native instruction file** (for example Cursor `.cursor/rules/agent-memory.mdc`, Copilot `.github/instructions/agent-memory.instructions.md`, or `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`).
 

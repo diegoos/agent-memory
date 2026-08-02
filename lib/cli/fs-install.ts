@@ -28,6 +28,7 @@ export function installSkillAtomic(opts: {
   const existed = fs.existsSync(dest);
   const parent = path.dirname(dest);
   fs.mkdirSync(parent, { recursive: true });
+  ensureResolvedUnderProject(parent, onError);
 
   const staging = fs.mkdtempSync(path.join(parent, ".agent-memory-skill-"));
   const backup = `${dest}.bak-${process.pid}-${Date.now()}`;
@@ -138,6 +139,29 @@ function refuseSymlinkComponents(
     const parent = path.dirname(cur);
     if (parent === cur) break;
     cur = parent;
+  }
+}
+
+/** After mkdir, ensure resolved parent stays under project root (parity with install-hooks.sh). */
+function ensureResolvedUnderProject(
+  dir: string,
+  onError: (message: string) => never,
+): void {
+  let projectReal: string;
+  let dirReal: string;
+  try {
+    projectReal = fs.realpathSync(projectDir());
+    dirReal = fs.realpathSync(dir);
+  } catch (err) {
+    onError(
+      `cannot resolve install path: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  const prefix = projectReal.endsWith(path.sep)
+    ? projectReal
+    : projectReal + path.sep;
+  if (dirReal !== projectReal && !dirReal.startsWith(prefix)) {
+    onError(`resolved parent escapes project: ${dirReal}`);
   }
 }
 
