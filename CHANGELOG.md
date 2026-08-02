@@ -10,10 +10,35 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ### Changed
 
+- CLI: install always from the package tree beside `bin/cli.js` (never clones GitHub); header prints `source`; source checkouts (`install.ts` present) refresh skill/hooks on `update` even when SemVer matches so unreleased dogfooding works; `update --force` does the same from a published pack; help lists local `node …/bin/cli.js` examples.
 - Editorial pass on the skill (no method semantics changed): `instructions.md` always-load states the hot path / on-demand list once, untrusted-recall drops a duplicated override clause; `SKILL.md` write boundary points at `references/init.md` instead of repeating the harness-file list; `init` states the prerequisite-dirs rule once; `sync` reference wording aligned. Next version bump needs a `sensitive: instructions.md` line in `vendor/UPDATE.md`.
+- Skill `allowed-tools`: sync/bootstrap hot path only (`current` / `index` / `log` / `active-work` / `.version` / `.gitignore`) — omit `decisions` / `learnings*` (host prompts on learn/consolidate), `instructions.md`, and harness carriers; Bash limited to exact `git branch --show-current` / `git status` / `git status -sb` (no `diff*`/`log*`/`branch:*` globs).
+- `when editing:` contract: reject **any** near-always-on glob (companions do not redeem) — **structural** multi-segment wildcards, any glob with **no literal path segment** that is only wildcards/`*.*`/`*.<ext>` at any depth (`*/*.*`, `*/*/*.ts`, …), any `**/*.<ext>` / `**/*.*`, any `<top-level-dir>/**` (incl. `hooks/**`), plus explicit denylist; normalize **to fixpoint** (repeat `./` / leading `/` / `//` collapse until stable), then collapsing `**/**`; reject absolute globs after normalize; Always-load aligned with lint.
+- `sync` reference: write only Boundary targets (`current` / `active-work` / `log` / `index`) — not `decisions` / `learnings` (outside `allowed-tools` pre-approval); `--auto` still AskQuestion for `index.md` diffs that add/widen `when editing:` hints.
+- `sync` / `consolidate` / `learn` references: scope writes to command Boundary; durable recall expects host prompts; skill host-ignores fallback also bans sync writing decisions/learnings.
+- Vendor README manual install: copy pack-safe `gitignore` → `.agents/memory/.gitignore` after `cp -R`.
+- CI: `bun install --frozen-lockfile --ignore-scripts`; repo `bunfig.toml` defaults `ignoreScripts` for Bun installs to match; `bun audit` in both CI and `bun run check` / `prepublishOnly`; `prepack` runs `bun audit` + `build:check` so `npm pack` cannot skip integrity gates; `build:check` lives in `scripts/build-check.sh` (private `mktemp` outfile); `tests/test-runner.sh` runs `build:check` before fixtures; `cli-install.sh` no longer rebuilds `bin/cli.js`; bump `markdownlint-cli` to `0.49.1`.
+- Hooks installer: when `package.json` is present, prefer its version over `AGENT_MEMORY_VERSION` (env remains fallback for standalone hooks-only checkouts).
+- CI: pin `actions/checkout` v7.0.1, `actions/setup-node` v7.0.0, and `oven-sh/setup-bun` v2.2.0 (Node 24 action runtime; clears GitHub deprecation warnings forcing Node 20 actions onto 24).
+- Memory skeleton: ship pack-safe `vendor/memory/gitignore` (identical to `.gitignore`); `init` / `update` / `lint` require `.hook-sync-state`, `.hook-sync-state.lock`, and `.hook-sync-state.*` (npm omits files named `.gitignore` from tarballs).
 
 ### Fixed
 
+- Publish: remove repo-root `.npmrc` `ignore-scripts` (it skipped `prepack` on `npm pack`); install-script suppression stays in `bunfig.toml` / CI only; `tests/npm-pack-parity.sh` runs `npm pack --ignore-scripts=false` so CI exercises `prepack`.
+- `when editing:` normalize runs **to fixpoint** (repeat `./` / leading `/` / `//` collapse until stable) so `/./hooks/**` and `.//./hooks/**` cannot evade the denylist; reject absolute globs after normalize.
+- Hooks: `parse_hook_stdin` always re-detects `jq` (ignore inherited `_AMC_HAVE_JQ`); sed fallback extracts only flat top-level JSON body so nested/`last-match` `session_id` cannot rebind `.hook-sync-state`.
+- Hooks: no-op `write_state` still `chmod 600` on `.hook-sync-state` (heal world-readable leftover).
+- Hooks: refuse install-site preference when the env workspace's harness hooks **resolve** into another project (parent/dir/file symlink) **or** when env has a divergent wrapper/entrypoint — **fail closed** (write nowhere) instead of keeping the mismatched env root (cross-project `.hook-sync-state` write).
+- Hooks: sync runs `current_session_id` write, session rebind, branch refresh, and path merge under one state lock (`run_sync_ephemeral_checkpoint`) so concurrent syncs cannot mix `session_touched_files` across bindings (re-run hooks installer to pick up).
+- Hooks: `resolve_session_id` prefers canonical `.hook-sync-state` binding over inherited session env when stdin has no valid id; `sessionStart` ignores session env entirely (stdin only).
+- OpenCode: resolve session binding from harness payload only — no `process.env.AGENT_MEMORY_SESSION_ID` fallback (stale parent env cannot rebind another workspace).
+- Hooks: `parse_hook_stdin` picks the first *valid* `session_id` / `conversation_id` / `sessionId` (invalid first field no longer blocks a later valid one or falls through to stale env).
+- OpenCode: `firstBindingId` skips invalid candidates instead of short-circuiting the list (parity with bash).
+- Hooks: re-check `.agents` / `.agents/memory` symlinks on every state write (TOCTOU vs init).
+- OpenCode: `assertSafeHookScript` requires resolved hooks dir under project cwd (dir-symlink escape).
+- CLI skill install: after `mkdir`, ensure resolved parent stays under project root (parity with `install-hooks.sh`).
+- Hooks: refuse `.agents` / `.agents/memory` when those paths are symlinks (before realpath under-project check).
+- Hooks: `chmod 600` on `.hook-sync-state` after write.
 - Hooks installer: `install-hooks.sh` fails closed when neither `realpath` nor `python3` is available (parity with shared hooks — weak `cd`/`pwd` fallback skipped symlink resolution on the under-project check).
 - Hooks: `agent_memory_resolve_realpath` fails closed when neither `realpath` nor `python3` is available (weak `cd`/`pwd` fallback skipped symlink resolution and could write `.hook-sync-state` through an escaped `.agents/memory` symlink).
 - Hooks: `resolve_session_id` prefers harness stdin over stale inherited `AGENT_MEMORY_SESSION_ID`, `CURSOR_SESSION_ID`, and `GEMINI_SESSION_ID` when both are valid and differ (re-run hooks installer to pick up).
@@ -33,6 +58,18 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ### Security
 
+- Hooks: fail closed on hooks retarget (symlink or divergent entrypoint) — no `.hook-sync-state` write to a mismatched env or install-site (AuthZ / confinement).
+- Skill: `allowed-tools` omits `instructions.md` and harness carriers; Bash git limited to exact read-only status/branch forms.
+- Publish: forbid `npm publish --ignore-scripts` and hand-edited tarball publish; `build:check` uses private tempfile; `bun run test` runs `build:check` first.
+- `bun run check` / `prepublishOnly` run `bun audit`; CI installs with `--ignore-scripts`.
+- Hooks: ephemeral sync checkpoint is atomic under one lock (AuthZ — concurrent rebind cannot attach another session's accumulated paths).
+- Hooks: sync prefers `session_binding` in state over inherited `AGENT_MEMORY_SESSION_ID` / `CURSOR_SESSION_ID` / `GEMINI_SESSION_ID` when stdin lacks a valid id; `sessionStart` never seeds from parent session env (AuthZ).
+- npm pack: ship `vendor/memory/gitignore` so `init`/`update`/`lint` can always install `.agents/memory/.gitignore` ignoring `.hook-sync-state` (and lock/temp siblings; npm omits `.gitignore` files from tarballs).
+- OpenCode: session binding from event payload only — no parent `AGENT_MEMORY_SESSION_ID` fallback (AuthZ).
+- Hooks: first valid stdin binding field wins (`session_id` / `conversation_id` / `sessionId`); OpenCode `firstBindingId` skips invalid candidates (AuthZ — stale env cannot win when a later field is valid).
+- OpenCode: confine resolved hooks directory under project cwd (AuthZ / confinement).
+- CLI: post-mkdir project-root confinement for skill install (AuthZ / confinement).
+- Hooks installer: `package.json` version wins over env stamp (supply-chain / update skip).
 - Hooks installer: path resolve requires `realpath` or `python3` — no symlink-blind fallback (parity with shared hooks; Injection / confinement).
 - Hooks: path resolve requires `realpath` or `python3` — no symlink-blind fallback (Injection / confinement).
 - Hooks: stdin session binding wins over conflicting `AGENT_MEMORY_SESSION_ID` / `CURSOR_SESSION_ID` / `GEMINI_SESSION_ID` (AuthZ — stale harness env cannot hijack live session).
