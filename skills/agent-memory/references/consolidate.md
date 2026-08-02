@@ -60,7 +60,7 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    - **Discard** — remove because transient, reconstructible from Git, or duplicated (including legacy path bullets and empty **closed** headings). **Never** Discard current-session headings, the sole remaining heading, or a set of removals that empties `log.md`.
    - **Defer** — preserve when unsure, waiting on external doc promotion (`pending-doc`), or when durable facts already live in learnings/index but the session heading is still current — **unless** lint/`pending-doc-met` shows the invalidate condition is already true — then prefer remove `pending-doc` / pointer / discard over indefinite defer.
 
-5. **Show the classification plan** to the user (table or grouped list). Do not write yet. For any log Discard AskQuestion on a borderline same-day heading, recommend **Manter** by default.
+5. **Show the classification plan** to the user (table or grouped list). Do not write yet. For any log Discard AskQuestion on a borderline same-day heading, recommend **Manter** by default. In the plan table, mark current-session log rows as **Retained** (reason: current session / founding day) — do not list them as Discard candidates.
 
 6. **Apply in safe order** — confirm each diff (approve / skip / abort):
    1. Additions/promotions first: `decisions.md`, `learnings.md` / `learnings-*.md`, `current.md` (shared blockers only if still active), `index.md` (including new/updated learnings links and `when editing:` hints).
@@ -77,7 +77,7 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    - **superseded** — prior decisions marked with `Superseded by:`;
    - **trimmed** — closed-session log bullets shortened;
    - **discarded** — transient / reconstructible / duplicated removed;
-   - **retained** — kept as-is (including current-session log);
+   - **retained** — kept as-is. **Always name current-session log headings** that the prune-exclusion guard kept (e.g. `retained: current-session founding log — ## [YYYY-MM-DD] [docs] …`) so the user can see the contract working — even when nothing else changed;
    - **deferred** — `pending-doc` or user skip;
    - **external promotions suggested** — paths the user should update outside the skill.
 
