@@ -14,7 +14,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   assertSafeHookScript,
-  isValidBindingId,
+  firstBindingId,
 } from './safe-script';
 
 const HOOKS_DIR = '.opencode/hooks';
@@ -22,16 +22,6 @@ const SYNC_SCRIPT = `${HOOKS_DIR}/agent-memory-sync.sh`;
 
 function hasMemory(): boolean {
   return fs.existsSync(path.join(process.cwd(), '.agents', 'memory'));
-}
-
-/** First non-empty candidate; invalid id short-circuits (do not try the next). */
-function firstBindingId(candidates: unknown[]): string | undefined {
-  for (const candidate of candidates) {
-    if (typeof candidate === 'string' && candidate.length > 0) {
-      return isValidBindingId(candidate) ? candidate : undefined;
-    }
-  }
-  return undefined;
 }
 
 function bindingScopes(input: unknown): {
@@ -49,7 +39,9 @@ function bindingScopes(input: unknown): {
 function extractSessionId(input: unknown): string | undefined {
   const s = bindingScopes(input);
   if (!s) return undefined;
-  const fromInput = firstBindingId([
+  // Payload only — never inherit process.env.AGENT_MEMORY_SESSION_ID (stale
+  // parent env must not rebind another workspace's .hook-sync-state).
+  return firstBindingId([
     s.root.sessionID,
     s.root.session_id,
     s.event?.sessionID,
@@ -57,9 +49,6 @@ function extractSessionId(input: unknown): string | undefined {
     s.props?.sessionID,
     s.props?.session_id,
   ]);
-  if (fromInput !== undefined) return fromInput;
-  const fromEnv = process.env.AGENT_MEMORY_SESSION_ID;
-  return fromEnv && isValidBindingId(fromEnv) ? fromEnv : undefined;
 }
 
 function extractConversationId(input: unknown): string | undefined {

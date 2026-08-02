@@ -7,13 +7,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHARED_DIR="$SCRIPT_DIR/agent-memory-hooks"
 
-# Prefer version from CLI env; else package.json; fall back for standalone checkout.
-if [[ -n "${AGENT_MEMORY_VERSION:-}" ]]; then
-  VERSION="$AGENT_MEMORY_VERSION"
-elif [[ -f "$SCRIPT_DIR/../package.json" ]] && command -v node >/dev/null 2>&1; then
+# Prefer version from package.json when present; AGENT_MEMORY_VERSION only as
+# fallback for standalone hooks-only checkouts (CLI always sets version from package).
+if [[ -f "$SCRIPT_DIR/../package.json" ]] && command -v node >/dev/null 2>&1; then
   VERSION="$(
     node -p 'require(process.argv[1]).version' "$SCRIPT_DIR/../package.json" 2>/dev/null || true
   )"
+fi
+if [[ -z "${VERSION:-}" && -n "${AGENT_MEMORY_VERSION:-}" ]]; then
+  VERSION="$AGENT_MEMORY_VERSION"
 fi
 VERSION="${VERSION:-0.1.1}"
 

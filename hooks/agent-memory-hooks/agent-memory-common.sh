@@ -25,40 +25,82 @@ read_hook_stdin() {
   printf '%s' "$rest"
 }
 
-# Extract a quoted string value for a JSON field from a harness payload.
-json_string_field() {
-  printf '%s' "$1" | sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
+# Detect jq locally every time — ignore inherited _AMC_HAVE_JQ (sticky env downgrade).
+_amc_detect_jq() {
+  if command -v jq >/dev/null 2>&1; then _AMC_HAVE_JQ=1; else _AMC_HAVE_JQ=0; fi
 }
 
-if [ -z "${_AMC_HAVE_JQ:-}" ]; then
-  if command -v jq >/dev/null 2>&1; then _AMC_HAVE_JQ=1; else _AMC_HAVE_JQ=0; fi
-fi
+# Flat top-level object body only (stop before a nested `{`). Fail-closed on nesting:
+# nested "session_id" never appears in the extracted body.
+_amc_flat_json_body() {
+  printf '%s' "$1" | sed -n 's/^[^{]*{\([^{}]*\).*/\1/p' | head -1
+}
+
+# Extract a quoted string value for a top-level JSON field (sed fallback path).
+json_string_field() {
+  local body
+  body=$(_amc_flat_json_body "$1")
+  [ -n "$body" ] || return 0
+  printf '%s' "$body" | sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
+}
 
 _parse_hook_stdin_sed() {
   local input="${1:-}"
-  hook_stdin_session_id=$(json_string_field "$input" session_id)
-  [ -z "$hook_stdin_session_id" ] && hook_stdin_session_id=$(json_string_field "$input" conversation_id)
-  [ -z "$hook_stdin_session_id" ] && hook_stdin_session_id=$(json_string_field "$input" sessionId)
+  local a b c picked body
+  a=$(json_string_field "$input" session_id)
+  b=$(json_string_field "$input" conversation_id)
+  c=$(json_string_field "$input" sessionId)
+  hook_stdin_session_id=""
+  if picked=$(_pick_external_session_id "$a"); then
+    hook_stdin_session_id=$picked
+  elif picked=$(_pick_external_session_id "$b"); then
+    hook_stdin_session_id=$picked
+  elif picked=$(_pick_external_session_id "$c"); then
+    hook_stdin_session_id=$picked
+  else
+    # Keep first non-empty raw value so resolve_session_id can warn on invalid.
+    hook_stdin_session_id=${a:-${b:-$c}}
+  fi
   hook_stdin_cwd=$(json_string_field "$input" cwd)
   if [ -z "$hook_stdin_cwd" ]; then
-    hook_stdin_cwd=$(printf '%s' "$input" | sed -n \
-      's/.*"workspace_roots"[[:space:]]*:\[[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+    body=$(_amc_flat_json_body "$input")
+    if [ -n "$body" ]; then
+      hook_stdin_cwd=$(printf '%s' "$body" | sed -n \
+        's/.*"workspace_roots"[[:space:]]*:\[[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+    fi
   fi
 }
 
 parse_hook_stdin() {
   local input="${1:-}"
-  local parsed
+  local parsed a b c cwd_raw rest picked
   hook_stdin_session_id=""
   hook_stdin_cwd=""
   [ -n "$input" ] || return 0
+  _amc_detect_jq
   if [ "$_AMC_HAVE_JQ" -eq 1 ]; then
     if parsed=$(printf '%s' "$input" | jq -r '
-      [ (.session_id // .conversation_id // .sessionId // ""),
+      [ (.session_id // ""),
+        (.conversation_id // ""),
+        (.sessionId // ""),
         (.cwd // (.workspace_roots[0] // ""))
       ] | @tsv' 2>/dev/null) && [ -n "$parsed" ]; then
-      hook_stdin_session_id=${parsed%%$'\t'*}
-      hook_stdin_cwd=${parsed#*$'\t'}
+      a=${parsed%%$'\t'*}
+      rest=${parsed#*$'\t'}
+      b=${rest%%$'\t'*}
+      rest=${rest#*$'\t'}
+      c=${rest%%$'\t'*}
+      cwd_raw=${rest#*$'\t'}
+      if picked=$(_pick_external_session_id "$a"); then
+        hook_stdin_session_id=$picked
+      elif picked=$(_pick_external_session_id "$b"); then
+        hook_stdin_session_id=$picked
+      elif picked=$(_pick_external_session_id "$c"); then
+        hook_stdin_session_id=$picked
+      else
+        hook_stdin_session_id=${a:-${b:-$c}}
+      fi
+      hook_stdin_cwd=$cwd_raw
       return 0
     fi
   fi
@@ -102,6 +144,11 @@ agent_memory_refuse_symlink_parents_under_memory() {
     "$mem" | "$mem"/*) ;;
     *) return 0 ;;
   esac
+  # Re-check memory roots on every write (TOCTOU vs init).
+  if [ -L "$mem" ] || { [ -n "${cwd:-}" ] && [ -L "$cwd/.agents" ]; }; then
+    printf 'agent-memory: refused symlink memory path: %s\n' "$mem" >&2
+    return 1
+  fi
   agent_memory_refuse_symlink_file "$dest" || return 1
   cur="$mem"
   rest="${dest#"$mem"/}"
@@ -129,9 +176,14 @@ agent_memory_init_context() {
     hook_input=$(read_hook_stdin)
   fi
   parse_hook_stdin "$hook_input"
-  cwd=$(resolve_project_dir "$hook_stdin_cwd")
+  cwd=$(resolve_project_dir "$hook_stdin_cwd") || return 1
+  [ -n "$cwd" ] || return 1
   memory="$cwd/.agents/memory"
-  if [ -d "$memory" ] || [ -L "$memory" ]; then
+  if [ -L "$memory" ] || [ -L "$cwd/.agents" ]; then
+    printf 'agent-memory: refused symlink memory path: %s\n' "$memory" >&2
+    return 1
+  fi
+  if [ -d "$memory" ]; then
     cwd_real=$(agent_memory_resolve_realpath "$cwd") || return 1
     mem_real=$(agent_memory_resolve_realpath "$memory") || return 1
     if ! agent_memory_path_under_root "$mem_real" "$cwd_real"; then
@@ -162,9 +214,66 @@ derive_install_project_dir() {
   return 1
 }
 
+# True when env workspace harness hooks resolve under $2 (install-site).
+# Covers: parent .cursor/.opencode symlink, hooks dir symlink, agent-memory-* file symlinks.
+_hooks_dir_symlink_escapes_to() {
+  local chosen=$1 target_root=$2 rel p real f
+  for rel in .cursor/hooks .claude/hooks .codex/hooks .gemini/hooks \
+    .opencode/hooks .github/hooks .git/hooks; do
+    p="$chosen/$rel"
+    # realpath follows parent symlinks — catches V/.cursor → A/.cursor.
+    if [ -e "$p" ] || [ -L "$p" ]; then
+      real=$(agent_memory_resolve_realpath "$p" 2>/dev/null || true)
+      if [ -n "$real" ] && agent_memory_path_under_root "$real" "$target_root"; then
+        return 0
+      fi
+    fi
+    # Hooks dir under env, but individual scripts symlink into install-site.
+    if [ -d "$p" ]; then
+      for f in "$p"/agent-memory-*.sh "$p"/agent-memory-*.ts; do
+        [ -L "$f" ] || continue
+        real=$(agent_memory_resolve_realpath "$f" 2>/dev/null || true)
+        if [ -n "$real" ] && agent_memory_path_under_root "$real" "$target_root"; then
+          return 0
+        fi
+      done
+    fi
+  done
+  return 1
+}
+
+# True when env has its own agent-memory entrypoint whose realpath differs from
+# the running script ($0). Catches regular-file wrappers that exec another
+# project's hooks (symlink guards do not see that shape).
+_hooks_env_entrypoint_diverges_from_running() {
+  local chosen=$1
+  local running_real base rel env_script env_real
+  running_real=$(agent_memory_resolve_realpath "${0:-}" 2>/dev/null || true)
+  [ -n "$running_real" ] || return 1
+  base=$(basename -- "${0:-}")
+  case "$base" in
+    agent-memory-sync.sh | agent-memory-session.sh) ;;
+    *) return 1 ;;
+  esac
+  for rel in .cursor/hooks .claude/hooks .codex/hooks .gemini/hooks \
+    .opencode/hooks .github/hooks .git/hooks; do
+    env_script="$chosen/$rel/$base"
+    if [ -e "$env_script" ] || [ -L "$env_script" ]; then
+      env_real=$(agent_memory_resolve_realpath "$env_script" 2>/dev/null || true)
+      if [ -n "$env_real" ] && [ "$env_real" != "$running_real" ]; then
+        return 0
+      fi
+    fi
+  done
+  return 1
+}
+
 # Prefer explicit env, then install-site anchor; never trust stdin cwd alone.
 # When install-site resolves and env points elsewhere, prefer install-site
-# (stale shell AGENT_MEMORY_PROJECT_DIR / CURSOR_PROJECT_DIR must not retarget state).
+# (stale shell AGENT_MEMORY_PROJECT_DIR / CURSOR_PROJECT_DIR must not retarget state)
+# — unless the env workspace's harness hooks resolve into install-site or env has
+# a divergent entrypoint: then fail closed (write nowhere) instead of keeping the
+# mismatched env root (which would write .hook-sync-state to the wrong project).
 resolve_project_dir() {
   local stdin_cwd="${1:-}"
   local chosen="" install="" chosen_real stdin_real install_real
@@ -199,6 +308,12 @@ resolve_project_dir() {
     chosen_real=$(agent_memory_resolve_realpath "$chosen" 2>/dev/null || true)
     if [ -n "$install_real" ] && [ -n "$chosen_real" ] &&
       [ "$install_real" != "$chosen_real" ]; then
+      if _hooks_dir_symlink_escapes_to "$chosen_real" "$install_real" ||
+        _hooks_env_entrypoint_diverges_from_running "$chosen_real"; then
+        printf 'agent-memory: refusing install-site outside workspace (hooks retarget)\n' >&2
+        printf ''
+        return 1
+      fi
       printf 'agent-memory: preferring install-site project root over env\n' >&2
       chosen="$install"
     fi
@@ -268,25 +383,18 @@ resolve_session_id() {
     return
   fi
 
-  for env_name in AGENT_MEMORY_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID; do
-    if picked=$(_pick_external_session_id "$(_session_binding_env_value "$env_name")"); then
-      printf '%s' "$picked"
-      return
-    fi
-  done
-
   if [ -n "$stdin_sid" ]; then
     printf 'agent-memory: ignoring invalid session id from stdin/env\n' >&2
   fi
 
+  # sessionStart: stdin only — never resurrect stale parent session env.
   [ "$allow_state_fallback" = "1" ] || {
     printf ''
     return
   }
 
-  # session_binding is canonical (reset_session_state_if_changed). Prefer it
-  # over current_session_id so a stale current cannot resurrect the wrong
-  # session or clear/retain paths incorrectly when the fields diverge.
+  # Sync: canonical state before inherited env (stale CURSOR_SESSION_ID /
+  # AGENT_MEMORY_SESSION_ID must not rebind away from session_binding).
   from_binding=$(read_state session_binding "")
   if [ -n "$from_binding" ]; then
     if [ "$from_binding" = "$NO_ID_SESSION_SENTINEL" ]; then
@@ -311,6 +419,13 @@ resolve_session_id() {
     fi
     return
   fi
+
+  for env_name in AGENT_MEMORY_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID; do
+    if picked=$(_pick_external_session_id "$(_session_binding_env_value "$env_name")"); then
+      printf '%s' "$picked"
+      return
+    fi
+  done
   printf ''
 }
 
@@ -408,6 +523,7 @@ _rebind_session_state_unlocked() {
   printf 'session_binding_host=%s\n' "$host" >>"$tmp"
   printf 'session_binding_day=%s\n' "$day" >>"$tmp"
   mv "$tmp" "$state_file"
+  chmod 600 "$state_file" 2>/dev/null || true
 }
 
 # True when prior OpenCode binding is still on today's calendar day.
@@ -448,8 +564,16 @@ _session_rebind_preserves_paths() {
 # Bind session and clear path accumulation when the session changes.
 # Falls back to logged_files_session when session_binding is absent.
 reset_session_state_if_changed() {
+  agent_memory_with_state_lock _reset_session_state_if_changed_unlocked "$1" "${2:-sync}"
+}
+
+_reset_session_state_if_changed_unlocked() {
   local sid=$1 context="${2:-sync}"
   local last bound_day clear_paths
+  if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
+    printf 'agent-memory: skip session reset (lock not held)\n' >&2
+    return 0
+  fi
   sid="${sid:-}"
   last=$(read_state session_binding "")
   if [ -z "$last" ]; then
@@ -467,7 +591,7 @@ reset_session_state_if_changed() {
       if [ "${AGENT_MEMORY_HOST:-}" = "opencode" ]; then
         bound_day=$(read_state session_binding_day "")
         if [ -z "$bound_day" ] || [ "$bound_day" != "$(_today_ymd)" ]; then
-          _rebind_session_state 1 "$sid"
+          _rebind_session_state_unlocked 1 "$sid"
         fi
       fi
       return 0
@@ -476,22 +600,48 @@ reset_session_state_if_changed() {
     if _session_rebind_preserves_paths "$sid" "$last"; then
       clear_paths=0
     fi
-    _rebind_session_state "$clear_paths" "$sid"
+    _rebind_session_state_unlocked "$clear_paths" "$sid"
     return 0
   fi
   if [ "$context" = "sessionStart" ]; then
     if [ "$last" = "$NO_ID_SESSION_SENTINEL" ]; then
       return 0
     fi
-    _rebind_session_state 1 "$NO_ID_SESSION_SENTINEL"
+    _rebind_session_state_unlocked 1 "$NO_ID_SESSION_SENTINEL"
     return 0
   fi
   [ "$last" = "$NO_ID_SESSION_SENTINEL" ] && return 0
   if [ -z "$last" ]; then
-    _write_session_binding "$NO_ID_SESSION_SENTINEL"
+    _rebind_session_state_unlocked 0 "$NO_ID_SESSION_SENTINEL"
     return 0
   fi
-  _rebind_session_state 1 "$NO_ID_SESSION_SENTINEL"
+  _rebind_session_state_unlocked 1 "$NO_ID_SESSION_SENTINEL"
+}
+
+# Sync path: one lock for current_session_id + rebind + branch + path merge.
+# Stops concurrent syncs from mixing session_touched_files across bindings.
+run_sync_ephemeral_checkpoint() {
+  local sid="${1:-}"
+  agent_memory_include_commit_files=1
+  agent_memory_with_state_lock _run_sync_ephemeral_checkpoint_unlocked "$sid"
+}
+
+_run_sync_ephemeral_checkpoint_unlocked() {
+  local sid="${1:-}" list_tmp b
+  if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
+    printf 'agent-memory: skip sync checkpoint (lock not held)\n' >&2
+    return 0
+  fi
+  _write_state_unlocked current_session_id "$sid" || true
+  _reset_session_state_if_changed_unlocked "$sid" sync
+  if [ -n "${cwd:-}" ]; then
+    b=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
+    [ -n "$b" ] && _refresh_branch_cache_unlocked "$b"
+  fi
+  list_tmp=$(mktemp "${state_file}.XXXXXX")
+  list_non_memory_changes >"$list_tmp" || true
+  _apply_ephemeral_checkpoint_unlocked "$list_tmp"
+  rm -f "$list_tmp"
 }
 
 refresh_branch_cache() {
@@ -620,6 +770,8 @@ _write_state_unlocked() {
   agent_memory_refuse_symlink_parents_under_memory "$state_file" || return 1
   cur=$(read_state "$key" "")
   if [ -f "$state_file" ] && [ "$cur" = "$val" ]; then
+    # Heal mode even on no-op writes (loose umask / older tooling).
+    chmod 600 "$state_file" 2>/dev/null || true
     return 0
   fi
   tmp=$(mktemp "${state_file}.XXXXXX")
@@ -633,6 +785,7 @@ _write_state_unlocked() {
   fi
   printf '%s=%s\n' "$key" "$val" >>"$tmp"
   mv "$tmp" "$state_file"
+  chmod 600 "$state_file" 2>/dev/null || true
 }
 
 write_state() {

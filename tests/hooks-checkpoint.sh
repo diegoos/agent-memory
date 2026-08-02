@@ -537,6 +537,117 @@ grep -q 'session_binding=s-env-anchor' .agents/memory/.hook-sync-state ||
 grep -qi 'preferring install-site' "$TMP/env-anchor.err" ||
   fail "expected install-site preference warning"
 
+# --- security: symlinked hooks dir must not retarget install-site to victim ---
+ATTACK=$(mktemp -d)
+trap 'rm -rf "$TMP" "$VICTIM" "$ATTACK" ${ESCAPE:+"$ESCAPE"} ${ESCAPE2:+"$ESCAPE2"}' EXIT
+mkdir -p "$ATTACK/.agents/memory" "$ATTACK/.cursor" "$VICTIM/.cursor/hooks"
+# Victim already has memory from earlier; ensure hooks scripts exist there
+cp ./agent-memory-*.sh "$VICTIM/.cursor/hooks/"
+chmod +x "$VICTIM/.cursor/hooks"/agent-memory-*.sh
+printf '%s\n' 'session_binding=victim-keep' >"$VICTIM/.agents/memory/.hook-sync-state"
+ln -s "$VICTIM/.cursor/hooks" "$ATTACK/.cursor/hooks"
+# Run via victim's real script path (OpenCode-style realpath $0) with attack as PROJECT_DIR
+printf '{"session_id":"s-symlink-attack","cwd":"%s"}\n' "$ATTACK" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$ATTACK" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-symlink-attack \
+  "$VICTIM/.cursor/hooks/agent-memory-sync.sh" >/dev/null 2>"$TMP/symlink-hooks.err" || true
+grep -q 'session_binding=victim-keep' "$VICTIM/.agents/memory/.hook-sync-state" ||
+  fail "victim .hook-sync-state must stay unchanged under symlinked-hooks attack"
+grep -qi 'refusing install-site outside workspace' "$TMP/symlink-hooks.err" ||
+  fail "expected symlinked-hooks refusal warning"
+! grep -q 'session_binding=s-symlink-attack' "$VICTIM/.agents/memory/.hook-sync-state" ||
+  fail "attack must not write session binding into victim state"
+
+# --- security: file symlinks in a real hooks dir must not retarget install-site ---
+ATTACK2=$(mktemp -d)
+trap 'rm -rf "$TMP" "$VICTIM" "$ATTACK" "$ATTACK2" ${ESCAPE:+"$ESCAPE"} ${ESCAPE2:+"$ESCAPE2"}' EXIT
+mkdir -p "$ATTACK2/.agents/memory" "$ATTACK2/.cursor/hooks"
+# Real hooks dir; only the scripts are symlinks into the victim (dir-symlink
+# guard does not fire — file-level escape).
+ln -s "$VICTIM/.cursor/hooks/agent-memory-sync.sh" \
+  "$ATTACK2/.cursor/hooks/agent-memory-sync.sh"
+ln -s "$VICTIM/.cursor/hooks/agent-memory-common.sh" \
+  "$ATTACK2/.cursor/hooks/agent-memory-common.sh"
+ln -s "$VICTIM/.cursor/hooks/agent-memory-session.sh" \
+  "$ATTACK2/.cursor/hooks/agent-memory-session.sh"
+printf '%s\n' 'session_binding=victim-file-keep' >"$VICTIM/.agents/memory/.hook-sync-state"
+printf '{"session_id":"s-file-symlink-attack","cwd":"%s"}\n' "$ATTACK2" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$ATTACK2" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-file-symlink-attack \
+  "$VICTIM/.cursor/hooks/agent-memory-sync.sh" >/dev/null 2>"$TMP/file-symlink-hooks.err" || true
+grep -q 'session_binding=victim-file-keep' "$VICTIM/.agents/memory/.hook-sync-state" ||
+  fail "victim .hook-sync-state must stay unchanged under file-symlink hooks attack"
+grep -qi 'refusing install-site outside workspace' "$TMP/file-symlink-hooks.err" ||
+  fail "expected file-symlink hooks refusal warning"
+! grep -q 'session_binding=s-file-symlink-attack' "$VICTIM/.agents/memory/.hook-sync-state" ||
+  fail "file-symlink attack must not write session binding into victim state"
+
+# --- security: parent harness-dir symlink must not retarget install-site ---
+# V/.cursor → A/.cursor (hooks are regular files under A; neither hooks dir nor
+# scripts are symlinks — only the parent harness directory is).
+ATTACK3=$(mktemp -d)
+trap 'rm -rf "$TMP" "$VICTIM" "$ATTACK" "$ATTACK2" "$ATTACK3" ${ESCAPE:+"$ESCAPE"} ${ESCAPE2:+"$ESCAPE2"}' EXIT
+mkdir -p "$ATTACK3/.agents/memory"
+ln -s "$VICTIM/.cursor" "$ATTACK3/.cursor"
+printf '%s\n' 'session_binding=victim-parent-keep' >"$VICTIM/.agents/memory/.hook-sync-state"
+printf '{"session_id":"s-parent-symlink-attack","cwd":"%s"}\n' "$ATTACK3" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$ATTACK3" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-parent-symlink-attack \
+  "$VICTIM/.cursor/hooks/agent-memory-sync.sh" >/dev/null 2>"$TMP/parent-symlink-hooks.err" || true
+grep -q 'session_binding=victim-parent-keep' "$VICTIM/.agents/memory/.hook-sync-state" ||
+  fail "victim .hook-sync-state must stay unchanged under parent-symlink hooks attack"
+grep -qi 'refusing install-site outside workspace' "$TMP/parent-symlink-hooks.err" ||
+  fail "expected parent-symlink hooks refusal warning"
+! grep -q 'session_binding=s-parent-symlink-attack' "$VICTIM/.agents/memory/.hook-sync-state" ||
+  fail "parent-symlink attack must not write session binding into victim state"
+
+# --- security: regular-file wrapper exec must not retarget install-site ---
+ATTACK4=$(mktemp -d)
+trap 'rm -rf "$TMP" "$VICTIM" "$ATTACK" "$ATTACK2" "$ATTACK3" "$ATTACK4" ${ESCAPE:+"$ESCAPE"} ${ESCAPE2:+"$ESCAPE2"}' EXIT
+mkdir -p "$ATTACK4/.agents/memory" "$ATTACK4/.cursor/hooks"
+cat >"$ATTACK4/.cursor/hooks/agent-memory-sync.sh" <<EOF
+#!/bin/bash
+exec "$VICTIM/.cursor/hooks/agent-memory-sync.sh" "\$@"
+EOF
+chmod +x "$ATTACK4/.cursor/hooks/agent-memory-sync.sh"
+printf '%s\n' 'session_binding=victim-wrapper-keep' >"$VICTIM/.agents/memory/.hook-sync-state"
+printf '{"session_id":"s-wrapper-attack","cwd":"%s"}\n' "$ATTACK4" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$ATTACK4" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-wrapper-attack \
+  bash "$ATTACK4/.cursor/hooks/agent-memory-sync.sh" >/dev/null 2>"$TMP/wrapper-hooks.err" || true
+grep -q 'session_binding=victim-wrapper-keep' "$VICTIM/.agents/memory/.hook-sync-state" ||
+  fail "victim .hook-sync-state must stay unchanged under wrapper-exec attack"
+grep -qi 'refusing install-site outside workspace' "$TMP/wrapper-hooks.err" ||
+  fail "expected wrapper-exec refusal warning"
+! grep -q 'session_binding=s-wrapper-attack' "$VICTIM/.agents/memory/.hook-sync-state" ||
+  fail "wrapper-exec attack must not write session binding into victim state"
+! grep -q 'session_binding=s-wrapper-attack' "$ATTACK4/.agents/memory/.hook-sync-state" 2>/dev/null ||
+  fail "wrapper-exec fail-closed must not write attacker state either"
+
+# --- security: both projects have hooks + stale PROJECT_DIR → fail closed ---
+OTHER=$(mktemp -d)
+trap 'rm -rf "$TMP" "$VICTIM" "$ATTACK" "$ATTACK2" "$ATTACK3" "$ATTACK4" "$OTHER" ${ESCAPE:+"$ESCAPE"} ${ESCAPE2:+"$ESCAPE2"}' EXIT
+mkdir -p "$OTHER/.cursor/hooks" "$OTHER/.agents/memory"
+cp ./agent-memory-*.sh "$OTHER/.cursor/hooks/"
+chmod +x "$OTHER/.cursor/hooks"/agent-memory-*.sh
+printf '%s\n' 'session_binding=other-keep' >"$OTHER/.agents/memory/.hook-sync-state"
+printf '%s\n' 'session_binding=tmp-keep' >.agents/memory/.hook-sync-state
+# Run install-site (TMP) hooks with PROJECT_DIR=OTHER (both have real hooks).
+printf '{"session_id":"s-both-hooks","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$OTHER" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-both-hooks \
+  .cursor/hooks/agent-memory-sync.sh >/dev/null 2>"$TMP/both-hooks.err" || true
+grep -q 'session_binding=other-keep' "$OTHER/.agents/memory/.hook-sync-state" ||
+  fail "stale PROJECT_DIR with its own hooks must not receive state writes"
+grep -q 'session_binding=tmp-keep' .agents/memory/.hook-sync-state ||
+  fail "fail-closed must leave install-site state unchanged when env also has hooks"
+grep -qi 'refusing install-site outside workspace' "$TMP/both-hooks.err" ||
+  fail "expected refuse when install-site and env both have divergent hooks"
+! grep -q 'session_binding=s-both-hooks' "$OTHER/.agents/memory/.hook-sync-state" ||
+  fail "both-hooks stale env must not be rewritten"
+! grep -q 'session_binding=s-both-hooks' .agents/memory/.hook-sync-state ||
+  fail "both-hooks fail-closed must not rewrite install-site either"
+
 # --- security: stdin session id wins over stale session env vars ---
 for stale_case in \
   'AGENT_MEMORY_SESSION_ID|cursor|stale-env-session|live-harness-session|stale-env.txt' \
@@ -569,6 +680,60 @@ printf '{"session_id":"jq-fallback-session","cwd":"%s", bad }\n' "$TMP" |
 grep -q 'session_binding=jq-fallback-session' .agents/memory/.hook-sync-state ||
   fail "jq failure must fall back to sed session id parse"
 
+# --- security: sed must ignore nested session_id (flat top-level body only) ---
+printf '%s\n' \
+  'session_binding=s-nested-keep' \
+  'session_touched_files=nested-keep.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"outer":{"session_id":"nested-evil-01"},"cwd":"%s", bad }\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop \
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/nested-sid.err" || true
+grep -q 'session_binding=s-nested-keep' .agents/memory/.hook-sync-state ||
+  fail "nested session_id must not rebind via sed fallback"
+grep -q 'nested-keep.txt' .agents/memory/.hook-sync-state ||
+  fail "nested session_id reject must not clear paths"
+
+# --- security: trailing nested session_id must not override root (sed path) ---
+printf '%s\n' \
+  'session_binding=s-root-keep' \
+  'session_touched_files=root-keep.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"session_id":"root-good","outer":{"session_id":"evil"},"cwd":"%s", bad }\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop \
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/root-sid.err" || true
+grep -q 'session_binding=root-good' .agents/memory/.hook-sync-state ||
+  fail "sed fallback must bind root session_id, not nested trailing evil"
+
+# --- security: inherited _AMC_HAVE_JQ=0 must not sticky-downgrade past real jq ---
+if command -v jq >/dev/null 2>&1; then
+  printf '%s\n' \
+    'session_binding=s-jq-sticky-keep' \
+    'session_touched_files=jq-sticky-keep.txt' \
+    >.agents/memory/.hook-sync-state
+  printf '{"outer":{"session_id":"sticky-evil-01"},"cwd":"%s"}\n' "$TMP" |
+    _AMC_HAVE_JQ=0 \
+    AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+    AGENT_MEMORY_EVENT=Stop \
+    ./agent-memory-sync.sh >/dev/null 2>"$TMP/jq-sticky.err" || true
+  grep -q 'session_binding=s-jq-sticky-keep' .agents/memory/.hook-sync-state ||
+    fail "inherited _AMC_HAVE_JQ=0 must not force sed; jq root parse should ignore nested id"
+  grep -q 'jq-sticky-keep.txt' .agents/memory/.hook-sync-state ||
+    fail "jq sticky downgrade reject must not clear paths"
+fi
+
+# --- security: no-op write_state heals chmod 600 ---
+printf '%s\n' 'session_binding=s-chmod' 'branch=main' >.agents/memory/.hook-sync-state
+chmod 644 .agents/memory/.hook-sync-state
+printf '{"session_id":"s-chmod","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop \
+  ./agent-memory-sync.sh >/dev/null 2>/dev/null || true
+mode=$(stat -f '%OLp' .agents/memory/.hook-sync-state 2>/dev/null ||
+  stat -c '%a' .agents/memory/.hook-sync-state 2>/dev/null || echo '')
+[ "$mode" = "600" ] || fail "no-op/heal write_state must chmod 600 (got ${mode:-unknown})"
+
 # --- security: sessionStart includes untrusted-recall cue ---
 printf '{"session_id":"s-untrusted","cwd":"%s"}\n' "$TMP" |
   AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
@@ -600,6 +765,48 @@ grep -q 'session_binding=s-keep-valid' .agents/memory/.hook-sync-state ||
   fail "metacharacter session id must be ignored"
 grep -qi 'ignoring invalid session id' "$TMP/sid2.err" ||
   fail "expected invalid session id warning for metacharacters"
+
+# --- security: invalid stdin + stale env must keep canonical session_binding ---
+printf '%s\n' \
+  'session_binding=canonical-keep' \
+  'session_touched_files=canonical-paths.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"session_id":"bad;meta","cwd":"%s"}\n' "$TMP" |
+  env -u CURSOR_SESSION_ID -u GEMINI_SESSION_ID \
+    AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+    AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=stale-env-rebind \
+    ./agent-memory-sync.sh >/dev/null 2>"$TMP/sid-state.err" || true
+grep -q 'session_binding=canonical-keep' .agents/memory/.hook-sync-state ||
+  fail "canonical session_binding must win over stale env when stdin invalid"
+grep -q 'canonical-paths.txt' .agents/memory/.hook-sync-state ||
+  fail "stale env must not clear session_touched_files when state is canonical"
+! grep -q 'session_binding=stale-env-rebind' .agents/memory/.hook-sync-state ||
+  fail "stale AGENT_MEMORY_SESSION_ID must not rebind when stdin invalid"
+
+# --- security: sessionStart ignores stale env when stdin has no valid id ---
+printf '%s\n' 'session_binding=pre-session' >.agents/memory/.hook-sync-state
+printf '{"session_id":"bad;meta","cwd":"%s"}\n' "$TMP" |
+  env -u CURSOR_SESSION_ID -u GEMINI_SESSION_ID \
+    AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+    AGENT_MEMORY_SESSION_ID=stale-sessionstart \
+    ./agent-memory-session.sh >/dev/null 2>"$TMP/sid-ss.err" || true
+! grep -q 'session_binding=stale-sessionstart' .agents/memory/.hook-sync-state ||
+  fail "sessionStart must not bind stale env when stdin id is invalid"
+
+# --- security: invalid session_id falls through to valid conversation_id ---
+printf '%s\n' \
+  'session_binding=stale-env-sid' \
+  'session_touched_files=stale-fallback.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"session_id":"bad;meta","conversation_id":"live-via-conversation","cwd":"%s"}\n' "$TMP" |
+  env -u CURSOR_SESSION_ID -u GEMINI_SESSION_ID \
+    AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+    AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=stale-env-sid \
+    ./agent-memory-sync.sh >/dev/null 2>"$TMP/sid-fallback.err" || true
+grep -q 'session_binding=live-via-conversation' .agents/memory/.hook-sync-state ||
+  fail "valid conversation_id must win when session_id is invalid"
+! grep -q 'session_binding=stale-env-sid' .agents/memory/.hook-sync-state ||
+  fail "stale env must not win when a later stdin field is valid"
 
 # --- security: Checkpoint status rejects non-hex injection text ---
 cat >.agents/memory/active-work/feat-status.md <<'EOF'
@@ -691,7 +898,7 @@ printf '{"session_id":"s-mem-escape","cwd":"%s"}\n' "$TMP" |
   AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
   AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-mem-escape \
   ./agent-memory-sync.sh >/dev/null 2>"$TMP/mem-escape.err" || true
-grep -qi 'escapes project\|memory path' "$TMP/mem-escape.err" ||
+grep -qi 'escapes project\|memory path\|refused symlink' "$TMP/mem-escape.err" ||
   fail "expected memory symlink escape refusal"
 ! test -e "$ESCAPE/.hook-sync-state" ||
   fail "must not write .hook-sync-state through escaped memory symlink"
@@ -699,10 +906,7 @@ rm -rf .agents/memory
 cp -R "$skeleton" .agents/memory
 
 # --- security: resolve_realpath fails closed without realpath/python3 ---
-ESCAPE2=$(mktemp -d)
-rm -rf .agents/memory
-mkdir -p .agents
-ln -sfn "$ESCAPE2" .agents/memory
+# Use a normal memory dir (symlink case is refused earlier) so resolve is reached.
 mkdir -p "$TMP/empty-bin"
 printf '{"session_id":"s-no-resolve","cwd":"%s"}\n' "$TMP" |
   PATH="$TMP/empty-bin" \
@@ -711,9 +915,41 @@ printf '{"session_id":"s-no-resolve","cwd":"%s"}\n' "$TMP" |
   ./agent-memory-sync.sh >/dev/null 2>"$TMP/no-resolve.err" || true
 grep -qi 'realpath or python3' "$TMP/no-resolve.err" ||
   fail "expected fail-closed resolve when realpath/python3 unavailable"
-! test -e "$ESCAPE2/.hook-sync-state" ||
-  fail "must not write outside when resolve tools are missing"
-rm -rf .agents/memory
-cp -R "$skeleton" .agents/memory
+! grep -q 'session_binding=s-no-resolve' .agents/memory/.hook-sync-state 2>/dev/null ||
+  fail "must not write session binding when resolve tools are missing"
+
+# --- atomic sync: one lock for rebind + path merge (structural) ---
+grep -q 'run_sync_ephemeral_checkpoint' ./agent-memory-sync.sh ||
+  fail "sync must call run_sync_ephemeral_checkpoint"
+! grep -qE 'reset_session_state_if_changed|apply_ephemeral_checkpoint|write_current_session_id|refresh_branch_cache' \
+  ./agent-memory-sync.sh ||
+  fail "sync must not call rebind/apply/write/refresh outside the atomic helper"
+grep -q '_run_sync_ephemeral_checkpoint_unlocked' ./agent-memory-common.sh ||
+  fail "common must define unlocked atomic sync body"
+
+# --- concurrent distinct sessions: state stays well-formed (single binding) ---
+printf 'race-a\n' >race-a.txt
+printf 'race-b\n' >race-b.txt
+git add race-a.txt race-b.txt
+git commit -q -m 'race files' >/dev/null
+for _ in 1 2 3 4 5; do
+  printf '{"session_id":"s-race-a","cwd":"%s"}\n' "$TMP" |
+    AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+    AGENT_MEMORY_EVENT=afterAgentResponse AGENT_MEMORY_SESSION_ID=s-race-a \
+    ./agent-memory-sync.sh >/dev/null &
+  printf '{"session_id":"s-race-b","cwd":"%s"}\n' "$TMP" |
+    AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+    AGENT_MEMORY_EVENT=afterAgentResponse AGENT_MEMORY_SESSION_ID=s-race-b \
+    ./agent-memory-sync.sh >/dev/null &
+  wait
+  binding_lines=$(grep -c '^session_binding=' .agents/memory/.hook-sync-state || true)
+  [ "$binding_lines" = "1" ] ||
+    fail "concurrent sync must leave exactly one session_binding line"
+  binding=$(grep '^session_binding=' .agents/memory/.hook-sync-state | cut -d= -f2-)
+  case "$binding" in
+    s-race-a | s-race-b) ;;
+    *) fail "concurrent sync left unexpected session_binding=$binding" ;;
+  esac
+done
 
 printf 'ok - hooks ephemeral checkpoint fixture\n'
