@@ -933,8 +933,8 @@ build_session_context_msg() {
   aw="${memory}/active-work/${sanitized}.md"
   if [ -f "$aw" ]; then
     status="${status}; active-work=yes"
-    ck_line=$(grep -E '^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ ' "$aw" 2>/dev/null | head -1 || true)
-    ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ //' | tr -d '`"')
+    ck_line=$(grep -E '^Checkpoint:' "$aw" 2>/dev/null | head -1 || true)
+    ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint:[[:space:]]*[`"]?[0-9]{4}-[0-9]{2}-[0-9]{2}[`"]?[[:space:]]*@[[:space:]]*[`"]?([0-9a-fA-F]{4,40})[`"]?.*/\1/')
     # Only trust hex SHAs in status text (avoid prompt-injection via active-work).
     if ! [[ "$ck_sha" =~ ^[0-9a-fA-F]{4,40}$ ]]; then
       ck_sha=""
