@@ -84,6 +84,13 @@ assert_contains "$skeleton/active-work/TEMPLATE.md" 'Checkpoint: YYYY-MM-DD @ SH
   "TEMPLATE Checkpoint uses plain SHORT-SHA placeholder"
 assert_absent "$skeleton/active-work/TEMPLATE.md" 'Checkpoint: `' \
   "TEMPLATE Checkpoint must not use backtick wrappers"
+# Machine line must not carry trailing guidance on the same line as Checkpoint:
+assert_absent "$skeleton/active-work/TEMPLATE.md" 'Checkpoint: YYYY-MM-DD @ SHORT-SHA —' \
+  "TEMPLATE Checkpoint line has no trailing prose"
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'product' \
+  "TEMPLATE Next step is product work"
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'not a replay of `log.md`' \
+  "TEMPLATE Progress must not replay log"
 assert_contains "$skeleton/active-work/TEMPLATE.md" '../../../' \
   "TEMPLATE documents repo-root link depth from active-work"
 assert_absent "$skeleton/active-work/TEMPLATE.md" '## Touched files' \
@@ -111,8 +118,10 @@ assert_contains "$instructions" '**Primary-write triggers**' \
   "workflow lists primary-write triggers"
 assert_contains "$instructions" '### How to write (concise)' \
   "instructions teach concise memory writing"
-assert_contains "$instructions" 'After writing semantic outcomes that cover pending path evidence, **consume**' \
-  "workflow requires consuming pending path evidence"
+assert_contains "$instructions" '**Must consume** pending path evidence' \
+  "workflow requires consuming pending path evidence when eligible"
+assert_contains "$instructions" 'never `/agent-memory …`' \
+  "Next step must not be a skill command"
 assert_contains "$instructions" '**Catch-up (`/agent-memory sync`):**' \
   "workflow names sync as catch-up"
 assert_contains "$instructions" 'without invoking the skill command' \
@@ -204,6 +213,8 @@ assert_contains "$bootstrap" 'A — Source inventory.' "bootstrap inventories so
 assert_contains "$bootstrap" 'never paste' "bootstrap does not copy bodies"
 assert_contains "$bootstrap" 'Do **not** create `vision.md`' "bootstrap forbids vision mirrors"
 assert_contains "$bootstrap" 'H2 learning/pitfall format' "bootstrap uses H2 learning format"
+assert_contains "$bootstrap" 'Put memory-command suggestions in the Report' \
+  "bootstrap keeps skill commands out of Next step"
 
 # --- Lint ---
 assert_contains "$lint" 'Legacy mirrors' "lint identifies mirrors"
@@ -216,6 +227,14 @@ assert_contains "$lint" 'Soft budgets (warnings only)' "soft budgets live in lin
 assert_contains "$lint" 'stale-resume:' "lint checks checkpoint freshness vs HEAD"
 assert_contains "$lint" 'checkpoint-backticks:' \
   "lint warns on backtick Checkpoint form"
+assert_contains "$lint" 'checkpoint-prose:' \
+  "lint warns on Checkpoint trailing TEMPLATE prose"
+assert_contains "$lint" 'stale-next-step:' \
+  "lint warns when Next step cites /agent-memory"
+assert_contains "$lint" 'dup-progress-log' \
+  "lint warns when Progress replays log"
+assert_contains "$lint" 'skills/agent-memory/vendor/memory/' \
+  "lint skips dogfood instructions↔vendor dup-exact"
 assert_contains "$lint" 'file) continue' \
   "lint skips when-editing placeholder ./file link"
 assert_contains "$lint" 'evidence-stale-uncleared:' \
@@ -229,6 +248,8 @@ assert_contains "$sync" 'Sync writes only to:' "sync four-file boundary"
 for target in 'current.md' 'active-work/<branch>.md' 'log.md' 'index.md'; do
   assert_contains "$sync" "$target" "sync boundary includes $target"
 done
+assert_contains "$sync" 'Consume pending path evidence (required when eligible)' \
+  "sync requires consume when eligible"
 assert_contains "$sync" 'It **never** touches `decisions.md`, `learnings.md`,' \
   "sync excludes durable recall"
 assert_contains "$sync" 'learnings-*.md' "sync excludes topic splits"
@@ -357,8 +378,10 @@ assert_contains "$instructions" 'Untrusted recall' \
   "instructions frames memory as untrusted recall"
 assert_contains "$agent_block" '**Primary write**' "agent-block names primary write"
 assert_contains "$agent_block" '**Catch-up:**' "agent-block names sync catch-up"
-assert_contains "$agent_block" 'consume pending hook paths' \
-  "agent-block mentions consume-evidence catch-up"
+assert_contains "$agent_block" 'run consume-evidence in the same turn' \
+  "agent-block requires in-turn consume when pending covered"
+assert_contains "$agent_block" 'sync **must** consume pending hook paths' \
+  "agent-block requires sync consume when eligible"
 assert_contains "$agent_block" '_How to write_' "agent-block points at concise writing guidance"
 assert_contains "$agent_block" '_Harness parity — memory contract_' \
   "agent-block links harness parity"

@@ -47,7 +47,18 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
        echo "missing-checkpoint: $f"
      elif grep -qE '^Checkpoint: `' "$f"; then
        echo "checkpoint-backticks: $f — prefer Checkpoint: YYYY-MM-DD @ SHORT-SHA without backticks"
+     elif ! grep -qE '^Checkpoint: [`"]?[0-9]{4}-[0-9]{2}-[0-9]{2}[`"]? @ [`"]?[0-9a-fA-F]{4,40}[`"]?[[:space:]]*$' "$f"; then
+       echo "checkpoint-prose: $f — Checkpoint line must be only date @ sha (no trailing TEMPLATE instructions)"
      fi
+     # Next step must not be a memory skill command (product work only)
+     awk '
+       /^## Next step/ { in_ns=1; next }
+       /^## / { in_ns=0 }
+       in_ns && /\/agent-memory[[:space:]]/ {
+         print "stale-next-step: '"$f"' — Next step cites /agent-memory; use a product action (skill cmds → Validation or report)"
+         exit
+       }
+     ' "$f"
      grep -q '^## Touched files' "$f" && echo "legacy-touched-files: $f"
    done
 
@@ -143,7 +154,7 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    **`pending-doc` invalidate check (warning).** For each H2 learning/pitfall with a `- pending-doc:` (or `- pending-doc`) line, read sibling `- Invalidate when:` / Evidence paths. If the named canonical file already documents the Insight (judgment — or exact phrase overlap ≥ 40 chars in `AGENTS.md` / `README.md` / Evidence target), report `pending-doc-met: <heading> — suggest consolidate promote/remove`.
    From the **project root**, check links in `index.md` that point outside memory (e.g. `../../AGENTS.md`, `../../docs/...`) and report missing targets as warnings.
 
-   **Exact-duplication candidates (deterministic warning, never auto-fix).** From the project root, extract non-placeholder lines ≥ 60 characters from `.agents/memory/**/*.md` and look for exact matches in common canonical sources (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `README.md`, `docs/`). Report each match as `dup-exact: <memory-file> ↔ <source-file>`. Judgment paraphrase duplication still belongs in the semantic section below.
+   **Exact-duplication candidates (deterministic warning, never auto-fix).** From the project root, extract non-placeholder lines ≥ 60 characters from `.agents/memory/**/*.md` and look for exact matches in common canonical sources (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `README.md`, `docs/`). Report each match as `dup-exact: <memory-file> ↔ <source-file>`. **Skip** when the memory file is `.agents/memory/instructions.md` and the match is under `skills/agent-memory/vendor/memory/` (meta-repo dogfood mirror of the skeleton — expected). Do not treat `skills/agent-memory/vendor/memory/**` as a canonical source for this scan. Judgment paraphrase duplication still belongs in the semantic section below.
 
    **Instruction wiring checks** — run from the **project root** (not from `.agents/memory/`). Detect agent-memory blocks via `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` or legacy plain tags.
 
@@ -191,8 +202,10 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
 4. **Semantic checks (judgment — report as warnings to review).** These need reading, not grepping; surface them for the user to confirm rather than auto-fixing:
    - **Stale `current.md`** — does _In progress_ still match open active-work?
    - **Missing resume quality** — active-work without a concrete _Next step_ or _Validation_ when _Task_ is non-placeholder.
+   - **Stale Next step (`stale-next-step`)** — _Next step_ cites `/agent-memory …` (especially the command just run); replace with a product action and suggest sync. Deterministic grep above; confirm in judgment when the command already completed this session.
+   - **Duplicated Progress (`dup-progress-log`)** — Progress bullets that merely replay the current `log.md` session (bootstrap/init copy); prefer a one-line pointer to log/learnings.
    - **Hypothesis as fact** — assumptions phrased as certainties outside _Assumptions / open questions_.
-   - **Duplication** — paraphrased facts also in AGENTS/README/docs/ADR (exact long-line overlap is handled deterministically above).
+   - **Duplication** — paraphrased facts also in AGENTS/README/docs/ADR (exact long-line overlap is handled deterministically above; ignore instructions↔vendor dogfood mirrors).
    - **Local decision with ADR** — local fallback body that should be a pointer.
    - **Superseded without link** — `Status: superseded` without `Superseded by:`, or a newer decision that should mark an older one superseded.
    - **Learning/pitfall without evidence / use trigger / verified** — missing fields on H2 entries or legacy one-liners.
@@ -209,7 +222,7 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
 
 5. **Report.** Group findings as **errors** (broken links, missing required headings, orphans, stale per-branch files) and **warnings** (semantic, budgets, legacy). For each, name the file and the problem.
 
-6. **Fix offer.** Offer to fix only safe issues (e.g. remove a dead link, add an orphan recall file to `index.md`). Any fix that edits user content (`current.md`, `decisions.md`, `learnings.md`, `learnings-*.md`, …) must be confirmed first — show the diff. For stale `current.md` / active-work / `log.md`, suggest `/agent-memory sync` rather than editing by hand. For promotion/pruning / converting legacy mirrors / removing path-only bullets / learnings split-merge, suggest `/agent-memory consolidate` — **do not** do that work in `lint --fix`. For capturing a new gated learning now, suggest `/agent-memory learn`.
+6. **Fix offer.** Offer to fix only safe issues (e.g. remove a dead link, add an orphan recall file to `index.md`). Any fix that edits user content (`current.md`, `decisions.md`, `learnings.md`, `learnings-*.md`, …) must be confirmed first — show the diff. For stale `current.md` / active-work / `log.md` / `stale-next-step`, suggest `/agent-memory sync` (or a direct Next-step edit) rather than inventing product work. For `evidence-stale-uncleared` / covered `evidence-pending`, offer to run `agent-memory-consume-evidence.sh` after confirming meaning coverage. For promotion/pruning / converting legacy mirrors / removing path-only bullets / learnings split-merge, suggest `/agent-memory consolidate` — **do not** do that work in `lint --fix`. For capturing a new gated learning now, suggest `/agent-memory learn`.
 
    `--fix` — with this flag, also offer to **delete stale per-branch `active-work/<branch>.md` files** (files whose branch no longer exists) and, for **delegation-canary** findings (step 2), offer to remove the redundant block from `CLAUDE.md`/`GEMINI.md` that delegate via `@AGENTS.md` (each removal sensitive — show diff, confirm). Each deletion is still confirmed one by one (it removes a file, so it is sensitive) unless combined with an explicit "delete all stale" approval. `--fix` never deletes anything other than stale `active-work` files, never touches `TEMPLATE.md`, never deletes legacy mirror files. Delegation-canary block removal edits only the agent-memory delimiters in `CLAUDE.md`/`GEMINI.md` (with confirmation).
 
