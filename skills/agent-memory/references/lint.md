@@ -88,6 +88,15 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
      }
    ' log.md
 
+   # No session headings (scaffold / over-prune)
+   if ! grep -qE '^## \[[0-9]{4}-[0-9]{2}-[0-9]{2}\]' log.md 2>/dev/null; then
+     echo "empty-log: no session headings — primary write or /agent-memory sync after durable work"
+     if grep -qE '^## \[[0-9]{4}-[0-9]{2}-[0-9]{2}\]' learnings.md 2>/dev/null \
+        || grep -qE 'learnings\.md' index.md 2>/dev/null; then
+       echo "empty-log-after-scaffold: recall exists (learnings/index) but log has zero sessions — likely consolidate over-pruned current session; restore a short founding heading"
+     fi
+   fi
+
    # Legacy path-only bullets
    grep -nE '^- `[^`]+`$|^- changed [0-9]+ files' log.md 2>/dev/null | \
      while read -r line; do echo "legacy-path-bullet: $line"; done
@@ -217,12 +226,13 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    - **Legacy path-only bullets / empty headings / Touched files** — candidates for consolidate.
    - **Legacy mirrors** — `vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*` with bodies that should be pointers in `index.md` / `decisions.md` / `learnings.md`.
    - **Mixed log heading** — bullets under a `[type]` / outcome that clearly belong to another concern (e.g. consolidate notes under `[docs] bootstrap`); suggest split heading on next sync.
+   - **Empty log after scaffold (`empty-log` / `empty-log-after-scaffold`)** — zero `## [date]` headings while learnings/index show bootstrap recall; suggest restoring a short founding session heading (consolidate must not empty current session).
    - **Bloat** — always-loaded files grown long or verbose entries.
    - **Quality smoke (optional checklist)** — with only memory open, can you answer: (1) next concrete step, (2) what must not break, (3) where to edit, (4) how to prove it worked?
 
 5. **Report.** Group findings as **errors** (broken links, missing required headings, orphans, stale per-branch files) and **warnings** (semantic, budgets, legacy). For each, name the file and the problem.
 
-6. **Fix offer.** Offer to fix only safe issues (e.g. remove a dead link, add an orphan recall file to `index.md`). Any fix that edits user content (`current.md`, `decisions.md`, `learnings.md`, `learnings-*.md`, …) must be confirmed first — show the diff. For stale `current.md` / active-work / `log.md` / `stale-next-step`, suggest `/agent-memory sync` (or a direct Next-step edit) rather than inventing product work. For `evidence-stale-uncleared` / covered `evidence-pending`, offer to run `agent-memory-consume-evidence.sh` after confirming meaning coverage. For promotion/pruning / converting legacy mirrors / removing path-only bullets / learnings split-merge, suggest `/agent-memory consolidate` — **do not** do that work in `lint --fix`. For capturing a new gated learning now, suggest `/agent-memory learn`.
+6. **Fix offer.** Offer to fix only safe issues (e.g. remove a dead link, add an orphan recall file to `index.md`). Any fix that edits user content (`current.md`, `decisions.md`, `learnings.md`, `learnings-*.md`, …) must be confirmed first — show the diff. For stale `current.md` / active-work / `log.md` / `stale-next-step`, suggest `/agent-memory sync` (or a direct Next-step edit) rather than inventing product work. For `empty-log` / `empty-log-after-scaffold`, offer to restore one short founding session heading (do not re-run consolidate Discard). For `evidence-stale-uncleared` / covered `evidence-pending`, offer to run `agent-memory-consume-evidence.sh` after confirming meaning coverage. For promotion/pruning / converting legacy mirrors / removing path-only bullets / learnings split-merge, suggest `/agent-memory consolidate` — **do not** do that work in `lint --fix`. For capturing a new gated learning now, suggest `/agent-memory learn`.
 
    `--fix` — with this flag, also offer to **delete stale per-branch `active-work/<branch>.md` files** (files whose branch no longer exists) and, for **delegation-canary** findings (step 2), offer to remove the redundant block from `CLAUDE.md`/`GEMINI.md` that delegate via `@AGENTS.md` (each removal sensitive — show diff, confirm). Each deletion is still confirmed one by one (it removes a file, so it is sensitive) unless combined with an explicit "delete all stale" approval. `--fix` never deletes anything other than stale `active-work` files, never touches `TEMPLATE.md`, never deletes legacy mirror files. Delegation-canary block removal edits only the agent-memory delimiters in `CLAUDE.md`/`GEMINI.md` (with confirmation).
 

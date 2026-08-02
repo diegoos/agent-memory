@@ -215,6 +215,10 @@ assert_contains "$bootstrap" 'Do **not** create `vision.md`' "bootstrap forbids 
 assert_contains "$bootstrap" 'H2 learning/pitfall format' "bootstrap uses H2 learning format"
 assert_contains "$bootstrap" 'Put memory-command suggestions in the Report' \
   "bootstrap keeps skill commands out of Next step"
+assert_contains "$bootstrap" 'Append **one** synthesis heading' \
+  "bootstrap writes a single log heading"
+assert_contains "$bootstrap" 'Do **not** open a second `[ingest]`' \
+  "bootstrap avoids same-day ingest duplicate heading"
 
 # --- Lint ---
 assert_contains "$lint" 'Legacy mirrors' "lint identifies mirrors"
@@ -222,6 +226,9 @@ assert_contains "$lint" 'never deletes' "lint does not delete user files"
 assert_contains "$lint" '## Next step' "lint checks Next step"
 assert_contains "$lint" '## Validation' "lint checks Validation"
 assert_contains "$lint" 'empty-log-heading' "lint checks empty headings"
+assert_contains "$lint" 'empty-log:' "lint warns when log has no session headings"
+assert_contains "$lint" 'empty-log-after-scaffold:' \
+  "lint warns when scaffold recall exists but log is empty"
 assert_contains "$lint" 'legacy-path-bullet' "lint checks legacy path bullets"
 assert_contains "$lint" 'Soft budgets (warnings only)' "soft budgets live in lint"
 assert_contains "$lint" 'stale-resume:' "lint checks checkpoint freshness vs HEAD"
@@ -248,6 +255,8 @@ assert_contains "$sync" 'Sync writes only to:' "sync four-file boundary"
 for target in 'current.md' 'active-work/<branch>.md' 'log.md' 'index.md'; do
   assert_contains "$sync" "$target" "sync boundary includes $target"
 done
+assert_contains "$sync" 'Prefer refining today' \
+  "sync prefers one same-day heading over second ingest"
 assert_contains "$sync" 'Consume pending path evidence (required when eligible)' \
   "sync requires consume when eligible"
 assert_contains "$sync" 'It **never** touches `decisions.md`, `learnings.md`,' \
@@ -272,11 +281,19 @@ assert_contains "$sync" 'without invoking the skill command' \
 # --- Consolidate ---
 assert_contains "$consolidate" 'Never prune the **current session** heading' \
   "consolidate preserves current session"
+assert_contains "$consolidate" 'Current session (prune exclusion)' \
+  "consolidate defines current-session rules"
+assert_contains "$consolidate" 'Never propose a Discard set that would leave `log.md` with **zero** session headings' \
+  "consolidate never empties log.md"
+assert_contains "$consolidate" '**Trim**' \
+  "consolidate can trim closed-session bullets"
+assert_contains "$consolidate" 'Progress follow-up' \
+  "consolidate Progress ask only after closed log removal"
 assert_contains "$consolidate" "Never prune the **current branch's** active-work file." \
   "consolidate preserves current active-work"
 assert_before "$consolidate" \
   'Additions/promotions first:' \
-  'Only after a promotion is **approved**, propose removing its origin' \
+  'Only after a promotion is **approved**, and only for **closed** session origins' \
   "consolidate promotes before pruning"
 assert_contains "$consolidate" 'Legacy `## Touched files`' \
   "consolidate cleans legacy Touched files"
