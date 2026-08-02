@@ -23,7 +23,7 @@ cat >"$TMP/src.json" <<'EOF'
       { "command": "AGENT_MEMORY_HOST=cursor .cursor/hooks/agent-memory-session.sh" }
     ],
     "afterAgentResponse": [
-      { "command": "AGENT_MEMORY_EVENT=afterAgentResponse .cursor/hooks/agent-memory-sync.sh" }
+      { "command": "AGENT_MEMORY_HOST=cursor AGENT_MEMORY_EVENT=afterAgentResponse .cursor/hooks/agent-memory-sync.sh" }
     ]
   }
 }
@@ -77,7 +77,7 @@ cat >"$TMP/src-n.json" <<'EOF'
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "AGENT_MEMORY_EVENT=Stop .claude/hooks/agent-memory-sync.sh" }
+          { "type": "command", "command": "AGENT_MEMORY_HOST=claude AGENT_MEMORY_EVENT=Stop .claude/hooks/agent-memory-sync.sh" }
         ]
       }
     ]

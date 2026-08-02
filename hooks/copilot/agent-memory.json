@@ -11,14 +11,14 @@
     "agentStop": [
       {
         "type": "command",
-        "bash": "AGENT_MEMORY_EVENT=agentStop .github/hooks/agent-memory-sync.sh",
+        "bash": "AGENT_MEMORY_HOST=copilot AGENT_MEMORY_EVENT=agentStop .github/hooks/agent-memory-sync.sh",
         "timeoutSec": 15
       }
     ],
     "preCompact": [
       {
         "type": "command",
-        "bash": "AGENT_MEMORY_EVENT=preCompact .github/hooks/agent-memory-sync.sh",
+        "bash": "AGENT_MEMORY_HOST=copilot AGENT_MEMORY_EVENT=preCompact .github/hooks/agent-memory-sync.sh",
         "timeoutSec": 15
       }
     ]

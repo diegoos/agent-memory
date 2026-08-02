@@ -9,13 +9,13 @@
     ],
     "afterAgentResponse": [
       {
-        "command": "AGENT_MEMORY_EVENT=afterAgentResponse .cursor/hooks/agent-memory-sync.sh",
+        "command": "AGENT_MEMORY_HOST=cursor AGENT_MEMORY_EVENT=afterAgentResponse .cursor/hooks/agent-memory-sync.sh",
         "timeout": 15
       }
     ],
     "preCompact": [
       {
-        "command": "AGENT_MEMORY_EVENT=preCompact .cursor/hooks/agent-memory-sync.sh",
+        "command": "AGENT_MEMORY_HOST=cursor AGENT_MEMORY_EVENT=preCompact .cursor/hooks/agent-memory-sync.sh",
         "timeout": 15
       }
     ]
