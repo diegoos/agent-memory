@@ -1,0 +1,3 @@
+[install]
+# Match CI (`bun install --ignore-scripts`) for local installs.
+ignoreScripts = true
