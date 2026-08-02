@@ -9,9 +9,14 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
 2. **Structural checks (deterministic).** Run from `.agents/memory/`:
 
    ````bash
-   # Broken relative links inside memory
+   # Broken relative links inside memory (skip method placeholders)
    grep -rhoE '\]\(\./[^)]+\)' . | sed -E 's/^\]\(\.\/([^)]+)\)$/\1/' \
-     | sort -u | while read -r f; do test -e "$f" || echo "missing: $f"; done
+     | sort -u | while read -r f; do
+       case "$f" in
+         file) continue ;; # when editing: contract placeholder
+       esac
+       test -e "$f" || echo "missing: $f"
+     done
 
    # Recall / legacy files present but not linked from index.md
    for f in decisions.md log.md learnings.md \
@@ -37,8 +42,12 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
               '## Rejected approaches' '## References'; do
        grep -q "^${h}" "$f" || echo "missing-heading: $f $h"
      done
-     grep -qE '^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ ' "$f" || \
+     # Allow optional backticks around date/sha (legacy); prefer plain form
+     if ! grep -qE '^Checkpoint: [`"]?[0-9]{4}-[0-9]{2}-[0-9]{2}[`"]? @ [`"]?[0-9a-fA-F]{4,40}' "$f"; then
        echo "missing-checkpoint: $f"
+     elif grep -qE '^Checkpoint: `' "$f"; then
+       echo "checkpoint-backticks: $f — prefer Checkpoint: YYYY-MM-DD @ SHORT-SHA without backticks"
+     fi
      grep -q '^## Touched files' "$f" && echo "legacy-touched-files: $f"
    done
 
@@ -93,9 +102,9 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    head_full=$(git rev-parse HEAD 2>/dev/null || true)
    head_short=$(git rev-parse --short HEAD 2>/dev/null || true)
    if [ -f "$aw" ] && [ -n "$head_full" ]; then
-     ck_line=$(grep -E '^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ ' "$aw" | head -1 || true)
-     ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ //' | tr -d '`"')
-     # Only trust hex SHAs (align with hooks sessionStart / pre-commit).
+     ck_line=$(grep -E '^Checkpoint:' "$aw" | head -1 || true)
+     # Strip optional backticks around date/sha (legacy TEMPLATE copies)
+     ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint:[[:space:]]*[`"]?[0-9]{4}-[0-9]{2}-[0-9]{2}[`"]?[[:space:]]*@[[:space:]]*[`"]?([0-9a-fA-F]{4,40})[`"]?.*/\1/')
      if ! printf '%s' "$ck_sha" | grep -Eq '^[0-9a-fA-F]{4,40}$'; then
        echo "stale-resume: $aw Checkpoint missing, placeholder, or non-hex (HEAD $head_short)"
      else
@@ -116,8 +125,8 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
          dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
          ck_fresh=false
          if [ -f "$aw" ] && [ -n "$head_full" ]; then
-           ck_line=$(grep -E '^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ ' "$aw" | head -1 || true)
-           ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ //' | tr -d '`"')
+           ck_line=$(grep -E '^Checkpoint:' "$aw" | head -1 || true)
+           ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint:[[:space:]]*[`"]?[0-9]{4}-[0-9]{2}-[0-9]{2}[`"]?[[:space:]]*@[[:space:]]*[`"]?([0-9a-fA-F]{4,40})[`"]?.*/\1/')
            if printf '%s' "$ck_sha" | grep -Eq '^[0-9a-fA-F]{4,40}$'; then
              ck_full=$(git rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)
              [ -n "$ck_full" ] && [ "$ck_full" = "$head_full" ] && ck_fresh=true

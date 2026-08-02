@@ -1,8 +1,8 @@
 # Active Work — Branch: `<branch>`
 
-Ephemeral per-branch scratchpad. Copy to `active-work/<branch>.md` (sanitize: non `[A-Za-z0-9._-]` → `-`), set the real `Branch:` name, delete on merge. Create only when work is resumable. Method: `instructions.md`.
+Ephemeral per-branch scratchpad. Copy to `active-work/<branch>.md` (sanitize: non `[A-Za-z0-9._-]` → `-`), set the real `Branch:` header, delete on merge. Create only when work is resumable. Method: `instructions.md`.
 
-Checkpoint: `YYYY-MM-DD` @ `<short-sha>` — update on every semantic sync.
+Checkpoint: YYYY-MM-DD @ SHORT-SHA — update on every semantic sync. Replace SHORT-SHA with `git rev-parse --short HEAD`. Do not wrap the date or sha in backticks (lint/hooks parse this line).
 
 ## Task
 
@@ -46,6 +46,6 @@ Tried paths that failed, with why. Prevents rediscovery.
 
 ## References
 
-Pointers only: `path` or link + why it matters for this task.
+Pointers only: `path` or link + why it matters for this task. From this folder, repo-root docs are `../../../…` (e.g. `[CHANGELOG.md](../../../CHANGELOG.md)`).
 
 - _none_

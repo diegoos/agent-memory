@@ -80,6 +80,12 @@ assert_contains "$skeleton/active-work/TEMPLATE.md" '## Rejected approaches' \
   "active-work keeps Rejected approaches"
 assert_contains "$skeleton/active-work/TEMPLATE.md" '## References' "active-work keeps References"
 assert_contains "$skeleton/active-work/TEMPLATE.md" 'Checkpoint:' "active-work has Checkpoint"
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'Checkpoint: YYYY-MM-DD @ SHORT-SHA' \
+  "TEMPLATE Checkpoint uses plain SHORT-SHA placeholder"
+assert_absent "$skeleton/active-work/TEMPLATE.md" 'Checkpoint: `' \
+  "TEMPLATE Checkpoint must not use backtick wrappers"
+assert_contains "$skeleton/active-work/TEMPLATE.md" '../../../' \
+  "TEMPLATE documents repo-root link depth from active-work"
 assert_absent "$skeleton/active-work/TEMPLATE.md" '## Touched files' \
   "Touched files must be removed from template"
 assert_contains "$skeleton/log.md" 'semantic' "log documents semantic-only"
@@ -208,7 +214,10 @@ assert_contains "$lint" 'empty-log-heading' "lint checks empty headings"
 assert_contains "$lint" 'legacy-path-bullet' "lint checks legacy path bullets"
 assert_contains "$lint" 'Soft budgets (warnings only)' "soft budgets live in lint"
 assert_contains "$lint" 'stale-resume:' "lint checks checkpoint freshness vs HEAD"
-assert_contains "$lint" 'evidence-pending:' "lint checks pending hook path evidence"
+assert_contains "$lint" 'checkpoint-backticks:' \
+  "lint warns on backtick Checkpoint form"
+assert_contains "$lint" 'file) continue' \
+  "lint skips when-editing placeholder ./file link"
 assert_contains "$lint" 'evidence-stale-uncleared:' \
   "lint distinguishes uncleared evidence after fresh Checkpoint"
 assert_contains "$lint" 'pending-doc-met:' "lint flags pending-doc whose invalidate may be met"
