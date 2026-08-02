@@ -42,7 +42,7 @@ disable-model-invocation: true
 
 # agent-memory
 
-Manual-only orchestrator for the local **agent-memory** method. The canonical memory skeleton and migration log are **vendored with this skill** under `vendor/` (`vendor/memory/` and `vendor/UPDATE.md`). This skill installs and migrates from there — **no remote clone or fetch**. The installed copy lives at the target project root in `.agents/memory/`, with its version recorded in `.agents/memory/.version` (taken from the newest entry in `vendor/UPDATE.md`).
+Manual-only orchestrator for the local **agent-memory** method. The canonical memory skeleton and migration log are **vendored with this skill** under `vendor/` (`vendor/memory/` and `vendor/UPDATE.md`). This skill installs and migrates from there — **no remote clone or fetch**. The installed copy lives in the target project's `.agents/memory/`, its version recorded in `.agents/memory/.version` (newest entry in `vendor/UPDATE.md`).
 
 **Lifecycle hooks are not installed by this skill.** `init`, `update`, and `install hooks` print user-run instructions (shell script or `npx` CLI). See `references/install-hooks.md`.
 
@@ -63,7 +63,7 @@ Pre-approved via the `allowed-tools` frontmatter — a space-separated, host-spe
 
 ### Write boundary
 
-Create, edit, or delete **only** under `.agents/memory/**`, plus harness instruction files listed in `references/init.md` (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursor/rules/agent-memory.mdc`, `.github/instructions/agent-memory.instructions.md`) — and in those **only the agent-memory block** (between `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain tags — to wire it in `init` and refresh it in `update`; for `.mdc`/`.instructions.md`, frontmatter plus delimited body). Creating a **subdirectory** inside an existing harness dir (e.g. `.cursor/rules/`, `.github/instructions/`) is allowed when wiring native instruction files; never create the harness root itself unless the user explicitly requests it. **Never** write under `.cursor/hooks/`, `.claude/hooks/`, `.codex/hooks/`, `.opencode/hooks/`, `.opencode/plugin/`, `.github/hooks/`, `.gemini/hooks/`, or merge `hooks.json` / harness `settings.json` for hooks. Never touch content outside those scopes, application code, other configs, or other docs. Read the rest of the workspace freely.
+Create, edit, or delete **only** under `.agents/memory/**`, plus the harness instruction files listed in `references/init.md` — and in those **only the agent-memory block** (between `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain tags — to wire it in `init` and refresh it in `update`; for `.mdc`/`.instructions.md`, frontmatter plus delimited body). Creating a **subdirectory** inside an existing harness dir (e.g. `.cursor/rules/`, `.github/instructions/`) is allowed when wiring native instruction files; never create the harness root itself unless the user explicitly requests it. **Never** write under `.cursor/hooks/`, `.claude/hooks/`, `.codex/hooks/`, `.opencode/hooks/`, `.opencode/plugin/`, `.github/hooks/`, `.gemini/hooks/`, or merge `hooks.json` / harness `settings.json` for hooks. Never touch content outside those scopes, application code, other configs, or other docs. Read the rest of the workspace freely.
 
 ### Repository source (vendor)
 

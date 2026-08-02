@@ -47,7 +47,6 @@ var HARNESS_ALIASES = {
   "claude-code": "claude",
   github: "copilot"
 };
-var HARNESS_SET = new Set(CANONICAL_HARNESSES);
 var HARNESS_HOOKS_DIR = {
   cursor: ".cursor/hooks",
   claude: ".claude/hooks",
@@ -66,6 +65,13 @@ var ENV_ALLOWLIST_EXACT = new Set([
   "TEMP",
   "LANG",
   "TZ",
+  "LC_ALL",
+  "LC_CTYPE",
+  "LC_MESSAGES",
+  "LC_COLLATE",
+  "LC_MONETARY",
+  "LC_NUMERIC",
+  "LC_TIME",
   "SystemRoot",
   "SYSTEMROOT",
   "windir",
@@ -139,14 +145,87 @@ function memoryExists() {
   return import_node_fs.default.existsSync(import_node_path.default.join(projectDir(), ".agents", "memory"));
 }
 function normalizeHarness(name) {
-  if (HARNESS_SET.has(name))
+  if (CANONICAL_HARNESSES.includes(name)) {
     return name;
+  }
   return HARNESS_ALIASES[name] ?? null;
 }
 
 // lib/cli/fs-install.ts
 var import_node_fs2 = __toESM(require("node:fs"));
 var import_node_path2 = __toESM(require("node:path"));
+function installSkillAtomic(opts) {
+  const { skillSource, onError } = opts;
+  if (!import_node_fs2.default.existsSync(skillSource)) {
+    onError(`missing skill at ${skillSource}`);
+  }
+  const dest = installedSkillDir();
+  refuseSymlinkComponents(dest, onError);
+  const existed = import_node_fs2.default.existsSync(dest);
+  const parent = import_node_path2.default.dirname(dest);
+  import_node_fs2.default.mkdirSync(parent, { recursive: true });
+  const staging = import_node_fs2.default.mkdtempSync(import_node_path2.default.join(parent, ".agent-memory-skill-"));
+  const backup = `${dest}.bak-${process.pid}-${Date.now()}`;
+  let movedAside = false;
+  try {
+    import_node_fs2.default.cpSync(skillSource, staging, { recursive: true, force: true });
+  } catch (err) {
+    import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+    onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (existed) {
+    try {
+      import_node_fs2.default.renameSync(dest, backup);
+      movedAside = true;
+    } catch (err) {
+      import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+      onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  try {
+    import_node_fs2.default.renameSync(staging, dest);
+  } catch {
+    try {
+      import_node_fs2.default.cpSync(staging, dest, { recursive: true, force: true });
+      import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+    } catch (err) {
+      if (movedAside) {
+        const ok = restoreBackup(backup, dest);
+        import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+        if (!ok) {
+          onError(`skill install failed and restore failed; previous skill left at ${backup}`);
+        }
+        onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      if (!import_node_fs2.default.existsSync(dest) && import_node_fs2.default.existsSync(staging)) {
+        try {
+          import_node_fs2.default.renameSync(staging, dest);
+        } catch {
+          try {
+            import_node_fs2.default.cpSync(staging, dest, { recursive: true, force: true });
+            import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+          } catch {
+            import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+            onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
+      } else {
+        import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+        onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+  if (movedAside && import_node_fs2.default.existsSync(backup)) {
+    try {
+      import_node_fs2.default.rmSync(backup, { recursive: true, force: true });
+    } catch {}
+  }
+  return {
+    destRel: relPath(dest),
+    files: countFiles(dest),
+    existed
+  };
+}
 function isSymlink(p) {
   try {
     return import_node_fs2.default.lstatSync(p).isSymbolicLink();
@@ -194,101 +273,26 @@ function countFiles(dir) {
 }
 function restoreBackup(backup, dest) {
   if (!import_node_fs2.default.existsSync(backup)) {
-    return { ok: import_node_fs2.default.existsSync(dest), method: "none" };
+    return import_node_fs2.default.existsSync(dest);
   }
   if (import_node_fs2.default.existsSync(dest)) {
     try {
       import_node_fs2.default.rmSync(dest, { recursive: true, force: true });
     } catch {
-      return { ok: false, method: "none" };
+      return false;
     }
   }
   try {
     import_node_fs2.default.renameSync(backup, dest);
-    return { ok: true, method: "rename" };
+    return true;
   } catch {
     try {
       import_node_fs2.default.cpSync(backup, dest, { recursive: true, force: true });
-      return { ok: true, method: "copy" };
+      return true;
     } catch {
-      return { ok: false, method: "none" };
+      return false;
     }
   }
-}
-function installSkillAtomic(opts) {
-  const { skillSource, onError } = opts;
-  if (!import_node_fs2.default.existsSync(skillSource)) {
-    onError(`missing skill at ${skillSource}`);
-  }
-  const dest = import_node_path2.default.join(projectDir(), ".agents", "skills", "agent-memory");
-  refuseSymlinkComponents(dest, onError);
-  if (import_node_fs2.default.existsSync(dest) && isSymlink(dest)) {
-    onError(`refusing to overwrite symlink: ${dest}`);
-  }
-  const existed = import_node_fs2.default.existsSync(dest);
-  const parent = import_node_path2.default.dirname(dest);
-  import_node_fs2.default.mkdirSync(parent, { recursive: true });
-  const staging = import_node_fs2.default.mkdtempSync(import_node_path2.default.join(parent, ".agent-memory-skill-"));
-  const backup = `${dest}.bak-${process.pid}-${Date.now()}`;
-  let movedAside = false;
-  try {
-    import_node_fs2.default.cpSync(skillSource, staging, { recursive: true, force: true });
-  } catch (err) {
-    import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-    onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  if (existed) {
-    try {
-      import_node_fs2.default.renameSync(dest, backup);
-      movedAside = true;
-    } catch (err) {
-      import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-      onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-  try {
-    import_node_fs2.default.renameSync(staging, dest);
-  } catch {
-    try {
-      import_node_fs2.default.cpSync(staging, dest, { recursive: true, force: true });
-      import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-    } catch (err) {
-      if (movedAside) {
-        const restored = restoreBackup(backup, dest);
-        import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-        if (!restored.ok) {
-          onError(`skill install failed and restore failed; previous skill left at ${backup}`);
-        }
-        onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
-      if (!import_node_fs2.default.existsSync(dest) && import_node_fs2.default.existsSync(staging)) {
-        try {
-          import_node_fs2.default.renameSync(staging, dest);
-        } catch {
-          try {
-            import_node_fs2.default.cpSync(staging, dest, { recursive: true, force: true });
-            import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-          } catch {
-            import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-            onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
-          }
-        }
-      } else {
-        import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-        onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
-  }
-  if (movedAside && import_node_fs2.default.existsSync(backup)) {
-    try {
-      import_node_fs2.default.rmSync(backup, { recursive: true, force: true });
-    } catch {}
-  }
-  return {
-    destRel: relPath(dest),
-    files: countFiles(dest),
-    existed
-  };
 }
 
 // lib/cli/hooks-run.ts
@@ -317,12 +321,10 @@ function buildInstallerEnv(version) {
     AGENT_MEMORY_PROJECT_DIR: projectDir(),
     AGENT_MEMORY_VERSION: version
   };
-  for (const key of Object.keys(process.env)) {
-    if (ENV_ALLOWLIST_EXACT.has(key) || key.startsWith("LC_")) {
-      const val = process.env[key];
-      if (val !== undefined)
-        env[key] = val;
-    }
+  for (const key of ENV_ALLOWLIST_EXACT) {
+    const val = process.env[key];
+    if (val !== undefined)
+      env[key] = val;
   }
   return env;
 }
@@ -495,32 +497,13 @@ function createRawMenuController(opts) {
         startEscTimer();
         return;
       }
-      if (isAlphanumeric(ch)) {
-        escState = "normal";
-      } else {
-        escState = "normal";
+      escState = "normal";
+      if (!isAlphanumeric(ch)) {
         opts.onAbort();
         return;
       }
     }
-    if (escState === "csi") {
-      if (!isCsiFinal(ch)) {
-        startEscTimer();
-        return;
-      }
-      clearEscTimer();
-      escState = "normal";
-      if (ch === "A") {
-        opts.onUp();
-        return;
-      }
-      if (ch === "B") {
-        opts.onDown();
-        return;
-      }
-      return;
-    }
-    if (escState === "ss3") {
+    if (escState === "csi" || escState === "ss3") {
       if (!isCsiFinal(ch)) {
         startEscTimer();
         return;
@@ -815,9 +798,7 @@ function installHooks(harness) {
   for (const line of stdout.split(`
 `)) {
     const trimmed = line.trim();
-    if (!trimmed)
-      continue;
-    if (trimmed.startsWith("done:"))
+    if (!trimmed || trimmed.startsWith("done:"))
       continue;
     if (trimmed.startsWith("error:")) {
       console.error(`  ${c.red("✗")} ${trimmed}`);
@@ -833,14 +814,6 @@ function installHooks(harness) {
     console.error(`  ${c.red("✗")} ${trimmed}`);
   }
   printOk(`hooks ready for ${c.bold(harness)}`);
-}
-function installHooksMany(harnesses) {
-  for (const h of harnesses) {
-    installHooks(h);
-  }
-}
-function finishInstall(report) {
-  printSummary(report);
 }
 async function confirmPrompt(message) {
   const choice = await selectPrompt(message, [
@@ -869,8 +842,7 @@ function printUpdateSummary(opts) {
 }
 async function cmdUpdate(flags) {
   const installedSkill = readInstalledSkillVersion();
-  const skillDir = installedSkillDir();
-  const skillMissing = !import_node_fs4.default.existsSync(skillDir) || !installedSkill;
+  const skillMissing = !installedSkill;
   printHeader("update");
   printSection("Versions");
   printDetail("package", VERSION);
@@ -882,7 +854,7 @@ async function cmdUpdate(flags) {
   }
   printDetail("hooks", `${VERSION} ${c.dim("package")}`);
   let needSkill = false;
-  if (!skillMissing && installedSkill) {
+  if (installedSkill) {
     const skillCmp = compareSemver(VERSION, installedSkill);
     if (skillCmp > 0) {
       needSkill = true;
@@ -925,17 +897,17 @@ async function cmdUpdate(flags) {
     printAgentNextSteps(memoryExists() ? "update" : "init");
     return;
   }
-  const planParts = [];
-  if (needSkill)
-    planParts.push(`skill ${installedSkill} → ${VERSION}`);
-  if (hooksToRefresh.length > 0) {
-    planParts.push(`hooks ${hooksToRefresh.join(", ")} → ${VERSION}`);
-  }
   if (!flags.yes) {
     if (!isTTY()) {
       failNonTTY("interactive update requires a TTY (or pass --yes).", [
         "npx @dosx/agent-memory update --yes"
       ]);
+    }
+    const planParts = [];
+    if (needSkill)
+      planParts.push(`skill ${installedSkill} → ${VERSION}`);
+    if (hooksToRefresh.length > 0) {
+      planParts.push(`hooks ${hooksToRefresh.join(", ")} → ${VERSION}`);
     }
     blank();
     const ok = await confirmPrompt(`Apply update? (${planParts.join("; ")})`);
@@ -977,11 +949,24 @@ function parseUpdateFlags(args) {
 function harnessOptions() {
   return CANONICAL_HARNESSES.map((h) => ({ label: h, value: h }));
 }
+var INSTALL_MODE_OPTIONS = [
+  { label: "Skill + hooks", value: "both" },
+  { label: "Skill only", value: "skill" },
+  { label: "Hooks only", value: "hooks" }
+];
+function pickHarnesses() {
+  return multiSelectPrompt("Select harnesses (Space to toggle):", harnessOptions());
+}
 function failNonTTY(message, hints) {
   console.error(`${c.red("error:")} ${message}`);
   for (const h of hints) {
     console.error(`  ${c.dim(h)}`);
   }
+  process.exit(1);
+}
+function fatalUsage(message) {
+  console.error(`${c.red("error:")} ${message}`);
+  printHelp();
   process.exit(1);
 }
 async function promptInstallChoice(harness) {
@@ -991,24 +976,20 @@ async function promptInstallChoice(harness) {
       "Skill: npx @dosx/agent-memory install skill"
     ]);
   }
-  const choice = await selectPrompt(`Install agent-memory for ${harness}:`, [
-    { label: "Skill + hooks", value: "both" },
-    { label: "Skill only", value: "skill" },
-    { label: "Hooks only", value: "hooks" }
-  ]);
+  const choice = await selectPrompt(`Install agent-memory for ${harness}:`, INSTALL_MODE_OPTIONS);
   printHeader(`install · ${harness}`);
   if (choice === "both") {
     const skillPath = installSkill();
     installHooks(harness);
-    finishInstall({ skillPath, hooks: [harness] });
+    printSummary({ skillPath, hooks: [harness] });
     return;
   }
   if (choice === "skill") {
-    finishInstall({ skillPath: installSkill(), hooks: [] });
+    printSummary({ skillPath: installSkill(), hooks: [] });
     return;
   }
   installHooks(harness);
-  finishInstall({ hooks: [harness] });
+  printSummary({ hooks: [harness] });
 }
 async function promptInstallBare() {
   if (!isTTY()) {
@@ -1017,24 +998,22 @@ async function promptInstallBare() {
       "Hooks: npx @dosx/agent-memory install hooks <harness>"
     ]);
   }
-  const mode = await selectPrompt("What do you want to install?", [
-    { label: "Skill + hooks", value: "both" },
-    { label: "Skill only", value: "skill" },
-    { label: "Hooks only", value: "hooks" }
-  ]);
+  const mode = await selectPrompt("What do you want to install?", INSTALL_MODE_OPTIONS);
   if (mode === "skill") {
     printHeader("install · skill");
-    finishInstall({ skillPath: installSkill(), hooks: [] });
+    printSummary({ skillPath: installSkill(), hooks: [] });
     return;
   }
-  const selected = await multiSelectPrompt("Select harnesses (Space to toggle):", harnessOptions());
+  const selected = await pickHarnesses();
   printHeader(mode === "both" ? `install · skill + ${selected.join(", ")}` : `install · hooks · ${selected.join(", ")}`);
   const report = { hooks: selected };
   if (mode === "both") {
     report.skillPath = installSkill();
   }
-  installHooksMany(selected);
-  finishInstall(report);
+  for (const h of selected) {
+    installHooks(h);
+  }
+  printSummary(report);
 }
 async function promptHooksMultiSelect() {
   if (!isTTY()) {
@@ -1042,10 +1021,12 @@ async function promptHooksMultiSelect() {
       "Hooks: npx @dosx/agent-memory install hooks <harness>"
     ]);
   }
-  const selected = await multiSelectPrompt("Select harnesses (Space to toggle):", harnessOptions());
+  const selected = await pickHarnesses();
   printHeader(`install · hooks · ${selected.join(", ")}`);
-  installHooksMany(selected);
-  finishInstall({ hooks: selected });
+  for (const h of selected) {
+    installHooks(h);
+  }
+  printSummary({ hooks: selected });
 }
 async function main(argv) {
   const args = argv.slice(2);
@@ -1058,9 +1039,7 @@ async function main(argv) {
     return;
   }
   if (args[0] !== "install") {
-    console.error(`${c.red("error:")} unknown command: ${args[0]}`);
-    printHelp();
-    process.exit(1);
+    fatalUsage(`unknown command: ${args[0]}`);
   }
   const rest = args.slice(1);
   if (rest.length === 0) {
@@ -1073,7 +1052,7 @@ async function main(argv) {
       process.exit(1);
     }
     printHeader("install · skill");
-    finishInstall({ skillPath: installSkill(), hooks: [] });
+    printSummary({ skillPath: installSkill(), hooks: [] });
     return;
   }
   if (rest[0] === "hooks") {
@@ -1088,13 +1067,11 @@ async function main(argv) {
     }
     const harness2 = normalizeHarness(raw);
     if (!harness2) {
-      console.error(`${c.red("error:")} unknown harness: ${raw}`);
-      printHelp();
-      process.exit(1);
+      fatalUsage(`unknown harness: ${raw}`);
     }
     printHeader(`install · hooks · ${harness2}`);
     installHooks(harness2);
-    finishInstall({ hooks: [harness2] });
+    printSummary({ hooks: [harness2] });
     return;
   }
   const harness = normalizeHarness(rest[0]);
@@ -1106,9 +1083,7 @@ async function main(argv) {
     await promptInstallChoice(harness);
     return;
   }
-  console.error(`${c.red("error:")} unknown install target: ${rest[0]}`);
-  printHelp();
-  process.exit(1);
+  fatalUsage(`unknown install target: ${rest[0]}`);
 }
 main(process.argv).catch((err) => {
   console.error(err);

@@ -33,7 +33,7 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
 2. **Copy the skeleton.** Read this skill's `vendor/memory/` (see `SKILL.md` → Repository source) and copy that directory into the project as `.agents/memory/` (the entire directory, including `active-work/TEMPLATE.md` and `.gitignore` for hook-local state files). Do not clone or fetch remotely.
 
-   **Dotfiles (required):** hosts often hide dotfiles from `Glob`. After the copy, **explicitly** Read `vendor/memory/.gitignore` and Write it to `.agents/memory/.gitignore` (create/overwrite to match vendor). Contents must ignore `.hook-sync-state`. Do **not** skip this step if Glob omitted the file. Then verify `.agents/memory/.gitignore` exists before continuing.
+   **Dotfiles (required):** hosts often hide dotfiles from `Glob`. After the copy, **explicitly** Read `vendor/memory/.gitignore` and Write it to `.agents/memory/.gitignore` (create/overwrite to match vendor). Contents must ignore `.hook-sync-state`. Then verify `.agents/memory/.gitignore` exists before continuing.
 
 3. **Write the version anchor.** Create `.agents/memory/.version` containing the latest version — the newest version section in this skill's `vendor/UPDATE.md`, e.g. `0.1.1`.
 
@@ -67,7 +67,7 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
    ---
    ```
 
-   **Prerequisite dirs (create harness roots only on explicit request).** Native instruction files that live inside a harness dir require that dir to already exist. By default the skill does **not** create `.cursor/`, `.claude/`, `.codex/`, `.opencode/`, `.github/`, or `.gemini/`. If the required dir is missing, **stop** for that harness and ask the user: offer to create it (and the needed subdir) on explicit confirmation, or tell them to create/enable it first (e.g. open the harness once so it creates its dir) and re-run. Create the harness root only when the user explicitly requests it. Required dir per harness:
+   **Prerequisite dirs (create harness roots only on explicit request).** Native instruction files inside a harness dir require that dir to exist. The skill does **not** create `.cursor/`, `.claude/`, `.codex/`, `.opencode/`, `.github/`, or `.gemini/` on its own: if the required dir is missing, **stop** for that harness and ask the user — offer to create it (and the needed subdir) on explicit confirmation, or tell them to create/enable it first (e.g. open the harness once so it creates its dir) and re-run. Creating a **subdirectory** inside an existing harness dir (e.g. `.cursor/rules/`, `.github/instructions/`) is allowed. Required dir per harness:
 
    | Harness  | Required dir (for native + hooks)                                   |
    | -------- | ------------------------------------------------------------------- |
@@ -77,8 +77,6 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
    | codex    | `.codex/` (hooks only; `AGENTS.md` lives at root)                   |
    | opencode | `.opencode/` (hooks only; `AGENTS.md` lives at root)                |
    | gemini   | `.gemini/` (hooks only; `GEMINI.md` lives at root)                  |
-
-   Creating a **subdirectory** inside an existing harness dir (e.g. `.cursor/rules/`, `.github/instructions/`) is allowed; never create the harness root itself unless user explicitly requests it.
 
    **Idempotency:** if a carrier already contains a delimited agent-memory block (`<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain `<agent-memory>` … `</agent-memory>` from 0.0.4–0.0.5), skip it — do not add a second one. For `.mdc`, compare the body between delimiters (ignore frontmatter when comparing).
 

@@ -2,7 +2,7 @@
 
 This repo is the source for the [Agent Memory](README.md) method and its manual-only skill — not a consumer install. Skeleton: `skills/agent-memory/vendor/`; skill orchestrator: `skills/agent-memory/`; hooks: repo-root `hooks/`; CLI: `install.ts` → `bin/cli.js`.
 
-Package manager: **Bun** (`bun.lock`). Verify with `bun run check` (typecheck + markdownlint + tests + build + `build:check`). Shorter: `bun run test`, `bun run typecheck`, `bun run lint:md`, `bun run build`.
+Package manager: **Bun** (`bun.lock`). Verify with `bun run check` (typecheck + markdownlint + `build:check` + tests + build). Shorter: `bun run test`, `bun run typecheck`, `bun run lint:md`, `bun run build`.
 
 ## Permission boundaries
 

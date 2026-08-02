@@ -16,8 +16,6 @@ export const HARNESS_ALIASES: Record<string, Harness> = {
   github: "copilot",
 };
 
-export const HARNESS_SET = new Set<string>(CANONICAL_HARNESSES);
-
 export const HARNESS_HOOKS_DIR: Record<Harness, string> = {
   cursor: ".cursor/hooks",
   claude: ".claude/hooks",
@@ -41,6 +39,14 @@ export const ENV_ALLOWLIST_EXACT = new Set([
   "TEMP",
   "LANG",
   "TZ",
+  // Locale (exact keys only — do not forward arbitrary LC_* names)
+  "LC_ALL",
+  "LC_CTYPE",
+  "LC_MESSAGES",
+  "LC_COLLATE",
+  "LC_MONETARY",
+  "LC_NUMERIC",
+  "LC_TIME",
   // Windows
   "SystemRoot",
   "SYSTEMROOT",
@@ -52,7 +58,7 @@ export const ENV_ALLOWLIST_EXACT = new Set([
   "ComSpec",
   "COMSPEC",
   "PATHEXT",
-  // Git / XDG
+  // Git / XDG (paths to config files — intentional; see SECURITY.md)
   "XDG_CONFIG_HOME",
   "XDG_DATA_HOME",
   "GIT_CONFIG_GLOBAL",

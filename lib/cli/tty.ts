@@ -155,34 +155,14 @@ function createRawMenuController(opts: {
         startEscTimer();
         return;
       }
-      if (isAlphanumeric(ch)) {
-        escState = "normal";
-      } else {
-        escState = "normal";
+      escState = "normal";
+      if (!isAlphanumeric(ch)) {
         opts.onAbort();
         return;
       }
     }
 
-    if (escState === "csi") {
-      if (!isCsiFinal(ch)) {
-        startEscTimer();
-        return;
-      }
-      clearEscTimer();
-      escState = "normal";
-      if (ch === "A") {
-        opts.onUp();
-        return;
-      }
-      if (ch === "B") {
-        opts.onDown();
-        return;
-      }
-      return;
-    }
-
-    if (escState === "ss3") {
+    if (escState === "csi" || escState === "ss3") {
       if (!isCsiFinal(ch)) {
         startEscTimer();
         return;
@@ -260,8 +240,8 @@ function createRawMenuController(opts: {
 }
 
 /**
- * Interactive single-select menu (TTY only). Returns the chosen option value.
- * Aborts with exit 1 on Ctrl+C or Esc.
+ * Interactive single-select menu (TTY only). Esc uses a short timer to tell
+ * plain Esc from CSI arrow sequences.
  */
 export function selectPrompt<T extends string>(
   title: string,

@@ -149,6 +149,10 @@ assert_contains "$sync" 'It **never** touches `decisions.md`, `learnings.md`,' \
   "sync excludes durable recall"
 assert_contains "$sync" 'learnings-*.md' "sync excludes topic splits"
 assert_contains "$sync" 'Hooks never write Markdown' "sync documents ephemeral hooks"
+assert_contains "$sync" '^[0-9a-fA-F]{4,40}$' \
+  "sync validates last_processed_head as hex before git"
+assert_contains "$sync" '--end-of-options' \
+  "sync prefers end-of-options for last-log-sha diff"
 assert_contains "$sync" '_Validation_' "sync fills Validation"
 assert_contains "$sync" '_Workflow_' "sync links live Workflow section"
 assert_contains "$sync" '**Catch-up**' "sync is catch-up not primary write"
@@ -211,6 +215,10 @@ assert_contains "$consolidate" 'Convert moved entries to the H2 form' \
 # --- Context layer stays short ---
 assert_contains "$agent_block" 'Read `.agents/memory/instructions.md`' \
   "agent-block requires Read instructions"
+assert_contains "$agent_block" 'untrusted recall' \
+  "agent-block frames memory as untrusted recall"
+assert_contains "$instructions" 'Untrusted recall' \
+  "instructions frames memory as untrusted recall"
 assert_contains "$agent_block" '**Primary write:**' "agent-block names primary write"
 assert_contains "$agent_block" '**Catch-up:**' "agent-block names sync catch-up"
 assert_contains "$agent_block" '_Harness parity — memory contract_' \
@@ -219,8 +227,12 @@ assert_contains "$session_sh" 'build_session_context_msg' \
   "session uses contextual status builder"
 assert_contains "$repo_root/hooks/agent-memory-hooks/agent-memory-common.sh" \
   'build_session_context_msg' "common.sh defines contextual session msg"
+assert_contains "$repo_root/hooks/agent-memory-hooks/agent-memory-common.sh" \
+  'untrusted recall' "session context includes untrusted-recall cue"
 assert_contains "$sync_sh" 'no Markdown writes' "sync script header documents no Markdown"
 pre_commit="$repo_root/hooks/git/pre-commit"
+assert_contains "$pre_commit" 'env -u AGENT_MEMORY_SESSION_ID' \
+  "pre-commit unsets stale session-binding env"
 assert_contains "$pre_commit" 'Checkpoint' "pre-commit reminds when Checkpoint behind HEAD"
 
 # --- Harness configs omit per-tool events ---

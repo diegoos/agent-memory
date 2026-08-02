@@ -14,7 +14,6 @@ import {
 } from "./lib/cli/constants";
 import {
   detectInstalledHarnesses,
-  installedSkillDir,
   memoryExists,
   normalizeHarness,
   projectDir,
@@ -182,8 +181,7 @@ function installHooks(harness: Harness): void {
 
   for (const line of stdout.split("\n")) {
     const trimmed = line.trim();
-    if (!trimmed) continue;
-    if (trimmed.startsWith("done:")) continue;
+    if (!trimmed || trimmed.startsWith("done:")) continue;
     if (trimmed.startsWith("error:")) {
       console.error(`  ${c.red("✗")} ${trimmed}`);
       continue;
@@ -197,16 +195,6 @@ function installHooks(harness: Harness): void {
   }
 
   printOk(`hooks ready for ${c.bold(harness)}`);
-}
-
-function installHooksMany(harnesses: Harness[]): void {
-  for (const h of harnesses) {
-    installHooks(h);
-  }
-}
-
-function finishInstall(report: InstallReport): void {
-  printSummary(report);
 }
 
 async function confirmPrompt(message: string): Promise<boolean> {
@@ -258,8 +246,7 @@ function printUpdateSummary(opts: {
 
 async function cmdUpdate(flags: { yes: boolean }): Promise<void> {
   const installedSkill = readInstalledSkillVersion();
-  const skillDir = installedSkillDir();
-  const skillMissing = !fs.existsSync(skillDir) || !installedSkill;
+  const skillMissing = !installedSkill;
 
   printHeader("update");
   printSection("Versions");
@@ -280,7 +267,7 @@ async function cmdUpdate(flags: { yes: boolean }): Promise<void> {
   printDetail("hooks", `${VERSION} ${c.dim("package")}`);
 
   let needSkill = false;
-  if (!skillMissing && installedSkill) {
+  if (installedSkill) {
     const skillCmp = compareSemver(VERSION, installedSkill);
     if (skillCmp > 0) {
       needSkill = true;
@@ -342,17 +329,16 @@ async function cmdUpdate(flags: { yes: boolean }): Promise<void> {
     return;
   }
 
-  const planParts: string[] = [];
-  if (needSkill) planParts.push(`skill ${installedSkill} → ${VERSION}`);
-  if (hooksToRefresh.length > 0) {
-    planParts.push(`hooks ${hooksToRefresh.join(", ")} → ${VERSION}`);
-  }
-
   if (!flags.yes) {
     if (!isTTY()) {
       failNonTTY("interactive update requires a TTY (or pass --yes).", [
         "npx @dosx/agent-memory update --yes",
       ]);
+    }
+    const planParts: string[] = [];
+    if (needSkill) planParts.push(`skill ${installedSkill} → ${VERSION}`);
+    if (hooksToRefresh.length > 0) {
+      planParts.push(`hooks ${hooksToRefresh.join(", ")} → ${VERSION}`);
     }
     blank();
     const ok = await confirmPrompt(`Apply update? (${planParts.join("; ")})`);
@@ -400,11 +386,32 @@ function harnessOptions(): SelectOption<Harness>[] {
   return CANONICAL_HARNESSES.map((h) => ({ label: h, value: h }));
 }
 
+type InstallMode = "both" | "skill" | "hooks";
+
+const INSTALL_MODE_OPTIONS: SelectOption<InstallMode>[] = [
+  { label: "Skill + hooks", value: "both" },
+  { label: "Skill only", value: "skill" },
+  { label: "Hooks only", value: "hooks" },
+];
+
+function pickHarnesses(): Promise<Harness[]> {
+  return multiSelectPrompt(
+    "Select harnesses (Space to toggle):",
+    harnessOptions(),
+  );
+}
+
 function failNonTTY(message: string, hints: string[]): never {
   console.error(`${c.red("error:")} ${message}`);
   for (const h of hints) {
     console.error(`  ${c.dim(h)}`);
   }
+  process.exit(1);
+}
+
+function fatalUsage(message: string): never {
+  console.error(`${c.red("error:")} ${message}`);
+  printHelp();
   process.exit(1);
 }
 
@@ -416,25 +423,24 @@ async function promptInstallChoice(harness: Harness): Promise<void> {
     ]);
   }
 
-  const choice = await selectPrompt(`Install agent-memory for ${harness}:`, [
-    { label: "Skill + hooks", value: "both" },
-    { label: "Skill only", value: "skill" },
-    { label: "Hooks only", value: "hooks" },
-  ] as const);
+  const choice = await selectPrompt(
+    `Install agent-memory for ${harness}:`,
+    INSTALL_MODE_OPTIONS,
+  );
 
   printHeader(`install · ${harness}`);
   if (choice === "both") {
     const skillPath = installSkill();
     installHooks(harness);
-    finishInstall({ skillPath, hooks: [harness] });
+    printSummary({ skillPath, hooks: [harness] });
     return;
   }
   if (choice === "skill") {
-    finishInstall({ skillPath: installSkill(), hooks: [] });
+    printSummary({ skillPath: installSkill(), hooks: [] });
     return;
   }
   installHooks(harness);
-  finishInstall({ hooks: [harness] });
+  printSummary({ hooks: [harness] });
 }
 
 async function promptInstallBare(): Promise<void> {
@@ -445,22 +451,18 @@ async function promptInstallBare(): Promise<void> {
     ]);
   }
 
-  const mode = await selectPrompt("What do you want to install?", [
-    { label: "Skill + hooks", value: "both" },
-    { label: "Skill only", value: "skill" },
-    { label: "Hooks only", value: "hooks" },
-  ] as const);
+  const mode = await selectPrompt(
+    "What do you want to install?",
+    INSTALL_MODE_OPTIONS,
+  );
 
   if (mode === "skill") {
     printHeader("install · skill");
-    finishInstall({ skillPath: installSkill(), hooks: [] });
+    printSummary({ skillPath: installSkill(), hooks: [] });
     return;
   }
 
-  const selected = await multiSelectPrompt(
-    "Select harnesses (Space to toggle):",
-    harnessOptions(),
-  );
+  const selected = await pickHarnesses();
 
   printHeader(
     mode === "both"
@@ -471,8 +473,10 @@ async function promptInstallBare(): Promise<void> {
   if (mode === "both") {
     report.skillPath = installSkill();
   }
-  installHooksMany(selected);
-  finishInstall(report);
+  for (const h of selected) {
+    installHooks(h);
+  }
+  printSummary(report);
 }
 
 async function promptHooksMultiSelect(): Promise<void> {
@@ -481,13 +485,12 @@ async function promptHooksMultiSelect(): Promise<void> {
       "Hooks: npx @dosx/agent-memory install hooks <harness>",
     ]);
   }
-  const selected = await multiSelectPrompt(
-    "Select harnesses (Space to toggle):",
-    harnessOptions(),
-  );
+  const selected = await pickHarnesses();
   printHeader(`install · hooks · ${selected.join(", ")}`);
-  installHooksMany(selected);
-  finishInstall({ hooks: selected });
+  for (const h of selected) {
+    installHooks(h);
+  }
+  printSummary({ hooks: selected });
 }
 
 async function main(argv: string[]): Promise<void> {
@@ -508,9 +511,7 @@ async function main(argv: string[]): Promise<void> {
   }
 
   if (args[0] !== "install") {
-    console.error(`${c.red("error:")} unknown command: ${args[0]}`);
-    printHelp();
-    process.exit(1);
+    fatalUsage(`unknown command: ${args[0]}`);
   }
 
   const rest = args.slice(1);
@@ -527,7 +528,7 @@ async function main(argv: string[]): Promise<void> {
       process.exit(1);
     }
     printHeader("install · skill");
-    finishInstall({ skillPath: installSkill(), hooks: [] });
+    printSummary({ skillPath: installSkill(), hooks: [] });
     return;
   }
 
@@ -543,13 +544,11 @@ async function main(argv: string[]): Promise<void> {
     }
     const harness = normalizeHarness(raw);
     if (!harness) {
-      console.error(`${c.red("error:")} unknown harness: ${raw}`);
-      printHelp();
-      process.exit(1);
+      fatalUsage(`unknown harness: ${raw}`);
     }
     printHeader(`install · hooks · ${harness}`);
     installHooks(harness);
-    finishInstall({ hooks: [harness] });
+    printSummary({ hooks: [harness] });
     return;
   }
 
@@ -563,9 +562,7 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
-  console.error(`${c.red("error:")} unknown install target: ${rest[0]}`);
-  printHelp();
-  process.exit(1);
+  fatalUsage(`unknown install target: ${rest[0]}`);
 }
 
 main(process.argv).catch((err: unknown) => {

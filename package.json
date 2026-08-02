@@ -8,11 +8,11 @@
   "scripts": {
     "build": "bun build ./install.ts --outfile bin/cli.js --target node --format cjs --banner '#!/usr/bin/env node'",
     "typecheck": "bunx tsc -p tsconfig.json --noEmit",
-    "lint:md": "command -v markdownlint >/dev/null && markdownlint '**/*.md' --ignore node_modules --ignore bin || printf 'skip: markdownlint not installed\\n'",
+    "lint:md": "bunx markdownlint '**/*.md' --ignore node_modules --ignore bin",
     "build:check": "bun build ./install.ts --outfile /tmp/agent-memory-cli-check.js --target node --format cjs --banner '#!/usr/bin/env node' && cmp -s bin/cli.js /tmp/agent-memory-cli-check.js",
-    "test": "bash tests/reference-first-contract.sh && bash tests/hooks-checkpoint.sh && bash tests/version-parity.sh && bash tests/hooks-merge.sh && bash tests/cli-install.sh && bash tests/lockfile-only.sh && bash tests/migration-smoke.sh && bun test tests/opencode-safe-script.test.ts",
-    "check": "bun run typecheck && bun run lint:md && bun run test && bun run build && bun run build:check",
-    "prepublishOnly": "bun run build"
+    "test": "bash tests/test-runner.sh",
+    "check": "bun run typecheck && bun run lint:md && bun run build:check && bun run test && bun run build",
+    "prepublishOnly": "bun run check"
   },
   "publishConfig": {
     "access": "public",
@@ -21,7 +21,8 @@
   "files": [
     "bin/",
     "hooks/",
-    "skills/agent-memory/"
+    "skills/agent-memory/",
+    "SECURITY.md"
   ],
   "engines": {
     "node": ">=18"
@@ -34,6 +35,7 @@
   "devDependencies": {
     "@types/node": "^26.1.1",
     "bun-types": "^1.3.14",
+    "markdownlint-cli": "0.45.0",
     "typescript": "7.0.2"
   }
 }

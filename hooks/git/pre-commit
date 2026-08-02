@@ -17,7 +17,11 @@ cwd=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 
 hook_dir=$(dirname "$0")
 if [ -x "$hook_dir/agent-memory-sync.sh" ]; then
-  AGENT_MEMORY_EVENT=precommit AGENT_MEMORY_PROJECT_DIR="$cwd" "$hook_dir/agent-memory-sync.sh" || true
+  # Pre-commit has no harness stdin session id — drop inherited binding env so a
+  # stale shell cannot rebind away from session_binding in state.
+  AGENT_MEMORY_EVENT=precommit AGENT_MEMORY_PROJECT_DIR="$cwd" \
+    env -u AGENT_MEMORY_SESSION_ID -u CURSOR_SESSION_ID -u GEMINI_SESSION_ID \
+    "$hook_dir/agent-memory-sync.sh" || true
 fi
 
 # Branch sanitization must mirror common.sh:sanitize_branch so the reminder
@@ -33,8 +37,12 @@ head_short=$(git rev-parse --short HEAD 2>/dev/null || true)
 if [ -f "$aw" ] && [ -n "$head_full" ]; then
   ck_line=$(grep -E '^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ ' "$aw" 2>/dev/null | head -1 || true)
   ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ //' | tr -d '`"')
+  # Only trust hex SHAs (mirrors agent-memory-common.sh build_session_context_msg).
+  if ! printf '%s' "$ck_sha" | grep -Eq '^[0-9a-fA-F]{4,40}$'; then
+    ck_sha=""
+  fi
   if [ -n "$ck_sha" ] && [ "$ck_sha" != "<short-sha>" ]; then
-    ck_full=$(git rev-parse "$ck_sha" 2>/dev/null || true)
+    ck_full=$(git rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)
     if [ -z "$ck_full" ] || [ "$ck_full" != "$head_full" ]; then
       cat <<EOF
 

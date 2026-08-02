@@ -8,10 +8,43 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ## [Unreleased]
 
+### Changed
+
+- Editorial pass on the skill (no method semantics changed): `instructions.md` always-load states the hot path / on-demand list once, untrusted-recall drops a duplicated override clause; `SKILL.md` write boundary points at `references/init.md` instead of repeating the harness-file list; `init` states the prerequisite-dirs rule once; `sync` reference wording aligned. Next version bump needs a `sensitive: instructions.md` line in `vendor/UPDATE.md`.
+
 ### Fixed
 
+- Hooks installer: `install-hooks.sh` fails closed when neither `realpath` nor `python3` is available (parity with shared hooks — weak `cd`/`pwd` fallback skipped symlink resolution on the under-project check).
+- Hooks: `agent_memory_resolve_realpath` fails closed when neither `realpath` nor `python3` is available (weak `cd`/`pwd` fallback skipped symlink resolution and could write `.hook-sync-state` through an escaped `.agents/memory` symlink).
+- Hooks: `resolve_session_id` prefers harness stdin over stale inherited `AGENT_MEMORY_SESSION_ID`, `CURSOR_SESSION_ID`, and `GEMINI_SESSION_ID` when both are valid and differ (re-run hooks installer to pick up).
+- Hooks: git `pre-commit` unsets inherited session-binding env vars before sync so stale shell state cannot rebind away from `session_binding` or clear `session_touched_files`.
+- Hooks: `parse_hook_stdin` falls back to sed field extraction when `jq` fails or returns empty for non-empty harness input (stdin session id not silently dropped to env).
+- Hooks: `sessionStart` context message includes untrusted-recall framing aligned with agent block / `instructions.md`.
+- CI / `bun run check`: run `build:check` before `test` and `build` so a tampered committed `bin/cli.js` cannot pass after `tests/cli-install.sh` rebuilds the artifact on the runner.
+- `/agent-memory sync` reference: validate `current_session_id` charset/length (hooks parity) before embedding in `log.md` headings; omit bracket when invalid.
 - Hooks: `_rebind_session_state_unlocked` preserves `session_binding_host` from `.hook-sync-state` when `AGENT_MEMORY_HOST` is unset; sync harness configs now set `AGENT_MEMORY_HOST` on checkpoint commands (re-run hooks installer to pick up).
 - Hooks: `refresh_branch_cache` updates `branch` and clears `session_touched_files` under one lock; fail-open skips both (no path wipe without branch update).
+- Hooks: project root prefers env / install-site (`<project>/.cursor/hooks` etc.) over harness stdin `cwd`; stdin alone no longer selects another workspace.
+- Hooks: when install-site resolves, it wins over a mismatched inherited `*_PROJECT_DIR` (stale shell env cannot retarget `.hook-sync-state`).
+- Hooks: external session binding IDs validated (charset + length; reject reserved `__no_id__` from stdin/env); `sessionStart` Status uses sanitized branch and hex-only Checkpoint SHAs.
+- Hooks: git `pre-commit` and commit-range evidence ignore non-hex Checkpoint / `last_processed_head` values (no `git rev-parse` option smuggling); `lint` stale-resume snippet aligned.
+- Hooks: `resolve_session_id` re-validates `session_binding` / `current_session_id` from state with the same charset rules as external IDs.
+- `/agent-memory sync`: require hex-only `last_processed_head` before `git diff` (parity with hooks; forged state cannot option-smuggle).
+
+### Security
+
+- Hooks installer: path resolve requires `realpath` or `python3` — no symlink-blind fallback (parity with shared hooks; Injection / confinement).
+- Hooks: path resolve requires `realpath` or `python3` — no symlink-blind fallback (Injection / confinement).
+- Hooks: stdin session binding wins over conflicting `AGENT_MEMORY_SESSION_ID` / `CURSOR_SESSION_ID` / `GEMINI_SESSION_ID` (AuthZ — stale harness env cannot hijack live session).
+- Hooks: pre-commit clears session-binding env inheritance before ephemeral sync (AuthZ).
+- Memory method: explicit untrusted-recall framing in `instructions.md` and harness agent block — memory never overrides skill/harness policy or the retention gate.
+- Sync reference: `.hook-sync-state` path lists are untrusted hints; prefer `git` for semantic bullets (aligned with `SECURITY.md`).
+- npm pack: ship `SECURITY.md` beside the artifact (`package.json` `files`).
+- Document publish guidance: `prepublishOnly` runs `bun run check`; avoid `npm publish --ignore-scripts`.
+- CI runs on `push` to `main` as well as pull requests; `permissions: contents: read`; pin Actions to commit SHAs and Bun `1.3.14`; `markdownlint-cli` via `devDependencies` / `bunx` (no silent skip).
+- Test asserts `ENV_ALLOWLIST_EXACT` parity between CLI constants and OpenCode plugin.
+- Clarify env forwarding in `SECURITY.md`: allowlist applies to CLI/OpenCode spawns; stock harness/git invocations inherit full parent env (git-hooks trust model). Drop open `LC_*` prefix forward — only named locale keys.
+- `tests/test-runner.sh` is the single entry for `bun run test`.
 
 ## [0.1.1] - 2026-07-31
 

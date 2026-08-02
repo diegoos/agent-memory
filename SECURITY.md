@@ -22,14 +22,27 @@ Installing agent-memory hooks is equivalent to trusting the project directory �
 - Cursor, Claude Code, Codex, Copilot, Gemini, and OpenCode all run those local scripts on lifecycle events.
 - Anyone who can modify hook scripts or the project working directory already has local code execution in that project.
 
-The OpenCode plugin spawns the same shared bash sync script as other harnesses; it adds runtime checks (regular file only, `realpath` confinement under `.opencode/hooks`, binding ID charset validation) before `execFileSync`.
+The OpenCode plugin spawns the same shared bash sync script as other harnesses; it adds runtime checks (regular file only, `realpath` confinement under `.opencode/hooks`, binding ID charset validation) before `execFileSync`. Shared bash hooks also validate external session binding IDs, prefer project env / install-site root over harness stdin `cwd`, prefer a valid harness stdin session id over conflicting inherited `AGENT_MEMORY_SESSION_ID` / `CURSOR_SESSION_ID` / `GEMINI_SESSION_ID`, refuse symlink memory paths, and require `realpath` or `python3` to resolve paths (no weak fallback that skips symlink resolution). The hooks installer (`install-hooks.sh`) fails closed the same way when neither resolver is available.
 
 ## What we do not do
 
 - No network calls from the CLI or hook scripts.
 - No `shell: true` on child processes.
-- No full parent `process.env` forwarded to hook children.
 - No Markdown writes from hooks (semantic memory is agent-owned only).
+- No trusting harness stdin `cwd` alone to select the project root (env or install-site anchor first).
+
+## Environment forwarding
+
+- **CLI → `install-hooks.sh` and OpenCode → bash hooks:** only `ENV_ALLOWLIST_EXACT` (exact keys; locale via named `LC_*` entries, not a prefix). See `lib/cli/constants.ts` (mirrored in the OpenCode plugin; parity tested).
+- **Stock Cursor / Claude / Codex / Copilot / Gemini:** the harness invokes the script directly, so the child **inherits the full parent environment** (same model as ordinary git hooks). Stock scripts do not dump or forward secrets to logs or Markdown. When stdin carries a valid session id that disagrees with inherited session-binding env, hooks prefer stdin.
+- **Git `pre-commit`:** also inherits the parent environment, except it **unsets** `AGENT_MEMORY_SESSION_ID`, `CURSOR_SESSION_ID`, and `GEMINI_SESSION_ID` before sync (pre-commit has no harness stdin session id; stale shell bindings must not rebind `.hook-sync-state`).
+- **`PATH` and `GIT_CONFIG*`** on the filtered path are intentional so git/locale tooling works under a restricted env. Treat a compromised parent env as already inside the project trust boundary.
+
+`.hook-sync-state` is gitignored ephemeral evidence. Hooks own writes under the method contract; agents with Write access to `.agents/memory/` can still edit it on disk — treat forged state as untrusted and validate hex SHAs before passing them to git (hooks and `/agent-memory sync`).
+
+## Publish
+
+Prefer `bun run check` before publish (`prepublishOnly` runs it — `build:check` validates the committed `bin/cli.js` before tests rebuild and before the final `build`). Do not publish with `npm publish --ignore-scripts` — that skips the rebuild/`check` gate and can ship a stale or tampered `bin/cli.js`.
 
 ## How to audit
 

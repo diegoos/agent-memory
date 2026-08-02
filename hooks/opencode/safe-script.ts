@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-/** Session / conversation binding ids from harness stdin or env. */
+/** Mirrors hooks bash is_valid_external_binding_id charset/length (no __no_id__). */
 const BINDING_ID_RE = /^[A-Za-z0-9._:@/-]{1,128}$/;
 
 export function isValidBindingId(id: string): boolean {

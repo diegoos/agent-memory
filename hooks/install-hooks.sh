@@ -5,8 +5,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOOKS_ROOT="$SCRIPT_DIR"
-SHARED_DIR="$HOOKS_ROOT/agent-memory-hooks"
+SHARED_DIR="$SCRIPT_DIR/agent-memory-hooks"
 
 # Prefer version from CLI env; else package.json; fall back for standalone checkout.
 if [[ -n "${AGENT_MEMORY_VERSION:-}" ]]; then
@@ -18,6 +17,20 @@ elif [[ -f "$SCRIPT_DIR/../package.json" ]] && command -v node >/dev/null 2>&1; 
 fi
 VERSION="${VERSION:-0.1.1}"
 
+# No weak cd/pwd fallback: it skips symlink resolution, so a logical path
+# could pass the under-project check while escaping it (parity with hooks).
+resolve_realpath() {
+  local p=$1
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$p"
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$p"
+  else
+    printf 'agent-memory: realpath or python3 required to resolve paths safely\n' >&2
+    return 1
+  fi
+}
+
 # Resolve project dir (absolute). Relative AGENT_MEMORY_PROJECT_DIR is allowed.
 # Require an existing directory so realpath and python3 agree (no mkdir surprise).
 _raw_project="${AGENT_MEMORY_PROJECT_DIR:-$(pwd)}"
@@ -25,13 +38,7 @@ if [[ ! -d "$_raw_project" ]]; then
   echo "error: PROJECT_DIR does not exist: $_raw_project" >&2
   exit 1
 fi
-if command -v realpath >/dev/null 2>&1; then
-  PROJECT_DIR="$(realpath "$_raw_project")"
-elif command -v python3 >/dev/null 2>&1; then
-  PROJECT_DIR="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$_raw_project")"
-else
-  PROJECT_DIR="$(cd "$_raw_project" && pwd)"
-fi
+PROJECT_DIR="$(resolve_realpath "$_raw_project")" || exit 1
 unset _raw_project
 
 usage() {
@@ -49,17 +56,6 @@ EOF
 die() {
   echo "error: $*" >&2
   exit 1
-}
-
-resolve_realpath() {
-  local p=$1
-  if command -v realpath >/dev/null 2>&1; then
-    realpath "$p"
-  elif command -v python3 >/dev/null 2>&1; then
-    python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$p"
-  else
-    printf '%s\n' "$(cd "$(dirname "$p")" && pwd)/$(basename "$p")"
-  fi
 }
 
 # Walk PROJECT_DIR → dest; refuse if any existing component is a symlink.
@@ -113,17 +109,6 @@ normalize_harness() {
   esac
 }
 
-prereq_dir_for() {
-  case "$1" in
-    cursor) echo .cursor ;;
-    claude) echo .claude ;;
-    codex) echo .codex ;;
-    opencode) echo .opencode ;;
-    copilot) echo .github ;;
-    gemini) echo .gemini ;;
-  esac
-}
-
 hooks_dir_for() {
   case "$1" in
     cursor) echo .cursor/hooks ;;
@@ -157,7 +142,7 @@ safe_install_file() {
 merge_hooks_json() {
   local source=$1 target=$2 out=$3 mode=$4
   need_cmd node
-  node "$HOOKS_ROOT/lib/merge-hooks.mjs" "$source" "$target" "$out" "$mode"
+  node "$SCRIPT_DIR/lib/merge-hooks.mjs" "$source" "$target" "$out" "$mode"
 }
 
 # Write merged JSON to a temp file beside the target, then replace atomically.
@@ -189,54 +174,39 @@ install_shared_scripts() {
   echo "copied shared scripts → $dest/"
 }
 
+# Scripts first so a failed cp never leaves config pointing at missing files.
+install_with_config() {
+  local harness=$1 src=$2 tgt=$3 mode=$4
+  install_shared_scripts "$(hooks_dir_for "$harness")"
+  merge_into "$SCRIPT_DIR/$src" "$PROJECT_DIR/$tgt" "$mode"
+  echo "merged $harness hooks config → $tgt"
+}
+
 install_cursor() {
-  local hooks_dir
-  hooks_dir="$(hooks_dir_for cursor)"
-  local src="$HOOKS_ROOT/cursor/hooks.json"
-  local tgt="$PROJECT_DIR/.cursor/hooks.json"
-  # Scripts first so a failed cp never leaves config pointing at missing files.
-  install_shared_scripts "$hooks_dir"
-  merge_into "$src" "$tgt" flat
-  echo "merged cursor hooks → .cursor/hooks.json"
+  install_with_config cursor cursor/hooks.json .cursor/hooks.json flat
 }
 
 install_claude() {
-  local hooks_dir
-  hooks_dir="$(hooks_dir_for claude)"
-  local src="$HOOKS_ROOT/claude-code/settings.json"
-  local tgt="$PROJECT_DIR/.claude/settings.json"
-  install_shared_scripts "$hooks_dir"
-  merge_into "$src" "$tgt" nested
-  echo "merged claude settings → .claude/settings.json"
+  install_with_config claude claude-code/settings.json .claude/settings.json nested
 }
 
 install_codex() {
-  local hooks_dir
-  hooks_dir="$(hooks_dir_for codex)"
-  local src="$HOOKS_ROOT/codex/hooks.json"
-  local tgt="$PROJECT_DIR/.codex/hooks.json"
-  install_shared_scripts "$hooks_dir"
-  merge_into "$src" "$tgt" nested
-  echo "merged codex hooks → .codex/hooks.json"
+  install_with_config codex codex/hooks.json .codex/hooks.json nested
   echo "reminder: run /hooks in the Codex TUI to trust project hooks"
 }
 
 install_opencode() {
-  local hooks_dir
-  hooks_dir="$(hooks_dir_for opencode)"
-  install_shared_scripts "$hooks_dir"
+  install_shared_scripts "$(hooks_dir_for opencode)"
   safe_install_file \
-    "$HOOKS_ROOT/opencode/agent-memory.ts" \
+    "$SCRIPT_DIR/opencode/agent-memory.ts" \
     "$PROJECT_DIR/.opencode/plugin/agent-memory.ts"
   echo "copied OpenCode plugin → .opencode/plugin/agent-memory.ts"
 }
 
 install_copilot() {
-  local hooks_dir
-  hooks_dir="$(hooks_dir_for copilot)"
-  local src="$HOOKS_ROOT/copilot/agent-memory.json"
+  install_shared_scripts "$(hooks_dir_for copilot)"
+  local src="$SCRIPT_DIR/copilot/agent-memory.json"
   local tgt="$PROJECT_DIR/.github/hooks/agent-memory.json"
-  install_shared_scripts "$hooks_dir"
   if [[ ! -f "$tgt" ]]; then
     safe_install_file "$src" "$tgt"
     echo "copied copilot hooks → .github/hooks/agent-memory.json"
@@ -247,13 +217,7 @@ install_copilot() {
 }
 
 install_gemini() {
-  local hooks_dir
-  hooks_dir="$(hooks_dir_for gemini)"
-  local src="$HOOKS_ROOT/gemini/settings.json"
-  local tgt="$PROJECT_DIR/.gemini/settings.json"
-  install_shared_scripts "$hooks_dir"
-  merge_into "$src" "$tgt" nested
-  echo "merged gemini settings → .gemini/settings.json"
+  install_with_config gemini gemini/settings.json .gemini/settings.json nested
 }
 
 main() {
@@ -264,11 +228,11 @@ main() {
 
   [[ -d "$SHARED_DIR" ]] || die "shared hooks not found at $SHARED_DIR"
 
-  local harness
+  local harness hooks_dir prereq
   harness="$(normalize_harness "$1")" || die "unknown harness: $1 (see --help)"
+  hooks_dir="$(hooks_dir_for "$harness")"
+  prereq="$(dirname "$hooks_dir")"
 
-  local prereq
-  prereq="$(prereq_dir_for "$harness")"
   refuse_symlink_components "$PROJECT_DIR/$prereq"
   if [[ ! -d "$PROJECT_DIR/$prereq" ]]; then
     ensure_resolved_under_project "$PROJECT_DIR/$prereq/.install-sentinel"
@@ -285,8 +249,6 @@ main() {
     gemini) install_gemini ;;
   esac
 
-  local hooks_dir
-  hooks_dir="$(hooks_dir_for "$harness")"
   printf '%s\n' "$VERSION" >"$PROJECT_DIR/$hooks_dir/.version"
   echo "done: agent-memory hooks installed for $harness (v${VERSION})"
 }

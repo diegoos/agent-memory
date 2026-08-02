@@ -5,7 +5,6 @@ import {
   CANONICAL_HARNESSES,
   HARNESS_ALIASES,
   HARNESS_HOOKS_DIR,
-  HARNESS_SET,
   type Harness,
 } from "./constants";
 
@@ -25,6 +24,7 @@ export function readSkillVersionFromDir(skillDir: string): string | null {
     /^metadata:\s*\n(?:[ \t]+.+\n)*?[ \t]+version:\s*["']?([0-9]+\.[0-9]+\.[0-9]+)["']?/m,
   );
   if (m) return m[1];
+  // Fallback when the metadata block layout differs from the strict form.
   const loose = text.match(/version:\s*["']([0-9]+\.[0-9]+\.[0-9]+)["']/);
   return loose ? loose[1] : null;
 }
@@ -100,8 +100,8 @@ export function memoryExists(): boolean {
 }
 
 export function normalizeHarness(name: string): Harness | null {
-  if (HARNESS_SET.has(name)) return name as Harness;
+  if ((CANONICAL_HARNESSES as readonly string[]).includes(name)) {
+    return name as Harness;
+  }
   return HARNESS_ALIASES[name] ?? null;
 }
-
-export { CANONICAL_HARNESSES, HARNESS_HOOKS_DIR };
