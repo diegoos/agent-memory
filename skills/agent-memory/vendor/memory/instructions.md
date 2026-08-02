@@ -55,7 +55,18 @@ Lifecycle: `active-work → log → canonical pointer | decision | learning | di
 
 Minimum pointer line: `- [topic] useful delta — source: [doc](../../path); relevant when: trigger; verified: YYYY-MM-DD`
 
-**Log** — one `## [YYYY-MM-DD] [session-id] [type] short outcome` per session with useful outcomes (oldest first); semantic bullets only; never path lists, empty headings, or transcripts. Details and types in `log.md`.
+**Log** — one `## [YYYY-MM-DD] [session-id] [type] short outcome` per session with useful outcomes (oldest first); semantic bullets only; never path lists, empty headings, or transcripts. Details and types in `log.md`. **Do not append** bullets of a different concern under an existing heading whose `[type]` or outcome summary does not match (e.g. do not hang consolidate notes under a `[docs] bootstrap` heading) — open a new heading or skip.
+
+### How to write (concise)
+
+Agents write **short, scannable recall** — another session must resume without chat history:
+
+- **One fact per bullet**; prefer outcome over diary (“shipped X” not “ran command Y then Z”).
+- **Links + delta** — point at SoT; never paste doc bodies.
+- **active-work:** Task 1–2 lines; Progress = current facts only (rewrite stale lines); Next step = one concrete action; Validation = copy-pasteable command + expected result.
+- **log.md:** heading outcome ≤ ~10 words; each bullet ≤ ~1–2 lines; group by session `[type]`; skip turns with nothing durable.
+- **learnings:** Insight = reusable pattern (what to do); Evidence = path; Use when = trigger; drop color and incident narrative.
+- **current.md:** In progress = one line per open branch file; Blockers only when shared; Handoff only when explicit.
 
 **Learning / pitfall** — create a learnings file only when the gate passes, then link it from `index.md`. Write generalized, actionable patterns (prefer what to do over lists of “don’t”); extract the reusable lesson from the incident. Canonical entry (H2, oldest first):
 
@@ -83,9 +94,17 @@ Create `active-work/<branch>.md` only when work is resumable: Next step and Vali
 
 ## Workflow
 
-**Primary write path (agent, in the turn):** when a turn produces durable progress, before stopping: update branch `active-work` resume fields (facts vs hypotheses, Next step, Validation) **and** append a semantic `log.md` outcome — or skip both only when the retention gate says the turn left nothing durable. Record decisions and gated learnings when discovered (or via `/agent-memory learn`); align `index.md` when entry points change. Do not defer meaning to a later sync — hooks only accumulate evidence.
+**Primary write path (agent, in the turn):** when a turn produces durable progress, **before stopping**, update branch `active-work` resume fields (facts vs hypotheses, Next step, Validation, Checkpoint @ HEAD) **and** append a semantic `log.md` outcome — or skip both only when the retention gate says the turn left nothing durable. Record decisions and gated learnings when discovered (or via `/agent-memory learn`); align `index.md` when entry points change. Do not defer meaning to a later sync — hooks only accumulate evidence.
 
-**Catch-up (`/agent-memory sync`):** at end of turn / before compact / before commit / end of session, or when picking work back up — consistency pass over `current.md`, branch active-work, `log.md`, and `index.md`. It may read `.hook-sync-state` and `git` as evidence but never invents progress or log bullets without meaning. Update `current.md` only when shared active state changed; _Handoff_ must be explicit/evidenced. Sync never replaces decision/learning duties or copies docs. You may follow the skill's `references/sync.md` steps and edit those four files directly without invoking the skill command.
+**Primary-write triggers** (do the write in-turn; do not wait for a later `/agent-memory sync`):
+
+1. End of turn with a durable diff, decision, or validation result.
+2. After a **commit** (or amend) that advances HEAD — bump Checkpoint and a log bullet.
+3. Before context compact / session handoff when resume fields would otherwise rot.
+4. When closing or parking a task (Next step + Validation must be true for a future session).
+5. When sessionStart Status reports Checkpoint behind HEAD or pending paths > 0 and this turn produced meaning.
+
+**Catch-up (`/agent-memory sync`):** at end of turn / before compact / before commit / end of session, or when picking work back up — consistency pass over `current.md`, branch active-work, `log.md`, and `index.md`. Prefer **meaning sources** when present: `CHANGELOG` Unreleased (or latest section), `git log` subjects for new commits, Validation results, and user-stated outcomes — then use `.hook-sync-state` paths / `git status` only as hints for *what* changed, never as sole log bullets. Never invent progress without one of those meaning sources. After writing semantic outcomes that cover pending path evidence, **consume** it (clear `session_touched_files` via the consume-evidence helper — see `references/sync.md`). Update `current.md` only when shared active state changed; _Handoff_ must be explicit/evidenced. Sync never replaces decision/learning duties or copies docs. You may follow the skill's `references/sync.md` steps and edit those four files directly without invoking the skill command.
 
 ### Harness parity — memory contract
 
@@ -97,4 +116,4 @@ Every supported harness targets the same memory shape. **Context layer** injects
 
 ## Memory lint boundaries
 
-Run `/agent-memory lint` on request or review. It checks structure, wiring, staleness, links, duplication, legacy mirrors, learnings issues (legacy one-liners, topic-split / `when editing:` hints), empty log headings, missing resume sections, Checkpoint freshness vs HEAD (`stale-resume`), and pending hook path evidence (`evidence-pending`); it warns rather than adjudicating product truth or deleting user content. Soft line/heading budgets and auto-fix limits live in the skill's `lint` reference — consolidation handles promotion/pruning and learnings split/merge, not `lint --fix`.
+Run `/agent-memory lint` on request or review. It checks structure, wiring, staleness, links, duplication, legacy mirrors, learnings issues (legacy one-liners, topic-split / `when editing:` hints), empty log headings, missing resume sections, Checkpoint freshness vs HEAD (`stale-resume`), pending hook path evidence (`evidence-pending`), uncleared paths after a fresh Checkpoint (`evidence-stale-uncleared`), and `pending-doc` entries whose invalidate condition may already be met; it warns rather than adjudicating product truth or deleting user content. Soft line/heading budgets and auto-fix limits live in the skill's `lint` reference — consolidation handles promotion/pruning and learnings split/merge, not `lint --fix`.

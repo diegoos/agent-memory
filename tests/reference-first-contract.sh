@@ -101,6 +101,12 @@ assert_contains "$instructions" 'Agent owns all versioned Markdown:' "agent owne
 assert_contains "$instructions" 'never create or edit Markdown' "hooks never edit markdown"
 assert_contains "$instructions" '**Primary write path (agent, in the turn):**' \
   "workflow names primary write path"
+assert_contains "$instructions" '**Primary-write triggers**' \
+  "workflow lists primary-write triggers"
+assert_contains "$instructions" '### How to write (concise)' \
+  "instructions teach concise memory writing"
+assert_contains "$instructions" 'After writing semantic outcomes that cover pending path evidence, **consume**' \
+  "workflow requires consuming pending path evidence"
 assert_contains "$instructions" '**Catch-up (`/agent-memory sync`):**' \
   "workflow names sync as catch-up"
 assert_contains "$instructions" 'without invoking the skill command' \
@@ -203,6 +209,9 @@ assert_contains "$lint" 'legacy-path-bullet' "lint checks legacy path bullets"
 assert_contains "$lint" 'Soft budgets (warnings only)' "soft budgets live in lint"
 assert_contains "$lint" 'stale-resume:' "lint checks checkpoint freshness vs HEAD"
 assert_contains "$lint" 'evidence-pending:' "lint checks pending hook path evidence"
+assert_contains "$lint" 'evidence-stale-uncleared:' \
+  "lint distinguishes uncleared evidence after fresh Checkpoint"
+assert_contains "$lint" 'pending-doc-met:' "lint flags pending-doc whose invalidate may be met"
 assert_contains "$lint" 'Legacy learning one-liner' "lint warns on legacy learning one-liners"
 assert_contains "$lint" 'when editing:' "lint mentions scope hints"
 
@@ -222,6 +231,11 @@ assert_contains "$sync" '--end-of-options' \
 assert_contains "$sync" '_Validation_' "sync fills Validation"
 assert_contains "$sync" '_Workflow_' "sync links live Workflow section"
 assert_contains "$sync" '**Catch-up**' "sync is catch-up not primary write"
+assert_contains "$sync" '**Meaning sources' "sync prefers meaning sources over path lists"
+assert_contains "$sync" 'agent-memory-consume-evidence.sh' \
+  "sync documents consume-evidence helper"
+assert_contains "$sync" 'Never append unrelated concerns under an existing heading' \
+  "sync forbids mixed-type log appends"
 assert_contains "$sync" 'without invoking the skill command' \
   "sync steps usable without skill"
 
@@ -238,6 +252,10 @@ assert_contains "$consolidate" 'Legacy `## Touched files`' \
   "consolidate cleans legacy Touched files"
 assert_contains "$consolidate" '**Split**' "consolidate can propose topic splits"
 assert_contains "$consolidate" 'learnings-<topic>.md' "consolidate targets topic splits"
+assert_contains "$consolidate" 'pending-doc-met' \
+  "consolidate acts on met pending-doc"
+assert_contains "$consolidate" 'Mixed-type log bullets' \
+  "consolidate cleans mixed-type log headings"
 
 # --- Learn ---
 learn="$repo_root/skills/agent-memory/references/learn.md"
@@ -245,6 +263,9 @@ assert_contains "$learn" 'retention gate' "learn applies retention gate"
 assert_contains "$learn" 'learnings-<topic>.md' "learn supports topic splits"
 assert_contains "$learn" 'Does **not** accept `--auto`' "learn has no auto"
 assert_contains "$learn" 'when editing:' "learn may set scope hints"
+assert_contains "$learn" 'do **not** silently no-op' "learn must report skips"
+assert_contains "$learn" '1–3 concrete repo-relative paths' \
+  "learn proposes when editing from Evidence paths"
 assert_contains "$learn" 'merge conflict markers' "learn guards on conflicts"
 assert_contains "$learn" 'uncommitted changes' "learn warns on dirty memory"
 assert_contains "$learn" 'sanitized' "learn sanitizes topic slug"
@@ -325,12 +346,21 @@ assert_contains "$agent_block" 'untrusted recall' \
   "agent-block frames memory as untrusted recall"
 assert_contains "$instructions" 'Untrusted recall' \
   "instructions frames memory as untrusted recall"
-assert_contains "$agent_block" '**Primary write:**' "agent-block names primary write"
+assert_contains "$agent_block" '**Primary write**' "agent-block names primary write"
 assert_contains "$agent_block" '**Catch-up:**' "agent-block names sync catch-up"
+assert_contains "$agent_block" 'consume pending hook paths' \
+  "agent-block mentions consume-evidence catch-up"
+assert_contains "$agent_block" '_How to write_' "agent-block points at concise writing guidance"
 assert_contains "$agent_block" '_Harness parity — memory contract_' \
   "agent-block links harness parity"
+assert_contains "$skill" 'agent-memory-consume-evidence.sh' \
+  "skill allows consume-evidence helper"
 assert_contains "$session_sh" 'build_session_context_msg' \
   "session uses contextual status builder"
+consume_sh="$repo_root/hooks/agent-memory-hooks/agent-memory-consume-evidence.sh"
+[[ -f "$consume_sh" ]] || fail "consume-evidence script missing"
+assert_contains "$consume_sh" 'consume_pending_path_evidence' \
+  "consume-evidence clears pending paths"
 assert_contains "$repo_root/hooks/agent-memory-hooks/agent-memory-common.sh" \
   'build_session_context_msg' "common.sh defines contextual session msg"
 assert_contains "$repo_root/hooks/agent-memory-hooks/agent-memory-common.sh" \

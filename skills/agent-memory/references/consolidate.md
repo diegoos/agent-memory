@@ -30,9 +30,10 @@ Guided, conservative promotion and pruning of memory. Turns closed-session noise
    - Local decision bodies that already have (or should have) an ADR pointer.
    - Decisions that should be marked `superseded` with `Superseded by:`.
    - Learnings/pitfalls that now have a canonical source.
-   - Entries marked `pending-doc`.
+   - Entries marked `pending-doc` — including those whose `Invalidate when` is already satisfied or whose Insight now appears in the named canonical doc (`pending-doc-met` from lint): propose **remove** the `pending-doc` bullet and either keep the learning as-is, convert to a pointer, or discard if fully superseded by the doc.
    - Legacy mirror files (`vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*`) whose useful content can become a source pointer or learning.
    - Legacy `## Touched files` sections in active-work (pre-0.1.0).
+   - **Mixed-type log bullets** — under a closed or current heading, bullets that belong to a different `[type]` / concern than the heading summary (e.g. consolidate notes under `[docs] bootstrap`): propose moving them to a correctly typed heading or discarding if noise.
 
 4. **Classify each candidate.** Propose one action per item:
    - **Reference** — replace body with a pointer to a canonical source; update `index.md` if needed.
@@ -42,7 +43,7 @@ Guided, conservative promotion and pruning of memory. Turns closed-session noise
    - **Merge** — when a topic split is tiny or redundant with another, propose merging back into `learnings.md` or a sibling split; same H2 conversion and duplicate rule (confirm).
    - **Current** — keep in `current.md` / active-work because still active.
    - **Discard** — remove because transient, reconstructible from Git, or duplicated (including legacy path bullets and empty headings).
-   - **Defer** — preserve when unsure or waiting on external doc promotion (`pending-doc`).
+   - **Defer** — preserve when unsure or waiting on external doc promotion (`pending-doc`) **unless** lint/`pending-doc-met` shows the invalidate condition is already true — then prefer remove `pending-doc` / pointer / discard over indefinite defer.
 
 5. **Show the classification plan** to the user (table or grouped list). Do not write yet.
 

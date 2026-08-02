@@ -38,6 +38,13 @@ allowed-tools: >-
   Edit(.agents/memory/.version) Write(.agents/memory/.version)
   Edit(.agents/memory/.gitignore) Write(.agents/memory/.gitignore)
   Bash(git branch --show-current) Bash(git status) Bash(git status -sb)
+  Bash(.cursor/hooks/agent-memory-consume-evidence.sh)
+  Bash(.claude/hooks/agent-memory-consume-evidence.sh)
+  Bash(.codex/hooks/agent-memory-consume-evidence.sh)
+  Bash(.opencode/hooks/agent-memory-consume-evidence.sh)
+  Bash(.github/hooks/agent-memory-consume-evidence.sh)
+  Bash(.gemini/hooks/agent-memory-consume-evidence.sh)
+  Bash(hooks/agent-memory-hooks/agent-memory-consume-evidence.sh)
 disable-model-invocation: true
 ---
 
@@ -59,6 +66,7 @@ Pre-approved via the `allowed-tools` frontmatter — a space-separated, host-spe
 | `Task`                   | Parallel read-only subagents in `bootstrap`. Optional — fall back to sequential analysis.                                                                                                                                   |
 | `Edit`, `Write` (scoped) | Sync/bootstrap hot path only (`current.md`, `index.md`, `log.md`, `active-work/**`, `.version`, `.gitignore`). **`decisions.md` / `learnings.md` / `learnings-*.md` are not pre-approved** — `learn` / `consolidate` / gated in-turn capture expect a host permission prompt (keeps sync `--auto` from writing durable recall). **Not** `instructions.md`, harness carriers (`AGENTS.md` / `CLAUDE.md` / `GEMINI.md` / `.mdc` / `.instructions.md` — host should prompt on `init`/`update`), hook paths, or other memory paths. |
 | `Bash(git …)`            | Read-only git used by `sync` / `lint`: exact `branch --show-current`, `status`, `status -sb`. **`git diff` / `git log` are not pre-approved** (host should prompt) so globs cannot cover `diff --output` or suffix chaining. **Never** mutative git. |
+| `Bash(…consume-evidence.sh)` | After sync writes meaning that covers pending paths: clear `session_touched_files` only (installed helper under harness `hooks/` or meta-repo `hooks/agent-memory-hooks/`). |
 
 **Deliberately not pre-approved** (the host should still prompt): `decisions.md`, `learnings.md` / `learnings-*.md`, harness instruction carriers (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursor/rules/agent-memory.mdc`, `.github/instructions/agent-memory.instructions.md`), `instructions.md`, file deletion (`rm`, used only on confirmed `update`/cleanup), and any other shell. This keeps the "confirm sensitive changes" rule intact and keeps sync Boundary enforceable at the host. The skill never writes harness hook scripts or configs — the user runs the installer.
 

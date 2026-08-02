@@ -110,11 +110,28 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
      paths=$(grep '^session_touched_files=' "$state" | cut -d= -f2- || true)
      if [ -n "$paths" ]; then
        n=$(printf '%s' "$paths" | tr '\036' '\n' | grep -c . || true)
-       [ "${n:-0}" -gt 0 ] && echo "evidence-pending: $n path(s) in .hook-sync-state — confirm active-work/log reflect meaning (sync is catch-up)"
+       if [ "${n:-0}" -gt 0 ]; then
+         echo "evidence-pending: $n path(s) in .hook-sync-state — confirm active-work/log reflect meaning (sync is catch-up); then consume via agent-memory-consume-evidence.sh"
+         # Uncleared after meaning likely written: Checkpoint matches HEAD and tree clean
+         dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+         ck_fresh=false
+         if [ -f "$aw" ] && [ -n "$head_full" ]; then
+           ck_line=$(grep -E '^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ ' "$aw" | head -1 || true)
+           ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint: [0-9]{4}-[0-9]{2}-[0-9]{2} @ //' | tr -d '`"')
+           if printf '%s' "$ck_sha" | grep -Eq '^[0-9a-fA-F]{4,40}$'; then
+             ck_full=$(git rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)
+             [ -n "$ck_full" ] && [ "$ck_full" = "$head_full" ] && ck_fresh=true
+           fi
+         fi
+         if $ck_fresh && [ "${dirty:-1}" -eq 0 ]; then
+           echo "evidence-stale-uncleared: $n path(s) remain with Checkpoint@HEAD and clean tree — run consume-evidence (sync step)"
+         fi
+       fi
      fi
    fi
    ```
 
+   **`pending-doc` invalidate check (warning).** For each H2 learning/pitfall with a `- pending-doc:` (or `- pending-doc`) line, read sibling `- Invalidate when:` / Evidence paths. If the named canonical file already documents the Insight (judgment — or exact phrase overlap ≥ 40 chars in `AGENTS.md` / `README.md` / Evidence target), report `pending-doc-met: <heading> — suggest consolidate promote/remove`.
    From the **project root**, check links in `index.md` that point outside memory (e.g. `../../AGENTS.md`, `../../docs/...`) and report missing targets as warnings.
 
    **Exact-duplication candidates (deterministic warning, never auto-fix).** From the project root, extract non-placeholder lines ≥ 60 characters from `.agents/memory/**/*.md` and look for exact matches in common canonical sources (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `README.md`, `docs/`). Report each match as `dup-exact: <memory-file> ↔ <source-file>`. Judgment paraphrase duplication still belongs in the semantic section below.
@@ -173,10 +190,11 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    - **Legacy learning one-liner** — `- [YYYY-MM-DD] [learning|pitfall] …` without an H2 heading; suggest migrating to the H2 form when editing (do not auto-rewrite).
    - **Invalid or stale `when editing:`** — per the contract in `instructions.md` → _Always load_: glob that matches no repo path, non-repo-root-relative glob, or a topic split with no hint when evidence paths are obvious. Cross-cutting `learnings.md` without a hint is fine.
    - **Overbroad `when editing:`** — reject **any** near-always-on glob in the hint list (companions do not redeem it). Normalize first: run **to fixpoint** — repeat until stable: strip a leading `./`, strip a leading `/`, and collapse `//` empty segments (so `/./hooks/**`, `/.//hooks/**`, `.//./hooks/**`, `././hooks/**`, `./hooks/**`, `.//hooks/**`, and `/hooks/**` all become `hooks/**`); reject any glob that still starts with `/` after normalize; then iteratively collapse `**/**` → `**`. Then reject (1) **structural** — two or more slash-separated segments that are each only `*`, `?*`, or `**` (e.g. `*/*`, `*/*/*`, `*/*/*/*`, `?*/*`, `?*/*/*`, `*/*/**`); also any glob with **no literal path segment** whose parts are only pure wildcards and/or `*.*` / `*.<ext>` at any depth (e.g. `*/*.*`, `*/*.<ext>`, `*/*/*.ts`, `*/*/*/*.json`, `?*/*/*.sh`, `*/*/*.*`); (2) **any** `**/*.<ext>` or `**/*.*`; (3) **any** `<top-level-dir>/**` and near-equivalents (`dir/**/*`, `dir/*/**`, `**/dir/**`) including `hooks/**`, `tests/**`, `docs/**`, `.agents/**`; (4) **explicit denylist** — including `**`, `**/*`, `**/**`, `**/**/*`, `*/**`, `*/*`, `?*/*`, `*/*/*`, `*/*/**`, `**/*/**`, `**/*/*`, `*`, `*.*`, `*.md`, `**/*.md`, `**/*.*`, `*/*.*`, `**/*.ts`, `**/*.tsx`, `**/*.js`, `**/*.jsx`, `**/*.py`, `**/**/*.ts`, `**/*/*.ts`, `*/**/*.ts`, `src/**`, `src/**/*`, `src/**/**`, `lib/**`, `app/**`, or `packages/**`. Prefer path-scoped globs with evidence.
-   - **Stale `pending-doc` learnings.**
+   - **Stale `pending-doc` learnings** — `Invalidate when` already true, or canonical doc now covers the Insight (`pending-doc-met` above); consolidate should promote/remove.
    - **Contradictions** — memory vs canonical source or code.
    - **Legacy path-only bullets / empty headings / Touched files** — candidates for consolidate.
    - **Legacy mirrors** — `vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*` with bodies that should be pointers in `index.md` / `decisions.md` / `learnings.md`.
+   - **Mixed log heading** — bullets under a `[type]` / outcome that clearly belong to another concern (e.g. consolidate notes under `[docs] bootstrap`); suggest split heading on next sync.
    - **Bloat** — always-loaded files grown long or verbose entries.
    - **Quality smoke (optional checklist)** — with only memory open, can you answer: (1) next concrete step, (2) what must not break, (3) where to edit, (4) how to prove it worked?
 

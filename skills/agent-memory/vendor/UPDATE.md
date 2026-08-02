@@ -212,3 +212,8 @@ Format:
 - safe: Cross-package docs pin `hooks/README.md` / examples to `0.1.1`.
 - safe: `skills/agent-memory/SKILL.md` — version bumped to `0.1.1`.
 - safe: root `package.json` — version bumped to `0.1.1`.
+- sensitive: `instructions.md` — primary-write triggers; concise _How to write_; sync meaning sources + consume pending paths; log heading type hygiene. Show full diff and confirm. Preserve project-specific notes.
+- sensitive: harness agent-memory block — primary-write triggers + consume-evidence catch-up. Confirm per file.
+- safe: `sync` / `learn` / `lint` / `consolidate` references — meaning sources; consume-evidence step; learn skip report + `when editing:` from Evidence; `evidence-stale-uncleared` / `pending-doc-met`; mixed-type log / met pending-doc consolidate actions.
+- safe: hooks — `agent-memory-consume-evidence.sh` (clears `session_touched_files` only); sessionStart Status adds Action + dirty; stdin binding also accepts `conversationId` / `composer_id`. **User must re-run the hooks installer** (four shared scripts).
+- safe: `SKILL.md` `allowed-tools` — exact Bash paths for `agent-memory-consume-evidence.sh` per harness + meta-repo.
