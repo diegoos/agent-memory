@@ -91,6 +91,8 @@ assert_contains "$skeleton/active-work/TEMPLATE.md" 'product' \
   "TEMPLATE Next step is product work"
 assert_contains "$skeleton/active-work/TEMPLATE.md" 'not a replay of `log.md`' \
   "TEMPLATE Progress must not replay log"
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'full closure command' \
+  "TEMPLATE Validation prefers full project closure"
 assert_contains "$skeleton/active-work/TEMPLATE.md" '../../../' \
   "TEMPLATE documents repo-root link depth from active-work"
 assert_absent "$skeleton/active-work/TEMPLATE.md" '## Touched files' \
@@ -257,6 +259,10 @@ for target in 'current.md' 'active-work/<branch>.md' 'log.md' 'index.md'; do
 done
 assert_contains "$sync" 'Prefer refining today' \
   "sync prefers one same-day heading over second ingest"
+assert_contains "$sync" 'Suggest `/agent-memory consolidate` **only** when' \
+  "sync suggests consolidate only for closed-session noise"
+assert_contains "$sync" 'full closure command' \
+  "sync Validation prefers full project closure"
 assert_contains "$sync" 'Consume pending path evidence (required when eligible)' \
   "sync requires consume when eligible"
 assert_contains "$sync" 'It **never** touches `decisions.md`, `learnings.md`,' \
@@ -289,6 +295,8 @@ assert_contains "$consolidate" '**Trim**' \
   "consolidate can trim closed-session bullets"
 assert_contains "$consolidate" 'Progress follow-up' \
   "consolidate Progress ask only after closed log removal"
+assert_contains "$consolidate" 'retained: current-session founding log' \
+  "consolidate Report names retained founding log"
 assert_contains "$consolidate" "Never prune the **current branch's** active-work file." \
   "consolidate preserves current active-work"
 assert_before "$consolidate" \

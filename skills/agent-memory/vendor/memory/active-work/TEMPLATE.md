@@ -26,7 +26,7 @@ One concrete **product** next action (commit, PR, feature work). Do **not** put 
 
 ## Validation
 
-Exact command and expected result. Prefer copy-pasteable lines.
+Exact command and expected result. Prefer copy-pasteable lines. Prefer the project's full closure command when known (e.g. `bun run check` over a narrower suite alone).
 
 - _none_
 
