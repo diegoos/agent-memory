@@ -490,6 +490,38 @@ grep -q 'behind HEAD' "$TMP/session-status.json" ||
   fail "session Status should report Checkpoint behind HEAD"
 grep -q 'pending paths=2' "$TMP/session-status.json" ||
   fail "session Status should report pending path count"
+grep -q 'Action:' "$TMP/session-status.json" ||
+  fail "session Status should include Action guidance"
+grep -qE 'primary-write|Checkpoint stale' "$TMP/session-status.json" ||
+  fail "session Action should mention primary-write or Checkpoint stale"
+
+# --- consume-evidence clears session_touched_files only ---
+printf '%s\n' \
+  'current_session_id=s-consume' \
+  'session_binding=s-consume' \
+  'session_binding_host=cursor' \
+  'session_touched_files=a.txt'$'\x1e''b.txt' \
+  'last_processed_head=deadbeef' \
+  'branch=feat-status' \
+  >.agents/memory/.hook-sync-state
+chmod +x ./agent-memory-consume-evidence.sh
+AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  bash ./agent-memory-consume-evidence.sh
+if grep -qE '^session_touched_files=.+' .agents/memory/.hook-sync-state; then
+  fail "consume-evidence must clear session_touched_files values"
+fi
+grep -q 'session_binding=s-consume' .agents/memory/.hook-sync-state ||
+  fail "consume-evidence must preserve session_binding"
+grep -q 'last_processed_head=deadbeef' .agents/memory/.hook-sync-state ||
+  fail "consume-evidence must preserve last_processed_head"
+
+# --- conversationId accepted when session_id absent ---
+printf '{"conversationId":"cursor-conv-1","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=afterAgentResponse \
+  ./agent-memory-sync.sh >/dev/null
+grep -q 'session_binding=cursor-conv-1' .agents/memory/.hook-sync-state ||
+  fail "conversationId must bind session"
 
 # --- security: stdin cwd alone must not target another project ---
 VICTIM=$(mktemp -d)

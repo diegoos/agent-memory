@@ -168,7 +168,8 @@ merge_into() {
 install_shared_scripts() {
   local dest=$1
   local f
-  for f in agent-memory-common.sh agent-memory-sync.sh agent-memory-session.sh; do
+  for f in agent-memory-common.sh agent-memory-sync.sh agent-memory-session.sh \
+    agent-memory-consume-evidence.sh; do
     [[ -f "$SHARED_DIR/$f" ]] || die "missing shared script: $SHARED_DIR/$f"
     safe_install_file "$SHARED_DIR/$f" "$PROJECT_DIR/$dest/$f"
     chmod +x "$PROJECT_DIR/$dest/$f"

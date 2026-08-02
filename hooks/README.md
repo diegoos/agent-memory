@@ -2,7 +2,7 @@
 
 Optional hooks that keep **ephemeral evidence** current during real work. They run a **deterministic git checkpoint** into `.agents/memory/.hook-sync-state` (gitignored) — no LLM call, no Markdown writes, no `followup_message` loops.
 
-**Still manual (agent owns Markdown):** **primary write** is in-turn (resume fields + semantic `log.md`); **catch-up** via `/agent-memory sync` or by following the skill's `references/sync.md` without invoking the skill. Full contract: `instructions.md` → _Harness parity — memory contract_. Consolidation is `/agent-memory consolidate` only. `sessionStart` injects a short status (branch, Checkpoint freshness, pending path count) — never Markdown.
+**Still manual (agent owns Markdown):** **primary write** is in-turn (resume fields + semantic `log.md` — after commit / before compact / when Status shows stale Checkpoint or pending paths); **catch-up** via `/agent-memory sync` or by following the skill's `references/sync.md` without invoking the skill; **consume** pending paths with `agent-memory-consume-evidence.sh` after meaning is written. Full contract: `instructions.md` → _Harness parity — memory contract_. Consolidation is `/agent-memory consolidate` only. `sessionStart` injects a short status (branch, Checkpoint freshness, pending path count, Action) — never Markdown.
 
 ## TL;DR
 
@@ -45,7 +45,7 @@ Per-tool events are **not** used — path evidence comes from git at full checkp
 hooks/
 ├── install-hooks.sh
 ├── lib/merge-hooks.mjs
-├── agent-memory-hooks/   # common + sync + session (install all three)
+├── agent-memory-hooks/   # common + sync + session + consume-evidence (install all four)
 ├── <harness>/            # cursor, claude-code, codex, …
 └── git/pre-commit
 ```
@@ -58,7 +58,7 @@ hooks/
 
 ## Install notes
 
-Copy **all three** files from `hooks/agent-memory-hooks/` — never sync+session alone. Re-run the installer when hook scripts change.
+Copy **all four** files from `hooks/agent-memory-hooks/` — never sync+session alone. Re-run the installer when hook scripts change. After `/agent-memory sync` writes meaning that covers pending paths, run `agent-memory-consume-evidence.sh` (or let sync do it) to clear `session_touched_files`.
 
 **Trust boundary:** hooks run scripts from your project directory (same trust model as git hooks). Only install when you trust the project and the `@dosx/agent-memory` package version you install. See [SECURITY.md](../SECURITY.md).
 
