@@ -53,11 +53,23 @@ assert_before() {
 # --- Skeleton shape ---
 [[ ! -e "$skeleton/learnings.md" ]] || fail "learnings.md must stay out of the skeleton"
 for required in instructions.md index.md current.md decisions.md log.md \
-                active-work/TEMPLATE.md .gitignore; do
+                active-work/TEMPLATE.md .gitignore gitignore; do
   [[ -e "$skeleton/$required" ]] || fail "skeleton missing $required"
 done
 assert_contains "$skeleton/.gitignore" '.hook-sync-state' \
   "skeleton .gitignore ignores hook state"
+assert_contains "$skeleton/.gitignore" '.hook-sync-state.lock' \
+  "skeleton .gitignore ignores hook state lock"
+assert_contains "$skeleton/.gitignore" '.hook-sync-state.*' \
+  "skeleton .gitignore ignores hook state temp siblings"
+assert_contains "$skeleton/gitignore" '.hook-sync-state' \
+  "skeleton pack-safe gitignore ignores hook state"
+assert_contains "$skeleton/gitignore" '.hook-sync-state.lock' \
+  "skeleton pack-safe gitignore ignores lock"
+assert_contains "$skeleton/gitignore" '.hook-sync-state.*' \
+  "skeleton pack-safe gitignore ignores temp siblings"
+cmp -s "$skeleton/.gitignore" "$skeleton/gitignore" ||
+  fail "skeleton .gitignore and gitignore must stay identical"
 assert_contains "$skeleton/current.md" '## In progress' "current keeps In progress"
 assert_contains "$skeleton/active-work/TEMPLATE.md" '## Task' "active-work keeps Task"
 assert_contains "$skeleton/active-work/TEMPLATE.md" '## Next step' "active-work keeps Next step"
@@ -100,6 +112,47 @@ assert_contains "$instructions" '- Insight: reusable pattern in one or two sente
   "learning Insight field"
 assert_contains "$instructions" 'learnings-<topic>.md' "topic split convention"
 assert_contains "$instructions" 'when editing:' "scope hint convention"
+assert_contains "$instructions" '**/**/*' "overbroad denylist includes **/ **/* equivalent"
+assert_contains "$instructions" '*/**' "overbroad denylist includes */** equivalent"
+assert_contains "$instructions" '**/*.ts' "overbroad denylist includes extension-wide **/*.ts"
+assert_contains "$instructions" '**/**/*.ts' "overbroad denylist includes near-equivalent **/**/*.ts"
+assert_contains "$instructions" 'src/**/*' "overbroad denylist includes src/**/*"
+assert_contains "$instructions" '*/*' "overbroad denylist includes */*"
+assert_contains "$instructions" '?*/*' "overbroad denylist includes ?*/*"
+assert_contains "$instructions" '**/*/*' "overbroad denylist includes **/*/*"
+assert_contains "$instructions" '*/*/*' "overbroad denylist includes */*/*"
+assert_contains "$instructions" '**/*/**' "overbroad denylist includes **/*/**"
+assert_contains "$instructions" 'companions do not redeem' "overbroad rejects banned glob with companions"
+assert_contains "$instructions" 'to fixpoint' "overbroad normalize runs to fixpoint"
+assert_contains "$instructions" '/./hooks/**' "overbroad normalize collapses /./ segments"
+assert_contains "$instructions" './/./hooks/**' "overbroad normalize collapses .//./ segments"
+assert_contains "$instructions" './/hooks/**' "overbroad normalize collapses .// segments"
+assert_contains "$instructions" '/hooks/**' "overbroad normalize strips leading slash"
+assert_contains "$instructions" 'still starts with `/` after normalize' \
+  "overbroad rejects absolute globs after normalize"
+assert_contains "$instructions" 'structural' "overbroad has structural multi-segment reject"
+assert_contains "$instructions" '*/*/*/*' "overbroad structural examples include */*/*/*"
+assert_contains "$instructions" '*/*.<ext>' "overbroad rejects shallow */*.<ext>"
+assert_contains "$instructions" '*/*.*' "overbroad rejects */*.*"
+assert_contains "$instructions" '*/*/*.ts' "overbroad rejects depth≥3 star+ext */*/*.ts"
+assert_contains "$instructions" 'no literal path segment' \
+  "overbroad rejects wildcard-only+ext globs without literal prefix"
+assert_contains "$instructions" 'hooks/**' "overbroad Always-load rejects hooks/**"
+assert_contains "$instructions" '**/*.<ext>' "overbroad Always-load rejects any **/ *.<ext>"
+assert_contains "$instructions" '<top-level-dir>/**' "overbroad Always-load rejects top-level dir/**"
+assert_contains "$instructions" 'src/**' "overbroad denylist includes src/**"
+assert_contains "$lint" 'companions do not redeem' "lint overbroad rejects companions"
+assert_contains "$lint" '?*/*' "lint overbroad includes ?*/*"
+assert_contains "$lint" 'to fixpoint' "lint overbroad normalize runs to fixpoint"
+assert_contains "$lint" '/./hooks/**' "lint overbroad normalize collapses /./"
+assert_contains "$lint" './/./hooks/**' "lint overbroad normalize collapses .//./"
+assert_contains "$lint" './/hooks/**' "lint overbroad normalize collapses .//"
+assert_contains "$lint" 'still starts with `/`' "lint overbroad rejects absolute globs"
+assert_contains "$lint" 'structural' "lint overbroad has structural reject"
+assert_contains "$lint" 'hooks/**' "lint overbroad rejects hooks/**"
+assert_contains "$lint" '*/*.<ext>' "lint overbroad rejects */*.<ext>"
+assert_contains "$lint" '*/*/*.ts' "lint overbroad rejects */*/*.ts"
+assert_contains "$lint" '*/*.*' "lint overbroad rejects */*.*"
 assert_contains "$instructions" 'prefer what to do' "learning writing guidance"
 assert_contains "$instructions" 'pending-doc' "pending-doc lifecycle"
 assert_contains "$instructions" '/agent-memory learn' "learn command named in method"
@@ -109,17 +162,30 @@ assert_absent "$instructions" 'Soft warning budgets:' \
 # --- Init / update ensure .gitignore (dotfile-safe) ---
 init="$repo_root/skills/agent-memory/references/init.md"
 update="$repo_root/skills/agent-memory/references/update.md"
-assert_contains "$init" 'vendor/memory/.gitignore' "init names vendor .gitignore"
+assert_contains "$init" 'vendor/memory/gitignore' "init names pack-safe vendor gitignore"
 assert_contains "$init" 'explicitly' "init requires explicit .gitignore write"
 assert_contains "$init" 'verify `.agents/memory/.gitignore` exists' \
   "init verifies .gitignore after copy"
+assert_contains "$init" '.hook-sync-state.lock' \
+  "init requires lock sibling ignore"
 assert_contains "$update" 'Ensure `.agents/memory/.gitignore` exists' \
   "update ensures .gitignore"
+assert_contains "$update" 'vendor/memory/gitignore' \
+  "update reads pack-safe vendor gitignore"
 assert_contains "$update" 'do **not** rely on directory listings' \
   "update does not rely on Glob for .gitignore"
+assert_contains "$update" '.hook-sync-state.lock' \
+  "update merge requires lock sibling ignore"
+assert_contains "$update" '.hook-sync-state.*' \
+  "update merge requires temp sibling ignore"
 assert_contains "$update" '`when editing:` scope hints' \
   "update preserves when-editing hints on index merge"
 assert_contains "$lint" '.agents/memory/.gitignore' "lint checks .gitignore"
+assert_contains "$lint" 'vendor/memory/gitignore' "lint remediation uses pack-safe gitignore"
+assert_contains "$lint" '.hook-sync-state.lock' \
+  "lint requires lock sibling ignore"
+assert_contains "$lint" '.hook-sync-state.*' \
+  "lint requires temp sibling ignore"
 
 # --- Bootstrap ---
 assert_contains "$bootstrap" 'A — Source inventory.' "bootstrap inventories sources"
@@ -193,6 +259,46 @@ assert_contains "$skill" 'references/learn.md' "SKILL points at learn reference"
 assert_contains "$skill" '| `/agent-memory learn`' "SKILL help lists learn"
 assert_contains "$skill" '**Exception:** primary write in-turn' \
   "SKILL allows in-turn gated capture"
+assert_contains "$skill" 'Never edit `instructions.md` except' \
+  "skill forbids editing instructions.md outside update"
+assert_contains "$skill" 'Never edit harness instruction carriers except' \
+  "skill forbids harness carrier edits outside init/update"
+assert_absent "$skill" 'Edit(.agents/memory/**)' \
+  "skill allowed-tools must not pre-approve all memory paths"
+assert_absent "$skill" 'Edit(.agents/memory/instructions.md)' \
+  "skill allowed-tools must not pre-approve instructions.md"
+assert_absent "$skill" 'Edit(.agents/memory/decisions.md)' \
+  "skill allowed-tools must not pre-approve decisions.md"
+assert_absent "$skill" 'Edit(.agents/memory/learnings.md)' \
+  "skill allowed-tools must not pre-approve learnings.md"
+assert_absent "$skill" 'Edit(.agents/memory/learnings-*.md)' \
+  "skill allowed-tools must not pre-approve learnings-*.md"
+assert_absent "$skill" 'Edit(AGENTS.md)' \
+  "skill allowed-tools must not pre-approve AGENTS.md"
+assert_absent "$skill" 'Edit(.cursor/rules/agent-memory.mdc)' \
+  "skill allowed-tools must not pre-approve cursor mdc"
+assert_absent "$skill" 'Bash(git branch:*)' \
+  "skill must not pre-approve mutative git branch:*"
+assert_absent "$skill" 'Bash(git diff*)' \
+  "skill must not pre-approve git diff* (covers --output)"
+assert_absent "$skill" 'Bash(git log*)' \
+  "skill must not pre-approve git log*"
+assert_contains "$skill" 'Bash(git branch --show-current)' \
+  "skill allows exact read-only git branch --show-current"
+assert_contains "$skill" 'Bash(git status)' \
+  "skill allows exact git status"
+assert_contains "$sync" 'Boundary targets' \
+  "sync scopes writes to Boundary targets only"
+assert_contains "$sync" 'Do **not** write `decisions.md`' \
+  "sync must not write decisions/learnings"
+assert_contains "$sync" 'outside skill `allowed-tools` pre-approval' \
+  "sync notes decisions/learnings are outside pre-approval"
+assert_contains "$sync" 'adds or widens' \
+  "sync --auto still confirms when-editing hint adds"
+assert_absent "$sync" 'scoped to `.agents/memory/**`' \
+  "sync must not re-open full memory/** write scope"
+assert_contains "$skill" 'still **never** write `decisions.md`' \
+  "skill host-ignores fallback keeps sync durable-recall ban"
 index="$repo_root/skills/agent-memory/vendor/memory/index.md"
 assert_contains "$index" 'when editing:' "index documents scope hints"
 assert_contains "$index" 'learnings-<topic>.md' "index documents topic splits"

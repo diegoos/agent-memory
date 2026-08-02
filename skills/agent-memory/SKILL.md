@@ -30,13 +30,14 @@ compatibility: >-
   Works offline from the skill package vendor skeleton. Hook installation is
   user-run (shell script or npx CLI), not performed by this skill.
 allowed-tools: >-
-  Read Grep Glob Task Edit(.agents/memory/**) Write(.agents/memory/**)
-  Edit(AGENTS.md) Edit(CLAUDE.md) Edit(GEMINI.md) Write(AGENTS.md)
-  Write(CLAUDE.md) Write(GEMINI.md) Edit(.cursor/rules/agent-memory.mdc)
-  Write(.cursor/rules/agent-memory.mdc)
-  Edit(.github/instructions/agent-memory.instructions.md)
-  Write(.github/instructions/agent-memory.instructions.md)
-  Bash(git branch:*) Bash(git status:*) Bash(git diff:*) Bash(git log:*)
+  Read Grep Glob Task
+  Edit(.agents/memory/current.md) Write(.agents/memory/current.md)
+  Edit(.agents/memory/index.md) Write(.agents/memory/index.md)
+  Edit(.agents/memory/log.md) Write(.agents/memory/log.md)
+  Edit(.agents/memory/active-work/**) Write(.agents/memory/active-work/**)
+  Edit(.agents/memory/.version) Write(.agents/memory/.version)
+  Edit(.agents/memory/.gitignore) Write(.agents/memory/.gitignore)
+  Bash(git branch --show-current) Bash(git status) Bash(git status -sb)
 disable-model-invocation: true
 ---
 
@@ -56,14 +57,14 @@ Pre-approved via the `allowed-tools` frontmatter — a space-separated, host-spe
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Read`, `Grep`, `Glob`   | Read-only project analysis (`bootstrap`), lint structural checks, migration diffs (`update`), reading `references/*.md` and `vendor/`.                                                                                      |
 | `Task`                   | Parallel read-only subagents in `bootstrap`. Optional — fall back to sequential analysis.                                                                                                                                   |
-| `Edit`, `Write` (scoped) | `.agents/memory/**`, harness instruction files per `references/init.md` (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursor/rules/agent-memory.mdc`, `.github/instructions/agent-memory.instructions.md`). **Not** hook paths. |
-| `Bash(git …)`            | Read-only git used by `sync` / `lint`: `branch`, `status`, `diff`, `log`. **Never** `git clone` / `fetch` / `pull` / `push`.                                                                                                |
+| `Edit`, `Write` (scoped) | Sync/bootstrap hot path only (`current.md`, `index.md`, `log.md`, `active-work/**`, `.version`, `.gitignore`). **`decisions.md` / `learnings.md` / `learnings-*.md` are not pre-approved** — `learn` / `consolidate` / gated in-turn capture expect a host permission prompt (keeps sync `--auto` from writing durable recall). **Not** `instructions.md`, harness carriers (`AGENTS.md` / `CLAUDE.md` / `GEMINI.md` / `.mdc` / `.instructions.md` — host should prompt on `init`/`update`), hook paths, or other memory paths. |
+| `Bash(git …)`            | Read-only git used by `sync` / `lint`: exact `branch --show-current`, `status`, `status -sb`. **`git diff` / `git log` are not pre-approved** (host should prompt) so globs cannot cover `diff --output` or suffix chaining. **Never** mutative git. |
 
-**Deliberately not pre-approved** (the host should still prompt): file deletion (`rm`, used only on confirmed `update`/cleanup) and any other shell. This keeps the "confirm sensitive changes" rule intact. The skill never writes harness hook scripts or configs — the user runs the installer.
+**Deliberately not pre-approved** (the host should still prompt): `decisions.md`, `learnings.md` / `learnings-*.md`, harness instruction carriers (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursor/rules/agent-memory.mdc`, `.github/instructions/agent-memory.instructions.md`), `instructions.md`, file deletion (`rm`, used only on confirmed `update`/cleanup), and any other shell. This keeps the "confirm sensitive changes" rule intact and keeps sync Boundary enforceable at the host. The skill never writes harness hook scripts or configs — the user runs the installer.
 
 ### Write boundary
 
-Create, edit, or delete **only** under `.agents/memory/**`, plus the harness instruction files listed in `references/init.md` — and in those **only the agent-memory block** (between `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain tags — to wire it in `init` and refresh it in `update`; for `.mdc`/`.instructions.md`, frontmatter plus delimited body). Creating a **subdirectory** inside an existing harness dir (e.g. `.cursor/rules/`, `.github/instructions/`) is allowed when wiring native instruction files; never create the harness root itself unless the user explicitly requests it. **Never** write under `.cursor/hooks/`, `.claude/hooks/`, `.codex/hooks/`, `.opencode/hooks/`, `.opencode/plugin/`, `.github/hooks/`, `.gemini/hooks/`, or merge `hooks.json` / harness `settings.json` for hooks. Never touch content outside those scopes, application code, other configs, or other docs. Read the rest of the workspace freely.
+Create, edit, or delete **only** under the memory content paths listed in `allowed-tools`. Harness instruction files in `references/init.md` may be edited **only** during `/agent-memory init` or `/agent-memory update`, **only the agent-memory block** (between `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain tags; for `.mdc`/`.instructions.md`, frontmatter plus delimited body) — expect a host permission prompt. **`instructions.md` is not pre-approved** — only `/agent-memory update` may edit it, and the host should prompt. Creating a **subdirectory** inside an existing harness dir (e.g. `.cursor/rules/`, `.github/instructions/`) is allowed when wiring native instruction files; never create the harness root itself unless the user explicitly requests it. **Never** write under `.cursor/hooks/`, `.claude/hooks/`, `.codex/hooks/`, `.opencode/hooks/`, `.opencode/plugin/`, `.github/hooks/`, `.gemini/hooks/`, or merge `hooks.json` / harness `settings.json` for hooks. Never touch content outside those scopes, application code, other configs, or other docs. Read the rest of the workspace freely.
 
 ### Repository source (vendor)
 
@@ -135,7 +136,7 @@ Method & conventions: `.agents/memory/instructions.md`
 
 ## Shared rules (apply to every command)
 
-- **Never modify project memory content** — `current.md`, `active-work/*`, `decisions.md`, `log.md`, `learnings.md`, `learnings-*.md`, legacy `domains/*` / `features/*`, and other user-authored recall — unless a command explicitly says so, and only after the user confirms. **Exception:** primary write in-turn and `bootstrap` follow `instructions.md` directly (gated learnings/decisions are written when discovered, without this skill's per-entry confirmation); per-diff confirmation applies to `/agent-memory learn`, `consolidate`, and `lint --fix` edits. Never edit project docs/ADRs outside `.agents/memory/`.
+- **Never modify project memory content** — `current.md`, `active-work/*`, `decisions.md`, `log.md`, `learnings.md`, `learnings-*.md`, legacy `domains/*` / `features/*`, and other user-authored recall — unless a command explicitly says so, and only after the user confirms. **Exception:** primary write in-turn and `bootstrap` follow `instructions.md` directly (gated learnings/decisions are written when discovered, without this skill's per-entry confirmation); per-diff confirmation applies to `/agent-memory learn`, `consolidate`, and `lint --fix` edits. Never edit project docs/ADRs outside `.agents/memory/`. **Never edit `instructions.md` except during `/agent-memory update`** (show the diff; host should prompt because it is outside `allowed-tools`). **Never edit harness instruction carriers except during `/agent-memory init` or `/agent-memory update`** (block-only; host should prompt).
 - Run memory/orchestration steps inside the user's current agent. **Do not download, clone, or execute hook installers** — only print instructions for the user to run.
-- If the host ignores `allowed-tools` granularity: still **never** run `git clone`, `git fetch`, `git pull`, or any network fetch for this skill.
+- If the host ignores `allowed-tools` granularity: still **never** run `git clone`, `git fetch`, `git pull`, or any network fetch for this skill; still **never** edit `instructions.md` outside `/agent-memory update`; still **never** edit harness carriers outside `init`/`update` (block-only); still **never** write `decisions.md` / `learnings.md` / `learnings-*.md` from `sync` (or when following `references/sync.md` without the skill) — those stay learn / consolidate / gated in-turn only.
 - All paths are relative to the target project root unless stated otherwise (vendor paths are relative to this skill directory).

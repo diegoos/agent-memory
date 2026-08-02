@@ -51,7 +51,10 @@ Hooks are **user-installed** (skill only prints commands) — see the [hooks REA
 ### Manual
 
 ```bash
-mkdir -p .agents && cp -R memory .agents/memory
+mkdir -p .agents
+cp -R memory .agents/memory
+# npm omits files named `.gitignore` — copy the pack-safe template explicitly:
+cp memory/gitignore .agents/memory/.gitignore
 ```
 
 Paste the agent-memory block from [`../references/agent-block.md`](../references/agent-block.md) into your agent file(s). On Cursor/Copilot, `init` wires the native instruction file when the harness root exists; install hooks separately.

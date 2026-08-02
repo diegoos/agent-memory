@@ -4,7 +4,7 @@ Guided, conservative promotion and pruning of memory. Turns closed-session noise
 
 ## Boundary
 
-- **May edit** under `.agents/memory/**` only (with per-diff confirmation).
+- **May edit** (with per-diff confirmation): paths in `SKILL.md` `allowed-tools`, plus `decisions.md` / `learnings.md` / `learnings-*.md` when a promotion needs them — those three are **not** pre-approved (expect a host permission prompt). **Not** `instructions.md` (that is `/agent-memory update` only).
 - **Must not** edit README, docs, specs, ADRs, issues, or harness agent files.
 - When an external promotion is needed, report the suggested path and keep the fact as `pending-doc` until the user updates the external source.
 - Never prune the **current session** heading in `log.md`.

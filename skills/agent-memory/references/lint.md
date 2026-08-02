@@ -82,7 +82,7 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
 
    Also report if `.agents/memory/.version` is missing — the memory was likely installed manually without the skill, so `update` cannot track its version.
 
-   Report if `.agents/memory/.gitignore` is missing or does not list `.hook-sync-state` — hooks will leave untracked state that may be committed by mistake. Suggest copying from the skill's `vendor/memory/.gitignore`.
+   Report if `.agents/memory/.gitignore` is missing or does not list **all** of `.hook-sync-state`, `.hook-sync-state.lock`, and `.hook-sync-state.*` — hooks will leave untracked state (including lock/temp siblings from `mktemp`) that may be committed by mistake. Suggest copying from the skill's `vendor/memory/gitignore` (pack-safe name; Write destination as `.agents/memory/.gitignore`).
 
    **Stale resume / evidence ahead of memory (warnings).** From the **project root**:
 
@@ -172,6 +172,7 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    - **Learning/pitfall without evidence / use trigger / verified** — missing fields on H2 entries or legacy one-liners.
    - **Legacy learning one-liner** — `- [YYYY-MM-DD] [learning|pitfall] …` without an H2 heading; suggest migrating to the H2 form when editing (do not auto-rewrite).
    - **Invalid or stale `when editing:`** — per the contract in `instructions.md` → _Always load_: glob that matches no repo path, non-repo-root-relative glob, or a topic split with no hint when evidence paths are obvious. Cross-cutting `learnings.md` without a hint is fine.
+   - **Overbroad `when editing:`** — reject **any** near-always-on glob in the hint list (companions do not redeem it). Normalize first: run **to fixpoint** — repeat until stable: strip a leading `./`, strip a leading `/`, and collapse `//` empty segments (so `/./hooks/**`, `/.//hooks/**`, `.//./hooks/**`, `././hooks/**`, `./hooks/**`, `.//hooks/**`, and `/hooks/**` all become `hooks/**`); reject any glob that still starts with `/` after normalize; then iteratively collapse `**/**` → `**`. Then reject (1) **structural** — two or more slash-separated segments that are each only `*`, `?*`, or `**` (e.g. `*/*`, `*/*/*`, `*/*/*/*`, `?*/*`, `?*/*/*`, `*/*/**`); also any glob with **no literal path segment** whose parts are only pure wildcards and/or `*.*` / `*.<ext>` at any depth (e.g. `*/*.*`, `*/*.<ext>`, `*/*/*.ts`, `*/*/*/*.json`, `?*/*/*.sh`, `*/*/*.*`); (2) **any** `**/*.<ext>` or `**/*.*`; (3) **any** `<top-level-dir>/**` and near-equivalents (`dir/**/*`, `dir/*/**`, `**/dir/**`) including `hooks/**`, `tests/**`, `docs/**`, `.agents/**`; (4) **explicit denylist** — including `**`, `**/*`, `**/**`, `**/**/*`, `*/**`, `*/*`, `?*/*`, `*/*/*`, `*/*/**`, `**/*/**`, `**/*/*`, `*`, `*.*`, `*.md`, `**/*.md`, `**/*.*`, `*/*.*`, `**/*.ts`, `**/*.tsx`, `**/*.js`, `**/*.jsx`, `**/*.py`, `**/**/*.ts`, `**/*/*.ts`, `*/**/*.ts`, `src/**`, `src/**/*`, `src/**/**`, `lib/**`, `app/**`, or `packages/**`. Prefer path-scoped globs with evidence.
    - **Stale `pending-doc` learnings.**
    - **Contradictions** — memory vs canonical source or code.
    - **Legacy path-only bullets / empty headings / Touched files** — candidates for consolidate.

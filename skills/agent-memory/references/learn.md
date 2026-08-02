@@ -18,7 +18,7 @@ Examples:
 
 ## Boundary
 
-- **May create/edit** `learnings.md`, `learnings-<topic>.md`, and the matching link line in `index.md` (with confirmation).
+- **May create/edit** `learnings.md`, `learnings-<topic>.md`, and the matching link line in `index.md` (with confirmation). `learnings*` paths are **outside** skill `allowed-tools` pre-approval — expect a host permission prompt.
 - **Must not** edit `current.md`, `active-work/*`, `decisions.md`, `log.md`, `instructions.md`, or anything outside `.agents/memory/`.
 - **Must not** copy docs into memory or invent evidence.
 - Skill stays manual-only — never auto-trigger learn.
