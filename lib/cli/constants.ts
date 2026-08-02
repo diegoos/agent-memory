@@ -16,8 +16,6 @@ export const HARNESS_ALIASES: Record<string, Harness> = {
   github: "copilot",
 };
 
-export const HARNESS_SET = new Set<string>(CANONICAL_HARNESSES);
-
 export const HARNESS_HOOKS_DIR: Record<Harness, string> = {
   cursor: ".cursor/hooks",
   claude: ".claude/hooks",

@@ -47,7 +47,6 @@ var HARNESS_ALIASES = {
   "claude-code": "claude",
   github: "copilot"
 };
-var HARNESS_SET = new Set(CANONICAL_HARNESSES);
 var HARNESS_HOOKS_DIR = {
   cursor: ".cursor/hooks",
   claude: ".claude/hooks",
@@ -146,14 +145,87 @@ function memoryExists() {
   return import_node_fs.default.existsSync(import_node_path.default.join(projectDir(), ".agents", "memory"));
 }
 function normalizeHarness(name) {
-  if (HARNESS_SET.has(name))
+  if (CANONICAL_HARNESSES.includes(name)) {
     return name;
+  }
   return HARNESS_ALIASES[name] ?? null;
 }
 
 // lib/cli/fs-install.ts
 var import_node_fs2 = __toESM(require("node:fs"));
 var import_node_path2 = __toESM(require("node:path"));
+function installSkillAtomic(opts) {
+  const { skillSource, onError } = opts;
+  if (!import_node_fs2.default.existsSync(skillSource)) {
+    onError(`missing skill at ${skillSource}`);
+  }
+  const dest = installedSkillDir();
+  refuseSymlinkComponents(dest, onError);
+  const existed = import_node_fs2.default.existsSync(dest);
+  const parent = import_node_path2.default.dirname(dest);
+  import_node_fs2.default.mkdirSync(parent, { recursive: true });
+  const staging = import_node_fs2.default.mkdtempSync(import_node_path2.default.join(parent, ".agent-memory-skill-"));
+  const backup = `${dest}.bak-${process.pid}-${Date.now()}`;
+  let movedAside = false;
+  try {
+    import_node_fs2.default.cpSync(skillSource, staging, { recursive: true, force: true });
+  } catch (err) {
+    import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+    onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (existed) {
+    try {
+      import_node_fs2.default.renameSync(dest, backup);
+      movedAside = true;
+    } catch (err) {
+      import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+      onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  try {
+    import_node_fs2.default.renameSync(staging, dest);
+  } catch {
+    try {
+      import_node_fs2.default.cpSync(staging, dest, { recursive: true, force: true });
+      import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+    } catch (err) {
+      if (movedAside) {
+        const ok = restoreBackup(backup, dest);
+        import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+        if (!ok) {
+          onError(`skill install failed and restore failed; previous skill left at ${backup}`);
+        }
+        onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      if (!import_node_fs2.default.existsSync(dest) && import_node_fs2.default.existsSync(staging)) {
+        try {
+          import_node_fs2.default.renameSync(staging, dest);
+        } catch {
+          try {
+            import_node_fs2.default.cpSync(staging, dest, { recursive: true, force: true });
+            import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+          } catch {
+            import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+            onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
+      } else {
+        import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+        onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+  if (movedAside && import_node_fs2.default.existsSync(backup)) {
+    try {
+      import_node_fs2.default.rmSync(backup, { recursive: true, force: true });
+    } catch {}
+  }
+  return {
+    destRel: relPath(dest),
+    files: countFiles(dest),
+    existed
+  };
+}
 function isSymlink(p) {
   try {
     return import_node_fs2.default.lstatSync(p).isSymbolicLink();
@@ -201,101 +273,26 @@ function countFiles(dir) {
 }
 function restoreBackup(backup, dest) {
   if (!import_node_fs2.default.existsSync(backup)) {
-    return { ok: import_node_fs2.default.existsSync(dest), method: "none" };
+    return import_node_fs2.default.existsSync(dest);
   }
   if (import_node_fs2.default.existsSync(dest)) {
     try {
       import_node_fs2.default.rmSync(dest, { recursive: true, force: true });
     } catch {
-      return { ok: false, method: "none" };
+      return false;
     }
   }
   try {
     import_node_fs2.default.renameSync(backup, dest);
-    return { ok: true, method: "rename" };
+    return true;
   } catch {
     try {
       import_node_fs2.default.cpSync(backup, dest, { recursive: true, force: true });
-      return { ok: true, method: "copy" };
+      return true;
     } catch {
-      return { ok: false, method: "none" };
+      return false;
     }
   }
-}
-function installSkillAtomic(opts) {
-  const { skillSource, onError } = opts;
-  if (!import_node_fs2.default.existsSync(skillSource)) {
-    onError(`missing skill at ${skillSource}`);
-  }
-  const dest = import_node_path2.default.join(projectDir(), ".agents", "skills", "agent-memory");
-  refuseSymlinkComponents(dest, onError);
-  if (import_node_fs2.default.existsSync(dest) && isSymlink(dest)) {
-    onError(`refusing to overwrite symlink: ${dest}`);
-  }
-  const existed = import_node_fs2.default.existsSync(dest);
-  const parent = import_node_path2.default.dirname(dest);
-  import_node_fs2.default.mkdirSync(parent, { recursive: true });
-  const staging = import_node_fs2.default.mkdtempSync(import_node_path2.default.join(parent, ".agent-memory-skill-"));
-  const backup = `${dest}.bak-${process.pid}-${Date.now()}`;
-  let movedAside = false;
-  try {
-    import_node_fs2.default.cpSync(skillSource, staging, { recursive: true, force: true });
-  } catch (err) {
-    import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-    onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  if (existed) {
-    try {
-      import_node_fs2.default.renameSync(dest, backup);
-      movedAside = true;
-    } catch (err) {
-      import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-      onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-  try {
-    import_node_fs2.default.renameSync(staging, dest);
-  } catch {
-    try {
-      import_node_fs2.default.cpSync(staging, dest, { recursive: true, force: true });
-      import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-    } catch (err) {
-      if (movedAside) {
-        const restored = restoreBackup(backup, dest);
-        import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-        if (!restored.ok) {
-          onError(`skill install failed and restore failed; previous skill left at ${backup}`);
-        }
-        onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
-      if (!import_node_fs2.default.existsSync(dest) && import_node_fs2.default.existsSync(staging)) {
-        try {
-          import_node_fs2.default.renameSync(staging, dest);
-        } catch {
-          try {
-            import_node_fs2.default.cpSync(staging, dest, { recursive: true, force: true });
-            import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-          } catch {
-            import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-            onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
-          }
-        }
-      } else {
-        import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-        onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
-  }
-  if (movedAside && import_node_fs2.default.existsSync(backup)) {
-    try {
-      import_node_fs2.default.rmSync(backup, { recursive: true, force: true });
-    } catch {}
-  }
-  return {
-    destRel: relPath(dest),
-    files: countFiles(dest),
-    existed
-  };
 }
 
 // lib/cli/hooks-run.ts
@@ -324,12 +321,10 @@ function buildInstallerEnv(version) {
     AGENT_MEMORY_PROJECT_DIR: projectDir(),
     AGENT_MEMORY_VERSION: version
   };
-  for (const key of Object.keys(process.env)) {
-    if (ENV_ALLOWLIST_EXACT.has(key)) {
-      const val = process.env[key];
-      if (val !== undefined)
-        env[key] = val;
-    }
+  for (const key of ENV_ALLOWLIST_EXACT) {
+    const val = process.env[key];
+    if (val !== undefined)
+      env[key] = val;
   }
   return env;
 }
@@ -502,32 +497,13 @@ function createRawMenuController(opts) {
         startEscTimer();
         return;
       }
-      if (isAlphanumeric(ch)) {
-        escState = "normal";
-      } else {
-        escState = "normal";
+      escState = "normal";
+      if (!isAlphanumeric(ch)) {
         opts.onAbort();
         return;
       }
     }
-    if (escState === "csi") {
-      if (!isCsiFinal(ch)) {
-        startEscTimer();
-        return;
-      }
-      clearEscTimer();
-      escState = "normal";
-      if (ch === "A") {
-        opts.onUp();
-        return;
-      }
-      if (ch === "B") {
-        opts.onDown();
-        return;
-      }
-      return;
-    }
-    if (escState === "ss3") {
+    if (escState === "csi" || escState === "ss3") {
       if (!isCsiFinal(ch)) {
         startEscTimer();
         return;
