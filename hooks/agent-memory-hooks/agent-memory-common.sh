@@ -52,16 +52,15 @@ _parse_hook_stdin_sed() {
 
 parse_hook_stdin() {
   local input="${1:-}"
-  local parsed jq_status=0
+  local parsed
   hook_stdin_session_id=""
   hook_stdin_cwd=""
   [ -n "$input" ] || return 0
   if [ "$_AMC_HAVE_JQ" -eq 1 ]; then
-    parsed=$(printf '%s' "$input" | jq -r '
+    if parsed=$(printf '%s' "$input" | jq -r '
       [ (.session_id // .conversation_id // .sessionId // ""),
         (.cwd // (.workspace_roots[0] // ""))
-      ] | @tsv' 2>/dev/null) || jq_status=$?
-    if [ "$jq_status" -eq 0 ] && [ -n "$parsed" ]; then
+      ] | @tsv' 2>/dev/null) && [ -n "$parsed" ]; then
       hook_stdin_session_id=${parsed%%$'\t'*}
       hook_stdin_cwd=${parsed#*$'\t'}
       return 0
@@ -242,17 +241,26 @@ _pick_external_session_id() {
   printf '%s' "$cand"
 }
 
+# Fixed names only — no dynamic eval of env keys.
+_session_binding_env_value() {
+  case "$1" in
+    AGENT_MEMORY_SESSION_ID) printf '%s' "${AGENT_MEMORY_SESSION_ID:-}" ;;
+    CURSOR_SESSION_ID) printf '%s' "${CURSOR_SESSION_ID:-}" ;;
+    GEMINI_SESSION_ID) printf '%s' "${GEMINI_SESSION_ID:-}" ;;
+    *) printf '' ;;
+  esac
+}
+
 resolve_session_id() {
   local stdin_sid="${1:-}"
   local allow_state_fallback="${2:-1}"
-  local picked stdin_picked env_picked env_name env_val
+  local picked stdin_picked env_picked env_name from_binding from_current
 
-  # Prefer harness stdin when it disagrees with inherited session env vars
-  # (stale shell env must not rebind away from the live harness session).
+  # Prefer harness stdin over conflicting inherited session env (stale shell
+  # must not rebind away from the live harness session).
   if stdin_picked=$(_pick_external_session_id "$stdin_sid"); then
     for env_name in AGENT_MEMORY_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID; do
-      eval "env_val=\${${env_name}:-}"
-      if env_picked=$(_pick_external_session_id "$env_val"); then
+      if env_picked=$(_pick_external_session_id "$(_session_binding_env_value "$env_name")"); then
         if [ "$stdin_picked" != "$env_picked" ]; then
           printf 'agent-memory: ignoring stale %s; preferring harness stdin session id\n' \
             "$env_name" >&2
@@ -261,60 +269,54 @@ resolve_session_id() {
         fi
       fi
     done
+    printf '%s' "$stdin_picked"
+    return
   fi
 
-  if picked=$(_pick_external_session_id "${AGENT_MEMORY_SESSION_ID:-}"); then
-    printf '%s' "$picked"
-    return
-  fi
-  if picked=$(_pick_external_session_id "${CURSOR_SESSION_ID:-}"); then
-    printf '%s' "$picked"
-    return
-  fi
-  if picked=$(_pick_external_session_id "${GEMINI_SESSION_ID:-}"); then
-    printf '%s' "$picked"
-    return
-  fi
-  if picked=$(_pick_external_session_id "$stdin_sid"); then
-    printf '%s' "$picked"
-    return
-  fi
-  if [ -n "$stdin_sid" ] && ! is_valid_external_binding_id "$stdin_sid"; then
+  for env_name in AGENT_MEMORY_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID; do
+    if picked=$(_pick_external_session_id "$(_session_binding_env_value "$env_name")"); then
+      printf '%s' "$picked"
+      return
+    fi
+  done
+
+  if [ -n "$stdin_sid" ]; then
     printf 'agent-memory: ignoring invalid session id from stdin/env\n' >&2
   fi
-  if [ "$allow_state_fallback" = "1" ]; then
-    # session_binding is canonical (reset_session_state_if_changed). Prefer it
-    # over current_session_id so a stale current cannot resurrect the wrong
-    # session or clear/retain paths incorrectly when the fields diverge.
-    local from_current from_binding
-    from_binding=$(read_state session_binding "")
-    if [ -n "$from_binding" ]; then
-      if [ "$from_binding" = "$NO_ID_SESSION_SENTINEL" ]; then
-        printf ''
-        return
-      fi
-      if is_valid_external_binding_id "$from_binding"; then
-        printf '%s' "$from_binding"
-      else
-        printf 'agent-memory: ignoring invalid session_binding in state\n' >&2
-        printf ''
-      fi
+
+  [ "$allow_state_fallback" = "1" ] || {
+    printf ''
+    return
+  }
+
+  # session_binding is canonical (reset_session_state_if_changed). Prefer it
+  # over current_session_id so a stale current cannot resurrect the wrong
+  # session or clear/retain paths incorrectly when the fields diverge.
+  from_binding=$(read_state session_binding "")
+  if [ -n "$from_binding" ]; then
+    if [ "$from_binding" = "$NO_ID_SESSION_SENTINEL" ]; then
+      printf ''
       return
     fi
-    from_current=$(read_state current_session_id "")
-    if [ -n "$from_current" ] && [ "$from_current" != "$NO_ID_SESSION_SENTINEL" ]; then
-      if is_valid_external_binding_id "$from_current"; then
-        printf '%s' "$from_current"
-      else
-        printf 'agent-memory: ignoring invalid current_session_id in state\n' >&2
-        printf ''
-      fi
-      return
+    if is_valid_external_binding_id "$from_binding"; then
+      printf '%s' "$from_binding"
+    else
+      printf 'agent-memory: ignoring invalid session_binding in state\n' >&2
+      printf ''
     fi
-    printf ''
-  else
-    printf ''
+    return
   fi
+  from_current=$(read_state current_session_id "")
+  if [ -n "$from_current" ] && [ "$from_current" != "$NO_ID_SESSION_SENTINEL" ]; then
+    if is_valid_external_binding_id "$from_current"; then
+      printf '%s' "$from_current"
+    else
+      printf 'agent-memory: ignoring invalid current_session_id in state\n' >&2
+      printf ''
+    fi
+    return
+  fi
+  printf ''
 }
 
 persist_session_id() {

@@ -535,47 +535,29 @@ grep -q 'session_binding=s-env-anchor' .agents/memory/.hook-sync-state ||
 grep -qi 'preferring install-site' "$TMP/env-anchor.err" ||
   fail "expected install-site preference warning"
 
-# --- security: stdin session id wins over stale AGENT_MEMORY_SESSION_ID ---
-printf '%s\n' \
-  'session_binding=stale-env-session' \
-  'session_touched_files=stale-env.txt' \
-  >.agents/memory/.hook-sync-state
-printf '{"session_id":"live-harness-session","cwd":"%s"}\n' "$TMP" |
-  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
-  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=stale-env-session \
-  ./agent-memory-sync.sh >/dev/null 2>"$TMP/stale-sid.err" || true
-grep -q 'session_binding=live-harness-session' .agents/memory/.hook-sync-state ||
-  fail "stdin session id must win over stale AGENT_MEMORY_SESSION_ID"
-grep -qi 'ignoring stale AGENT_MEMORY_SESSION_ID' "$TMP/stale-sid.err" ||
-  fail "expected stale AGENT_MEMORY_SESSION_ID warning"
-
-# --- security: stdin session id wins over stale CURSOR_SESSION_ID ---
-printf '%s\n' \
-  'session_binding=stale-cursor-session' \
-  'session_touched_files=stale-cursor.txt' \
-  >.agents/memory/.hook-sync-state
-printf '{"session_id":"live-cursor-session","cwd":"%s"}\n' "$TMP" |
-  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
-  AGENT_MEMORY_EVENT=Stop CURSOR_SESSION_ID=stale-cursor-session \
-  ./agent-memory-sync.sh >/dev/null 2>"$TMP/stale-cursor.err" || true
-grep -q 'session_binding=live-cursor-session' .agents/memory/.hook-sync-state ||
-  fail "stdin session id must win over stale CURSOR_SESSION_ID"
-grep -qi 'ignoring stale CURSOR_SESSION_ID' "$TMP/stale-cursor.err" ||
-  fail "expected stale CURSOR_SESSION_ID warning"
-
-# --- security: stdin session id wins over stale GEMINI_SESSION_ID ---
-printf '%s\n' \
-  'session_binding=stale-gemini-session' \
-  'session_touched_files=stale-gemini.txt' \
-  >.agents/memory/.hook-sync-state
-printf '{"session_id":"live-gemini-session","cwd":"%s"}\n' "$TMP" |
-  AGENT_MEMORY_HOST=gemini AGENT_MEMORY_PROJECT_DIR="$TMP" \
-  AGENT_MEMORY_EVENT=Stop GEMINI_SESSION_ID=stale-gemini-session \
-  ./agent-memory-sync.sh >/dev/null 2>"$TMP/stale-gemini.err" || true
-grep -q 'session_binding=live-gemini-session' .agents/memory/.hook-sync-state ||
-  fail "stdin session id must win over stale GEMINI_SESSION_ID"
-grep -qi 'ignoring stale GEMINI_SESSION_ID' "$TMP/stale-gemini.err" ||
-  fail "expected stale GEMINI_SESSION_ID warning"
+# --- security: stdin session id wins over stale session env vars ---
+for stale_case in \
+  'AGENT_MEMORY_SESSION_ID|cursor|stale-env-session|live-harness-session|stale-env.txt' \
+  'CURSOR_SESSION_ID|cursor|stale-cursor-session|live-cursor-session|stale-cursor.txt' \
+  'GEMINI_SESSION_ID|gemini|stale-gemini-session|live-gemini-session|stale-gemini.txt'
+do
+  IFS='|' read -r stale_env stale_host stale_sid live_sid stale_path <<<"$stale_case"
+  printf '%s\n' \
+    "session_binding=$stale_sid" \
+    "session_touched_files=$stale_path" \
+    >.agents/memory/.hook-sync-state
+  printf '{"session_id":"%s","cwd":"%s"}\n' "$live_sid" "$TMP" |
+    env -u AGENT_MEMORY_SESSION_ID -u CURSOR_SESSION_ID -u GEMINI_SESSION_ID \
+      "AGENT_MEMORY_HOST=$stale_host" \
+      "AGENT_MEMORY_PROJECT_DIR=$TMP" \
+      "AGENT_MEMORY_EVENT=Stop" \
+      "$stale_env=$stale_sid" \
+      ./agent-memory-sync.sh >/dev/null 2>"$TMP/stale-sid.err" || true
+  grep -q "session_binding=$live_sid" .agents/memory/.hook-sync-state ||
+    fail "stdin session id must win over stale $stale_env"
+  grep -qi "ignoring stale $stale_env" "$TMP/stale-sid.err" ||
+    fail "expected stale $stale_env warning"
+done
 
 # --- security: jq parse failure falls back to sed for session id ---
 printf '{"session_id":"jq-fallback-session","cwd":"%s", bad }\n' "$TMP" |
