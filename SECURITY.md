@@ -22,7 +22,7 @@ Installing agent-memory hooks is equivalent to trusting the project directory â€
 - Cursor, Claude Code, Codex, Copilot, Gemini, and OpenCode all run those local scripts on lifecycle events.
 - Anyone who can modify hook scripts or the project working directory already has local code execution in that project.
 
-The OpenCode plugin spawns the same shared bash sync script as other harnesses; it adds runtime checks (regular file only, `realpath` confinement under `.opencode/hooks`, binding ID charset validation) before `execFileSync`. Shared bash hooks also validate external session binding IDs, prefer project env / install-site root over harness stdin `cwd`, prefer a valid harness stdin session id over conflicting inherited `AGENT_MEMORY_SESSION_ID` / `CURSOR_SESSION_ID` / `GEMINI_SESSION_ID`, refuse symlink memory paths, and require `realpath` or `python3` to resolve paths (no weak fallback that skips symlink resolution).
+The OpenCode plugin spawns the same shared bash sync script as other harnesses; it adds runtime checks (regular file only, `realpath` confinement under `.opencode/hooks`, binding ID charset validation) before `execFileSync`. Shared bash hooks also validate external session binding IDs, prefer project env / install-site root over harness stdin `cwd`, prefer a valid harness stdin session id over conflicting inherited `AGENT_MEMORY_SESSION_ID` / `CURSOR_SESSION_ID` / `GEMINI_SESSION_ID`, refuse symlink memory paths, and require `realpath` or `python3` to resolve paths (no weak fallback that skips symlink resolution). The hooks installer (`install-hooks.sh`) fails closed the same way when neither resolver is available.
 
 ## What we do not do
 

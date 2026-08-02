@@ -17,8 +17,8 @@ elif [[ -f "$SCRIPT_DIR/../package.json" ]] && command -v node >/dev/null 2>&1; 
 fi
 VERSION="${VERSION:-0.1.1}"
 
-# Callers pass existing directories, so the weak cd/pwd fallback suffices
-# (logical path only — realpath/python3 preferred for symlink resolution).
+# No weak cd/pwd fallback: it skips symlink resolution, so a logical path
+# could pass the under-project check while escaping it (parity with hooks).
 resolve_realpath() {
   local p=$1
   if command -v realpath >/dev/null 2>&1; then
@@ -26,7 +26,8 @@ resolve_realpath() {
   elif command -v python3 >/dev/null 2>&1; then
     python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$p"
   else
-    (cd "$p" && pwd)
+    printf 'agent-memory: realpath or python3 required to resolve paths safely\n' >&2
+    return 1
   fi
 }
 
@@ -37,7 +38,7 @@ if [[ ! -d "$_raw_project" ]]; then
   echo "error: PROJECT_DIR does not exist: $_raw_project" >&2
   exit 1
 fi
-PROJECT_DIR="$(resolve_realpath "$_raw_project")"
+PROJECT_DIR="$(resolve_realpath "$_raw_project")" || exit 1
 unset _raw_project
 
 usage() {

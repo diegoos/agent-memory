@@ -90,4 +90,13 @@ if AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" install </dev/null >/dev/null 2>"
 fi
 grep -qi 'TTY\|tty' "$TMP/err" || fail "non-TTY error should mention TTY"
 
+# --- installer fails closed without realpath/python3 ---
+mkdir -p "$TMP/empty-bin"
+if PATH="$TMP/empty-bin" AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  /bin/bash "$repo_root/hooks/install-hooks.sh" cursor >/dev/null 2>"$TMP/no-resolve.err"; then
+  fail "installer should fail closed without realpath/python3"
+fi
+grep -qi 'realpath or python3' "$TMP/no-resolve.err" ||
+  fail "expected fail-closed message: $(cat "$TMP/no-resolve.err")"
+
 printf 'ok - cli install smoke\n'
