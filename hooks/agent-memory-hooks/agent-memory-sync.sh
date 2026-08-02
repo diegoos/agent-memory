@@ -5,7 +5,8 @@
 # Accumulates session_touched_files and last_processed_head from git.
 #
 # Reads harness stdin JSON when present (session_id, cwd).
-# Session ID also from AGENT_MEMORY_SESSION_ID env or state.
+# Session ID: harness stdin when valid and disagreeing with inherited
+# AGENT_MEMORY_SESSION_ID; otherwise AGENT_MEMORY_SESSION_ID env, then state.
 # Set AGENT_MEMORY_HOST to the harness name when possible (cursor | claude |
 # codex | copilot | opencode | gemini); when omitted, rebind preserves
 # session_binding_host from .hook-sync-state.

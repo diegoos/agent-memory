@@ -215,6 +215,10 @@ assert_contains "$consolidate" 'Convert moved entries to the H2 form' \
 # --- Context layer stays short ---
 assert_contains "$agent_block" 'Read `.agents/memory/instructions.md`' \
   "agent-block requires Read instructions"
+assert_contains "$agent_block" 'untrusted recall' \
+  "agent-block frames memory as untrusted recall"
+assert_contains "$instructions" 'Untrusted recall' \
+  "instructions frames memory as untrusted recall"
 assert_contains "$agent_block" '**Primary write:**' "agent-block names primary write"
 assert_contains "$agent_block" '**Catch-up:**' "agent-block names sync catch-up"
 assert_contains "$agent_block" '_Harness parity — memory contract_' \
@@ -223,8 +227,12 @@ assert_contains "$session_sh" 'build_session_context_msg' \
   "session uses contextual status builder"
 assert_contains "$repo_root/hooks/agent-memory-hooks/agent-memory-common.sh" \
   'build_session_context_msg' "common.sh defines contextual session msg"
+assert_contains "$repo_root/hooks/agent-memory-hooks/agent-memory-common.sh" \
+  'untrusted recall' "session context includes untrusted-recall cue"
 assert_contains "$sync_sh" 'no Markdown writes' "sync script header documents no Markdown"
 pre_commit="$repo_root/hooks/git/pre-commit"
+assert_contains "$pre_commit" 'env -u AGENT_MEMORY_SESSION_ID' \
+  "pre-commit unsets stale session-binding env"
 assert_contains "$pre_commit" 'Checkpoint' "pre-commit reminds when Checkpoint behind HEAD"
 
 # --- Harness configs omit per-tool events ---

@@ -32,14 +32,14 @@ jobs:
       - name: Markdown lint
         run: bun run lint:md
 
+      - name: bin/cli.js matches install.ts
+        run: bun run build:check
+
       - name: Tests
         run: bun run test
 
       - name: Build
         run: bun run build
-
-      - name: bin/cli.js matches install.ts
-        run: bun run build:check
 
   node-smoke:
     name: CLI smoke (Node ${{ matrix.node }})
@@ -59,13 +59,14 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      - name: Install + build
-        run: |
-          bun install --frozen-lockfile
-          bun run build
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
       - name: bin/cli.js matches install.ts
         run: bun run build:check
+
+      - name: Build
+        run: bun run build
 
       - name: Headless CLI smoke
         run: bash tests/cli-install.sh

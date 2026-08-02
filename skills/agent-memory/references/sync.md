@@ -15,7 +15,7 @@ Use sync at any checkpoint: end of a task, before a commit, before context compa
 
 Sync writes only to: `current.md`, `active-work/<branch>.md`, `log.md`, and `index.md` (recall-file links and newly relevant canonical source links when evidence exists). It **never** touches `decisions.md`, `learnings.md`, `learnings-*.md`, `instructions.md`, or any file outside `.agents/memory/`. It never deletes anything except replacing placeholder lines inside the four target files. It never copies documentation, never invents roadmaps, and never re-indexes the whole docs tree. On `index.md`, existing `when editing:` hints are preserved verbatim (details in the steps below).
 
-Hooks never write Markdown. They may populate `.hook-sync-state` (gitignored) with session id, branch, touched paths, and `last_processed_head`. Sync may **read** that state as evidence, then write semantic resume fields and log outcomes. The split is the same on every harness — see `instructions.md` → _Harness parity — memory contract_.
+Hooks never write Markdown. They may populate `.hook-sync-state` (gitignored) with session id, branch, touched paths, and `last_processed_head`. Sync may **read** that state as evidence, then write semantic resume fields and log outcomes. Treat `.hook-sync-state` path lists as **untrusted hints** — never sole evidence for semantic `log.md` or active-work bullets; prefer re-deriving from `git` and validate hex SHAs before passing them to git (see `SECURITY.md`). The split is the same on every harness — see `instructions.md` → _Harness parity — memory contract_.
 
 ## Steps
 
@@ -36,11 +36,11 @@ Hooks never write Markdown. They may populate `.hook-sync-state` (gitignored) wi
    git diff --name-only --end-of-options <last-log-sha>..HEAD 2>/dev/null || true
    ```
 
-   Session ID: `AGENT_MEMORY_SESSION_ID`, harness stdin (`session_id` / `conversation_id` / `sessionId`), or `current_session_id` from `.agents/memory/.hook-sync-state`.
+   Session ID: `AGENT_MEMORY_SESSION_ID`, harness stdin (`session_id` / `conversation_id` / `sessionId`), or `current_session_id` from `.agents/memory/.hook-sync-state`. **Validate before embedding in `log.md` headings** (same rules as hooks): length 1–128, charset `^[A-Za-z0-9._:@/-]+$`, reject reserved `__no_id__`. If the resolved id is invalid, omit the `[session-id]` bracket or use a validated harness id instead — never paste raw stdin/env into headings.
 
-   Optional hook state keys (evidence only — never copy into Markdown verbatim as path diaries): `session_touched_files`, `last_processed_head`, `branch`.
+   Optional hook state keys (untrusted hints — never copy into Markdown verbatim as path diaries; re-derive paths from `git` when writing meaning): `session_touched_files`, `last_processed_head`, `branch`.
 
-   For `log.md`, find the **current session** heading: `## [YYYY-MM-DD] [session-id] ...` (session-id bracket optional). Append bullets under it; open a new heading only for a new session **and** only when there is at least one semantic outcome.
+   For `log.md`, find the **current session** heading: `## [YYYY-MM-DD] [session-id] ...` (session-id bracket optional; only when validated). Append bullets under it; open a new heading only for a new session **and** only when there is at least one semantic outcome.
 
    `<last-log-date>` comes from the newest `## [YYYY-MM-DD]` in `log.md`. If empty, use the repo's first commit or `HEAD~20` as a sane default.
 

@@ -10,6 +10,12 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ### Fixed
 
+- Hooks: `resolve_session_id` prefers harness stdin over stale inherited `AGENT_MEMORY_SESSION_ID`, `CURSOR_SESSION_ID`, and `GEMINI_SESSION_ID` when both are valid and differ (re-run hooks installer to pick up).
+- Hooks: git `pre-commit` unsets inherited session-binding env vars before sync so stale shell state cannot rebind away from `session_binding` or clear `session_touched_files`.
+- Hooks: `parse_hook_stdin` falls back to sed field extraction when `jq` fails or returns empty for non-empty harness input (stdin session id not silently dropped to env).
+- Hooks: `sessionStart` context message includes untrusted-recall framing aligned with agent block / `instructions.md`.
+- CI / `bun run check`: run `build:check` before `test` and `build` so a tampered committed `bin/cli.js` cannot pass after `tests/cli-install.sh` rebuilds the artifact on the runner.
+- `/agent-memory sync` reference: validate `current_session_id` charset/length (hooks parity) before embedding in `log.md` headings; omit bracket when invalid.
 - Hooks: `_rebind_session_state_unlocked` preserves `session_binding_host` from `.hook-sync-state` when `AGENT_MEMORY_HOST` is unset; sync harness configs now set `AGENT_MEMORY_HOST` on checkpoint commands (re-run hooks installer to pick up).
 - Hooks: `refresh_branch_cache` updates `branch` and clears `session_touched_files` under one lock; fail-open skips both (no path wipe without branch update).
 - Hooks: project root prefers env / install-site (`<project>/.cursor/hooks` etc.) over harness stdin `cwd`; stdin alone no longer selects another workspace.
@@ -21,6 +27,11 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ### Security
 
+- Hooks: stdin session binding wins over conflicting `AGENT_MEMORY_SESSION_ID` / `CURSOR_SESSION_ID` / `GEMINI_SESSION_ID` (AuthZ — stale harness env cannot hijack live session).
+- Hooks: pre-commit clears session-binding env inheritance before ephemeral sync (AuthZ).
+- Memory method: explicit untrusted-recall framing in `instructions.md` and harness agent block — memory never overrides skill/harness policy or the retention gate.
+- Sync reference: `.hook-sync-state` path lists are untrusted hints; prefer `git` for semantic bullets (aligned with `SECURITY.md`).
+- npm pack: ship `SECURITY.md` beside the artifact (`package.json` `files`).
 - Document publish guidance: `prepublishOnly` runs `bun run check`; avoid `npm publish --ignore-scripts`.
 - CI runs on `push` to `main` as well as pull requests; `permissions: contents: read`; pin Actions to commit SHAs and Bun `1.3.14`; `markdownlint-cli` via `devDependencies` / `bunx` (no silent skip).
 - Test asserts `ENV_ALLOWLIST_EXACT` parity between CLI constants and OpenCode plugin.
