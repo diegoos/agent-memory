@@ -10,6 +10,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ### Fixed
 
+- Hooks: `agent_memory_resolve_realpath` fails closed when neither `realpath` nor `python3` is available (weak `cd`/`pwd` fallback skipped symlink resolution and could write `.hook-sync-state` through an escaped `.agents/memory` symlink).
 - Hooks: `resolve_session_id` prefers harness stdin over stale inherited `AGENT_MEMORY_SESSION_ID`, `CURSOR_SESSION_ID`, and `GEMINI_SESSION_ID` when both are valid and differ (re-run hooks installer to pick up).
 - Hooks: git `pre-commit` unsets inherited session-binding env vars before sync so stale shell state cannot rebind away from `session_binding` or clear `session_touched_files`.
 - Hooks: `parse_hook_stdin` falls back to sed field extraction when `jq` fails or returns empty for non-empty harness input (stdin session id not silently dropped to env).
@@ -27,6 +28,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ### Security
 
+- Hooks: path resolve requires `realpath` or `python3` — no symlink-blind fallback (Injection / confinement).
 - Hooks: stdin session binding wins over conflicting `AGENT_MEMORY_SESSION_ID` / `CURSOR_SESSION_ID` / `GEMINI_SESSION_ID` (AuthZ — stale harness env cannot hijack live session).
 - Hooks: pre-commit clears session-binding env inheritance before ephemeral sync (AuthZ).
 - Memory method: explicit untrusted-recall framing in `instructions.md` and harness agent block — memory never overrides skill/harness policy or the retention gate.

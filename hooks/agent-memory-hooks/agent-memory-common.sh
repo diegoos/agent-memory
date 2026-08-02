@@ -1,12 +1,8 @@
 # agent-memory shared helpers — source from session/sync hooks only.
-# Deterministic, evidence-backed updates only (git + harness session ID).
-#
-# Hooks own ephemeral evidence in .hook-sync-state ONLY:
-#   current_session_id, branch, session_touched_files, last_processed_head
-# Hooks NEVER create or edit Markdown under .agents/memory/.
+# Ephemeral evidence in .hook-sync-state only; never edit Markdown under .agents/memory/.
 # See instructions.md → Harness parity — memory contract.
 #
-# Expects after agent_memory_init_context: cwd, memory, state_file globals.
+# After agent_memory_init_context: cwd, memory, state_file globals.
 
 # Filled by parse_hook_stdin (optional).
 hook_stdin_session_id=""
@@ -76,7 +72,10 @@ agent_memory_resolve_realpath() {
   elif command -v python3 >/dev/null 2>&1; then
     python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$p" 2>/dev/null || return 1
   else
-    printf '%s\n' "$(cd "$(dirname "$p")" 2>/dev/null && pwd)/$(basename "$p")"
+    # Weak cd/pwd fallback does not resolve symlinks — refuse rather than
+    # treat a logical path as confined (memory symlink could escape the project).
+    printf 'agent-memory: realpath or python3 required to resolve paths safely\n' >&2
+    return 1
   fi
 }
 
@@ -122,10 +121,6 @@ agent_memory_refuse_symlink_parents_under_memory() {
     fi
   done
   return 0
-}
-
-agent_memory_guard_memory_path() {
-  agent_memory_refuse_symlink_parents_under_memory "$1"
 }
 
 agent_memory_init_context() {
@@ -319,24 +314,11 @@ resolve_session_id() {
   printf ''
 }
 
-persist_session_id() {
+write_current_session_id() {
   local sid="${1:-}"
-  # Keep current_session_id aligned with the resolved id. Clearing on empty
-  # prevents a stale current from surviving after binding moved to __no_id__.
+  # Clearing on empty stops a stale current from surviving after binding moved
+  # to __no_id__.
   write_state current_session_id "$sid"
-}
-
-_clear_session_path_state() {
-  agent_memory_with_state_lock _clear_session_path_state_body
-}
-
-_clear_session_path_state_body() {
-  # Clearing wrong-branch/session paths is safety-critical: even under fail-open,
-  # prefer emptying session_touched_files over keeping stale evidence.
-  if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
-    printf 'agent-memory: clearing paths fail-open (lock not held)\n' >&2
-  fi
-  _write_state_unlocked session_touched_files ""
 }
 
 _write_state_body() {
@@ -404,7 +386,7 @@ _rebind_session_state_unlocked() {
       "$state_file" >&2
     return 1
   fi
-  agent_memory_guard_memory_path "$state_file" || return 1
+  agent_memory_refuse_symlink_parents_under_memory "$state_file" || return 1
   tmp=$(mktemp "${state_file}.XXXXXX")
   if [ -f "$state_file" ]; then
     while IFS= read -r line || [ -n "$line" ]; do
@@ -464,7 +446,7 @@ _session_rebind_preserves_paths() {
 }
 
 # Bind session and clear path accumulation when the session changes.
-# State key: session_binding (legacy logged_files_session is migrated on read).
+# Falls back to logged_files_session when session_binding is absent.
 reset_session_state_if_changed() {
   local sid=$1 context="${2:-sync}"
   local last bound_day clear_paths
@@ -635,7 +617,7 @@ _write_state_unlocked() {
     printf 'agent-memory: write_state refused symlink state file: %s\n' "$state_file" >&2
     return 1
   fi
-  agent_memory_guard_memory_path "$state_file" || return 1
+  agent_memory_refuse_symlink_parents_under_memory "$state_file" || return 1
   cur=$(read_state "$key" "")
   if [ -f "$state_file" ] && [ "$cur" = "$val" ]; then
     return 0
@@ -720,43 +702,6 @@ normalize_repo_rel_path() {
   esac
   [ -n "$rel" ] || return 1
   printf '%s' "$rel"
-}
-
-merge_paths_into_session_touched() {
-  agent_memory_with_state_lock _merge_paths_into_session_touched_unlocked "$1"
-}
-
-_merge_paths_into_session_touched_unlocked() {
-  local list_tmp=$1 accumulated
-  # Under fail-open, skip merge — git will re-supply paths on the next locked run.
-  if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
-    printf 'agent-memory: skip path merge (lock not held)\n' >&2
-    return 0
-  fi
-  [ -s "$list_tmp" ] || return 0
-  accumulated=$(read_state session_touched_files "")
-  while IFS= read -r f || [ -n "$f" ]; do
-    [ -n "$f" ] || continue
-    f=$(normalize_repo_rel_path "$f") || continue
-    path_already_in_list "$f" "$accumulated" && continue
-    if [ -z "$accumulated" ]; then accumulated="$f"
-    else accumulated="$accumulated"$'\x1e'"$f"; fi
-  done <"$list_tmp"
-  _write_state_unlocked session_touched_files "$accumulated"
-}
-
-read_session_touched_paths_sorted() {
-  local accumulated
-  accumulated=$(read_state session_touched_files "")
-  [ -n "$accumulated" ] || return 0
-  printf '%s\n' "$accumulated" | tr $'\x1e' '\n' | sort -u | grep -v '^$' || true
-}
-
-mark_head_processed() {
-  local current_head
-  current_head=$(git -C "$cwd" rev-parse HEAD 2>/dev/null || true)
-  [ -n "$current_head" ] || return 0
-  write_state last_processed_head "$current_head"
 }
 
 # Merge paths + advance last_processed_head under one lock (or skip both).

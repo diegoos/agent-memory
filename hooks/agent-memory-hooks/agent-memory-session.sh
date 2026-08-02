@@ -1,8 +1,6 @@
 #!/bin/bash
-# agent-memory sessionStart / NewSession hook — inject context + ephemeral state.
-# Captures session_id from harness stdin JSON when provided.
+# sessionStart / NewSession — inject context + bind ephemeral state.
 # Never creates or edits Markdown under .agents/memory/.
-#
 # Set AGENT_MEMORY_HOST: cursor | claude | codex | copilot | opencode | gemini
 
 set -u
@@ -19,21 +17,6 @@ fi
 # shellcheck source=agent-memory-common.sh
 . "$_common_sh"
 
-agent_memory_init_context || exit 0
-
-[ -d "$memory" ] || exit 0
-
-session_id=$(resolve_session_id "$hook_stdin_session_id" 0)
-[ -n "$session_id" ] || write_state current_session_id ""
-persist_session_id "$session_id"
-reset_session_state_if_changed "$session_id" sessionStart
-
-if command -v git >/dev/null 2>&1 && git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
-  refresh_branch_cache
-fi
-
-msg=$(build_session_context_msg)
-
 json_escape() {
   local s=$1
   s=${s//\\/\\\\}
@@ -43,6 +26,21 @@ json_escape() {
   s=${s//$'\t'/\\t}
   printf '%s' "$s"
 }
+
+agent_memory_init_context || exit 0
+
+[ -d "$memory" ] || exit 0
+
+session_id=$(resolve_session_id "$hook_stdin_session_id" 0)
+[ -n "$session_id" ] || write_state current_session_id ""
+write_current_session_id "$session_id"
+reset_session_state_if_changed "$session_id" sessionStart
+
+if command -v git >/dev/null 2>&1 && git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
+  refresh_branch_cache
+fi
+
+msg=$(build_session_context_msg)
 
 case "$host" in
   cursor)
@@ -80,12 +78,7 @@ case "$host" in
     ;;
   gemini)
     # Gemini CLI requires strict JSON-only stdout for hooks (no stray text).
-    if [ -n "$session_id" ]; then
-      # Prefer context + env when supported; always persist session in state.
-      printf '{"context":"%s"}\n' "$(json_escape "$msg")"
-    else
-      printf '{"context":"%s"}\n' "$(json_escape "$msg")"
-    fi
+    printf '{"context":"%s"}\n' "$(json_escape "$msg")"
     ;;
   *)
     [ -n "$session_id" ] && export AGENT_MEMORY_SESSION_ID="$session_id"

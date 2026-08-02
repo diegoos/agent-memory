@@ -14,7 +14,9 @@ fail() {
 }
 
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
+ESCAPE=""
+ESCAPE2=""
+trap 'rm -rf "$TMP" ${ESCAPE:+"$ESCAPE"} ${ESCAPE2:+"$ESCAPE2"}' EXIT
 cd "$TMP"
 
 git init -q
@@ -679,5 +681,39 @@ out2=$(git commit -q -m remind2 2>&1 || true)
 # Session + pre-commit must not alter Markdown (active-work was written by the test)
 md_after=$(md_checksum)
 [[ "$md_snap" == "$md_after" ]] || fail "session/pre-commit must not modify Markdown"
+
+# --- security: memory dir symlink outside project refused ---
+ESCAPE=$(mktemp -d)
+rm -rf .agents/memory
+mkdir -p .agents
+ln -sfn "$ESCAPE" .agents/memory
+printf '{"session_id":"s-mem-escape","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-mem-escape \
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/mem-escape.err" || true
+grep -qi 'escapes project\|memory path' "$TMP/mem-escape.err" ||
+  fail "expected memory symlink escape refusal"
+! test -e "$ESCAPE/.hook-sync-state" ||
+  fail "must not write .hook-sync-state through escaped memory symlink"
+rm -rf .agents/memory
+cp -R "$skeleton" .agents/memory
+
+# --- security: resolve_realpath fails closed without realpath/python3 ---
+ESCAPE2=$(mktemp -d)
+rm -rf .agents/memory
+mkdir -p .agents
+ln -sfn "$ESCAPE2" .agents/memory
+mkdir -p "$TMP/empty-bin"
+printf '{"session_id":"s-no-resolve","cwd":"%s"}\n' "$TMP" |
+  PATH="$TMP/empty-bin" \
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-no-resolve \
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/no-resolve.err" || true
+grep -qi 'realpath or python3' "$TMP/no-resolve.err" ||
+  fail "expected fail-closed resolve when realpath/python3 unavailable"
+! test -e "$ESCAPE2/.hook-sync-state" ||
+  fail "must not write outside when resolve tools are missing"
+rm -rf .agents/memory
+cp -R "$skeleton" .agents/memory
 
 printf 'ok - hooks ephemeral checkpoint fixture\n'

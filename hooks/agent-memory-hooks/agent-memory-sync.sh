@@ -1,22 +1,13 @@
 #!/bin/bash
-# agent-memory deterministic checkpoint (all harnesses).
+# Deterministic checkpoint — writes .hook-sync-state only (no Markdown writes).
 #
-# Evidence-backed updates to .hook-sync-state only — no Markdown writes.
-# Accumulates session_touched_files and last_processed_head from git.
+# Session id: resolve_session_id in agent-memory-common.sh (stdin over stale env).
+# Set AGENT_MEMORY_HOST when possible; when omitted, rebind keeps session_binding_host.
 #
-# Reads harness stdin JSON when present (session_id, cwd).
-# Session ID: harness stdin when valid and disagreeing with inherited
-# AGENT_MEMORY_SESSION_ID; otherwise AGENT_MEMORY_SESSION_ID env, then state.
-# Set AGENT_MEMORY_HOST to the harness name when possible (cursor | claude |
-# codex | copilot | opencode | gemini); when omitted, rebind preserves
-# session_binding_host from .hook-sync-state.
-#
-# Set AGENT_MEMORY_EVENT (any host naming):
+# AGENT_MEMORY_EVENT aliases (any host naming):
 #   afterAgentResponse | Stop | agentStop | AfterAgent — end of turn
-#   preCompact | PreCompact | precommit | PreCompress — before compaction or
-#       git commit
-# Per-tool events (postToolUse / afterFileEdit / AfterTool) are no longer wired;
-# if invoked, they exit immediately.
+#   preCompact | PreCompact | precommit | PreCompress — before compact / commit
+# Unknown legacy tool events exit 0.
 #
 # Install per host — see hooks/README.md.
 
@@ -35,7 +26,7 @@ fi
 raw_event="${AGENT_MEMORY_EVENT:-afterAgentResponse}"
 case "$raw_event" in
   postToolUse|PostToolUse|posttool|AfterTool|aftertool|afterFileEdit|afterfileedit)
-    # Legacy per-tool events — no-op under ephemeral contract.
+    # Legacy aliases kept for installed configs — no-op.
     exit 0
     ;;
   afterAgentResponse|Stop|stop|agentStop|afterresponse|AfterAgent|afteragent)
@@ -54,7 +45,7 @@ command -v git >/dev/null 2>&1 || exit 0
 git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
 session_id=$(resolve_session_id "$hook_stdin_session_id")
-persist_session_id "$session_id"
+write_current_session_id "$session_id"
 reset_session_state_if_changed "$session_id" sync
 
 run_ephemeral_checkpoint() {
