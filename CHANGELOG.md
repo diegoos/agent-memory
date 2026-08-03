@@ -30,6 +30,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ### Fixed
 
+- OpenCode: install plugin to `.opencode/plugins/` (OpenCode auto-load path) with `safe-script.ts` beside it; migrate/remove legacy `.opencode/plugin/`; plugin uses harness `directory` for project root and logs spawn failures to stderr.
 - Hooks: OpenCode day rollover and ses_* path preserve key off `session_binding_host` in state, not inherited `AGENT_MEMORY_HOST`.
 - Hooks: delayed Stop on sync/Stop prefers canonical `session_binding` when `session_binding` and `current_session_id` agree on the live id but harness stdin or inherited env is stale (including when stale env equals stale stdin); scans binding env vars before stdin wins when state is not canonical.
 - Hooks: detached HEAD caches `branch=detached` instead of leaving a stale branch name in `.hook-sync-state`.

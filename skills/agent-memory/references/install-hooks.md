@@ -20,7 +20,7 @@ Accepted `<harness>` values (aliases in parentheses):
 | `cursor`   | —             | `.cursor/`                            | `.cursor/hooks/` + merge `hooks.json`    |
 | `claude`   | `claude-code` | `.claude/`                            | `.claude/hooks/` + merge `settings.json` |
 | `codex`    | —             | `.codex/`                             | `.codex/hooks/` + merge `hooks.json`     |
-| `opencode` | —             | `.opencode/`                          | `.opencode/hooks/` + plugin `.ts`        |
+| `opencode` | —             | `.opencode/`                          | `.opencode/hooks/` + `.opencode/plugins/*.ts` |
 | `copilot`  | `github`      | `.github/`                            | `.github/hooks/` + `agent-memory.json`   |
 | `gemini`   | —             | `.gemini/`                            | `.gemini/hooks/` + merge `settings.json` |
 
@@ -69,7 +69,7 @@ A harness counts as **already installed** when its prerequisite dir exists **and
 | `cursor`   | `.cursor/hooks/agent-memory-sync.sh` or agent-memory in `.cursor/hooks.json`            |
 | `claude`   | `.claude/hooks/agent-memory-sync.sh`                                                    |
 | `codex`    | `.codex/hooks/agent-memory-sync.sh`                                                     |
-| `opencode` | `.opencode/plugin/agent-memory.ts` or `.opencode/hooks/agent-memory-sync.sh`            |
+| `opencode` | `.opencode/plugins/agent-memory.ts` (+ `safe-script.ts`) or `.opencode/hooks/agent-memory-sync.sh` |
 | `copilot`  | `.github/hooks/agent-memory.json` or `.github/hooks/agent-memory-sync.sh`               |
 | `gemini`   | `.gemini/settings.json` containing agent-memory or `.gemini/hooks/agent-memory-sync.sh` |
 

@@ -200,10 +200,30 @@ install_codex() {
 
 install_opencode() {
   install_shared_scripts "$(hooks_dir_for opencode)"
+  # OpenCode auto-loads project plugins from .opencode/plugins/ (plural).
+  local plugin_dir="$PROJECT_DIR/.opencode/plugins"
   safe_install_file \
     "$SCRIPT_DIR/opencode/agent-memory.ts" \
-    "$PROJECT_DIR/.opencode/plugin/agent-memory.ts"
-  echo "copied OpenCode plugin → .opencode/plugin/agent-memory.ts"
+    "$plugin_dir/agent-memory.ts"
+  safe_install_file \
+    "$SCRIPT_DIR/opencode/safe-script.ts" \
+    "$plugin_dir/safe-script.ts"
+  echo "copied OpenCode plugin → .opencode/plugins/agent-memory.ts (+ safe-script.ts)"
+  # Migrate pre-fix singular path (never auto-loaded by OpenCode).
+  local legacy="$PROJECT_DIR/.opencode/plugin"
+  local f
+  for f in agent-memory.ts safe-script.ts; do
+    if [[ -f "$legacy/$f" || -L "$legacy/$f" ]]; then
+      if [[ -L "$legacy/$f" ]]; then
+        die "refusing to remove symlink: $legacy/$f"
+      fi
+      rm -f "$legacy/$f"
+      echo "removed legacy .opencode/plugin/$f"
+    fi
+  done
+  if [[ -d "$legacy" ]] && [[ ! -L "$legacy" ]]; then
+    rmdir "$legacy" 2>/dev/null || true
+  fi
 }
 
 install_copilot() {

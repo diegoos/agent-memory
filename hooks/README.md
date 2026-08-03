@@ -23,7 +23,7 @@ The installer creates the harness directory if missing, refuses destination / pa
 | **Claude Code** | → `.claude/hooks/`                                                      | merge `hooks/claude-code/settings.json` |
 | **Codex**       | → `.codex/hooks/`                                                       | merge `hooks/codex/hooks.json`          |
 | **Copilot**     | → `.github/hooks/`                                                      | `hooks/copilot/agent-memory.json`       |
-| **OpenCode**    | plugin → `.opencode/hooks/*.sh`                                         | `.opencode/plugin/agent-memory.ts`      |
+| **OpenCode**    | plugin → `.opencode/hooks/*.sh`                                         | `.opencode/plugins/agent-memory.ts` (+ `safe-script.ts`) |
 | **Gemini CLI**  | → `.gemini/hooks/`                                                      | merge `.gemini/settings.json`           |
 
 `/agent-memory init <harness>` wires the **context** layer when the harness directory already exists; it **prints** hook-install commands and does not copy scripts.
@@ -64,4 +64,4 @@ Copy **all four** files from `hooks/agent-memory-hooks/` — never sync+session 
 
 Hooks write **only** `.hook-sync-state` (session, branch, paths, HEAD). They never edit Markdown, promote decisions/learnings, or consolidate. State uses a short portable lock and atomic replace; lock contention is fail-open (stale-lock steal trusts the `pid` file inside the lock dir — see [SECURITY.md](../SECURITY.md)). Delayed Stop on sync/Stop prefers canonical `session_binding` when it matches `current_session_id` but harness stdin (or inherited env) is stale; detached HEAD caches `branch=detached`. The git `pre-commit` hook reminds (stderr, non-blocking) when Checkpoint is behind HEAD or staged work has no `.agents/memory/` change.
 
-OpenCode uses a Bun plugin (not `hooks.json`) that spawns the sync script on `session.idle` / `experimental.session.compacting` with an allowlisted env. Details and resolution order for project dir / session id live in the shared scripts and in `instructions.md` → _Harness parity_.
+OpenCode uses a Bun plugin under **`.opencode/plugins/`** (OpenCode’s auto-load path; not the legacy singular `.opencode/plugin/`) that spawns the sync script on `session.idle` / `experimental.session.compacting` with an allowlisted env. The installer copies `agent-memory.ts` and `safe-script.ts` together and removes leftover singular-path files on refresh. Details and resolution order for project dir / session id live in the shared scripts and in `instructions.md` → _Harness parity_.

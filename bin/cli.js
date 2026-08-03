@@ -136,7 +136,7 @@ function detectInstalledHarnesses() {
   check("cursor", import_node_fs.default.existsSync(import_node_path.default.join(root, ".cursor", "hooks", "agent-memory-sync.sh")) || fileContains(import_node_path.default.join(root, ".cursor", "hooks.json"), "agent-memory"));
   check("claude", import_node_fs.default.existsSync(import_node_path.default.join(root, ".claude", "hooks", "agent-memory-sync.sh")));
   check("codex", import_node_fs.default.existsSync(import_node_path.default.join(root, ".codex", "hooks", "agent-memory-sync.sh")));
-  check("opencode", import_node_fs.default.existsSync(import_node_path.default.join(root, ".opencode", "plugin", "agent-memory.ts")) || import_node_fs.default.existsSync(import_node_path.default.join(root, ".opencode", "hooks", "agent-memory-sync.sh")));
+  check("opencode", import_node_fs.default.existsSync(import_node_path.default.join(root, ".opencode", "plugins", "agent-memory.ts")) || import_node_fs.default.existsSync(import_node_path.default.join(root, ".opencode", "plugin", "agent-memory.ts")) || import_node_fs.default.existsSync(import_node_path.default.join(root, ".opencode", "hooks", "agent-memory-sync.sh")));
   check("copilot", import_node_fs.default.existsSync(import_node_path.default.join(root, ".github", "hooks", "agent-memory.json")) || import_node_fs.default.existsSync(import_node_path.default.join(root, ".github", "hooks", "agent-memory-sync.sh")));
   check("gemini", import_node_fs.default.existsSync(import_node_path.default.join(root, ".gemini", "hooks", "agent-memory-sync.sh")) || fileContains(import_node_path.default.join(root, ".gemini", "settings.json"), "agent-memory"));
   return found;
