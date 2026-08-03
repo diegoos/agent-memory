@@ -21,9 +21,6 @@
 hook_stdin_session_id=""
 hook_stdin_cwd=""
 
-# Record separator for multi-path state values.
-RS=$'\x1e'
-
 # Read harness stdin without blocking forever when fd 0 is open but idle (CLI).
 read_hook_stdin() {
   local line rest=""
@@ -395,24 +392,54 @@ _session_binding_env_value() {
   esac
 }
 
-# Delayed Stop: scan binding env vars; when env + binding + current agree on live id
-# but stdin is stale, return canonical session_binding (stdout).
+# Canonical self-consistent state: session_binding == current_session_id, stdin stale.
+# Prints binding on stdout when true; else returns 1.
+_canonical_binding_over_stale_stdin() {
+  local stdin_picked=$1
+  local from_binding from_current
+  from_binding=$(read_state session_binding "")
+  is_valid_external_binding_id "$from_binding" || return 1
+  [ "$stdin_picked" != "$from_binding" ] || return 1
+  from_current=$(read_state current_session_id "")
+  [ "$from_current" = "$from_binding" ] || return 1
+  printf '%s' "$from_binding"
+  return 0
+}
+
+# Delayed Stop: env disagrees with stdin, or no usable env — prefer canonical state.
 _resolve_delayed_stop_binding() {
   local stdin_picked=$1 allow_fallback="${2:-1}"
-  local env_name env_picked from_binding from_current
+  local env_name env_picked from_binding agreeing_env=""
   [ "$allow_fallback" = "1" ] || return 1
   for env_name in AGENT_MEMORY_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID; do
     env_picked=$(_pick_external_session_id "$(_session_binding_env_value "$env_name")") || continue
-    [ "$stdin_picked" != "$env_picked" ] || continue
+    if [ "$stdin_picked" = "$env_picked" ]; then
+      agreeing_env="$env_picked"
+      continue
+    fi
     from_binding=$(read_state session_binding "")
     is_valid_external_binding_id "$from_binding" || continue
     [ "$env_picked" = "$from_binding" ] || continue
-    from_current=$(read_state current_session_id "")
-    [ "$from_current" = "$from_binding" ] || continue
-    printf '%s' "$from_binding"
-    return 0
+    _canonical_binding_over_stale_stdin "$stdin_picked" && return 0
   done
-  return 1
+  if [ -z "$agreeing_env" ]; then
+    return 1
+  fi
+  # stdin==env but both differ from canonical binding: stale pair unless OpenCode rotation.
+  from_binding=$(read_state session_binding "")
+  if ! is_valid_external_binding_id "$from_binding"; then
+    return 1
+  fi
+  if [ "$stdin_picked" = "$from_binding" ]; then
+    return 1
+  fi
+  from_current=$(read_state current_session_id "")
+  [ "$from_current" = "$from_binding" ] || return 1
+  if _session_rebind_preserves_paths "$stdin_picked" "$from_binding"; then
+    return 1
+  fi
+  printf '%s' "$from_binding"
+  return 0
 }
 
 resolve_session_id() {
@@ -431,6 +458,11 @@ resolve_session_id() {
     for env_name in AGENT_MEMORY_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID; do
       if env_picked=$(_pick_external_session_id "$(_session_binding_env_value "$env_name")"); then
         if [ "$stdin_picked" != "$env_picked" ]; then
+          if from_binding=$(_canonical_binding_over_stale_stdin "$stdin_picked"); then
+            printf 'agent-memory: ignoring stale harness stdin; preferring session_binding\n' >&2
+            printf '%s' "$from_binding"
+            return
+          fi
           printf 'agent-memory: ignoring stale %s; preferring harness stdin session id\n' \
             "$env_name" >&2
           printf '%s' "$stdin_picked"
@@ -484,14 +516,6 @@ resolve_session_id() {
     fi
   done
   printf ''
-}
-
-_write_state_body() {
-  if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
-    printf 'agent-memory: skip write_state %s (lock not held)\n' "$1" >&2
-    return 1
-  fi
-  _write_state_unlocked "$@"
 }
 
 _today_ymd() {
@@ -687,7 +711,11 @@ _refresh_branch_from_cwd_unlocked() {
   local b
   [ -n "${cwd:-}" ] || return 0
   b=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
-  [ -n "$b" ] && _refresh_branch_cache_unlocked "$b"
+  if [ -n "$b" ]; then
+    _refresh_branch_cache_unlocked "$b"
+  elif git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
+    _refresh_branch_cache_unlocked "detached"
+  fi
 }
 
 _refresh_branch_cache_unlocked() {
@@ -867,10 +895,6 @@ _write_state_unlocked() {
   printf '%s=%s\n' "$key" "$val" >>"$tmp"
   mv "$tmp" "$state_file"
   chmod 600 "$state_file" 2>/dev/null || true
-}
-
-write_state() {
-  agent_memory_with_state_lock _write_state_body "$@"
 }
 
 # ---------------------------------------------------------------------------

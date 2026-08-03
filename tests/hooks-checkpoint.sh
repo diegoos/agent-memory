@@ -794,6 +794,37 @@ grep -q 'opencode-live.txt' .agents/memory/.hook-sync-state ||
 grep -qi 'ignoring stale harness stdin' "$TMP/opencode-delayed.err" ||
   fail "expected stale harness stdin warning on opencode delayed Stop"
 
+# --- correctness: delayed Stop when stale env equals stale stdin ---
+printf '%s\n' \
+  'session_binding=s-live-bothstale' \
+  'current_session_id=s-live-bothstale' \
+  'session_binding_host=cursor' \
+  "session_binding_day=$today" \
+  'session_touched_files=bothstale-work.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"session_id":"s-stale-both","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-stale-both \
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/delayed-bothstale.err" || true
+grep -q 'session_binding=s-live-bothstale' .agents/memory/.hook-sync-state ||
+  fail "delayed Stop must prefer binding when env and stdin are both stale"
+grep -q 'bothstale-work.txt' .agents/memory/.hook-sync-state ||
+  fail "delayed Stop with stale env==stdin must not clear paths"
+
+# --- correctness: detached HEAD updates branch cache to detached ---
+printf '%s\n' \
+  'session_binding=s-detached' \
+  'branch=feat-status' \
+  >.agents/memory/.hook-sync-state
+git checkout -q HEAD~1 2>/dev/null || git checkout -q --detach HEAD 2>/dev/null || true
+printf '{"session_id":"s-detached","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop \
+  ./agent-memory-sync.sh >/dev/null 2>/dev/null || true
+grep -q 'branch=detached' .agents/memory/.hook-sync-state ||
+  fail "detached HEAD must cache branch=detached instead of stale branch name"
+git checkout -q feat-status 2>/dev/null || git checkout -q - 2>/dev/null || true
+
 # --- security: jq parse failure falls back to sed for session id ---
 printf '{"session_id":"jq-fallback-session","cwd":"%s", bad }\n' "$TMP" |
   AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
