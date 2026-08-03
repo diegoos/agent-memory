@@ -30,6 +30,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ### Fixed
 
+- Hooks: OpenCode day rollover and ses_* path preserve key off `session_binding_host` in state, not inherited `AGENT_MEMORY_HOST`.
 - Hooks: delayed Stop on sync/Stop prefers canonical `session_binding` when `session_binding` and `current_session_id` agree on the live id but harness stdin or inherited env is stale (including when stale env equals stale stdin); scans binding env vars before stdin wins when state is not canonical.
 - Hooks: detached HEAD caches `branch=detached` instead of leaving a stale branch name in `.hook-sync-state`.
 - Hooks: `sessionStart` runs resolve, rebind, and branch refresh under one state lock; exports `AGENT_MEMORY_SESSION_ID` only when bind succeeded under lock; ignores inherited env for delayed Stop (sync-only canonical preference gated on `allow_state_fallback`).

@@ -462,6 +462,20 @@ printf '{"session_id":"conv-stable","cwd":"%s"}\n' "$TMP" |
 grep -q "session_binding_day=$today" .agents/memory/.hook-sync-state ||
   fail "opencode same-id should stamp session_binding_day"
 
+# --- stale AGENT_MEMORY_HOST=opencode must not day-roll Cursor-bound paths ---
+printf '%s\n' \
+  'session_binding=conv-stable' \
+  'session_binding_host=cursor' \
+  'session_binding_day=2020-01-01' \
+  'session_touched_files=cursor-cross-host.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"session_id":"conv-stable","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=opencode AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=conv-stable \
+  ./agent-memory-sync.sh >/dev/null
+grep -q 'cursor-cross-host.txt' .agents/memory/.hook-sync-state ||
+  fail "stale opencode env must not day-roll cursor binding paths"
+
 # --- session_binding wins over stale current_session_id ---
 printf '%s\n' \
   'current_session_id=s-stale' \

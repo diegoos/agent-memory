@@ -583,30 +583,35 @@ _opencode_binding_same_day() {
   [ -n "$bound_day" ] && [ "$bound_day" = "$(_today_ymd)" ]
 }
 
+# Canonical harness label for OpenCode-specific policy (day rollover, ses_* preserve).
+# Prefer session_binding_host in state over inherited AGENT_MEMORY_HOST.
+_binding_host_for_policy() {
+  local h
+  h=$(read_state session_binding_host "")
+  if [ -n "$h" ]; then
+    printf '%s' "$h"
+    return
+  fi
+  printf '%s' "${AGENT_MEMORY_HOST:-}"
+}
+
 # True when rebinding session id should keep accumulated paths (same work stream).
 # Clears on a real session change, cross-harness bind, or OpenCode day rollover.
 _session_rebind_preserves_paths() {
   local sid=$1 last=$2
-  local last_host
   # First bind or upgrade from unknown id — keep any paths already collected.
   if [ -z "$last" ] || [ "$last" = "$NO_ID_SESSION_SENTINEL" ]; then
     return 0
   fi
   # OpenCode: ses_* rotation and conversation_id ↔ ses_* only when the prior
   # binding was also written by OpenCode on the same calendar day.
-  if [ "${AGENT_MEMORY_HOST:-}" = "opencode" ]; then
-    last_host=$(read_state session_binding_host "")
-    # Legacy state without host/day: do not preserve across ses_* churn.
-    if [ -z "$last_host" ]; then
-      return 1
-    fi
-    if [ "$last_host" = "opencode" ] && _opencode_binding_same_day; then
-      case "$sid:$last" in
-        ses_*:ses_* | ses_*:?* | ?*:ses_*)
-          return 0
-          ;;
-      esac
-    fi
+  if [ "$(read_state session_binding_host "")" = "opencode" ] &&
+    _opencode_binding_same_day; then
+    case "$sid:$last" in
+      ses_*:ses_* | ses_*:?* | ?*:ses_*)
+        return 0
+        ;;
+    esac
   fi
   return 1
 }
@@ -632,7 +637,7 @@ _reset_session_state_if_changed_unlocked() {
     if [ "$sid" = "$last" ]; then
       # Same id can still cross midnight — drop yesterday's OpenCode paths.
       # Missing session_binding_day (legacy) is treated as unknown/stale day.
-      if [ "${AGENT_MEMORY_HOST:-}" = "opencode" ]; then
+      if [ "$(_binding_host_for_policy)" = "opencode" ]; then
         bound_day=$(read_state session_binding_day "")
         if [ -z "$bound_day" ] || [ "$bound_day" != "$(_today_ymd)" ]; then
           _rebind_session_state_unlocked 1 "$sid"
