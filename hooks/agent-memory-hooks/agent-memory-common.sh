@@ -395,30 +395,22 @@ _session_binding_env_value() {
   esac
 }
 
-# Delayed Stop: env + binding + current agree on the live session; stdin is stale.
-# Requires env_picked (caller scans all binding env vars before stdin-wins).
-_delayed_stop_stdin_vs_live_binding() {
-  local stdin_picked=$1 env_picked=$2 allow_fallback="${3:-1}"
-  local from_binding from_current
-  [ "$allow_fallback" = "1" ] || return 1
-  [ -n "$env_picked" ] || return 1
-  from_binding=$(read_state session_binding "")
-  is_valid_external_binding_id "$from_binding" || return 1
-  [ "$stdin_picked" != "$from_binding" ] || return 1
-  [ "$env_picked" = "$from_binding" ] || return 1
-  from_current=$(read_state current_session_id "")
-  [ "$from_current" = "$from_binding" ] || return 1
-  return 0
-}
-
-# Before stdin-wins on any single stale env, check every binding env for delayed Stop.
-_stdin_env_mismatch_prefers_live_binding() {
+# Delayed Stop: scan binding env vars; when env + binding + current agree on live id
+# but stdin is stale, return canonical session_binding (stdout).
+_resolve_delayed_stop_binding() {
   local stdin_picked=$1 allow_fallback="${2:-1}"
-  local env_name env_picked
+  local env_name env_picked from_binding from_current
+  [ "$allow_fallback" = "1" ] || return 1
   for env_name in AGENT_MEMORY_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID; do
     env_picked=$(_pick_external_session_id "$(_session_binding_env_value "$env_name")") || continue
     [ "$stdin_picked" != "$env_picked" ] || continue
-    _delayed_stop_stdin_vs_live_binding "$stdin_picked" "$env_picked" "$allow_fallback" && return 0
+    from_binding=$(read_state session_binding "")
+    is_valid_external_binding_id "$from_binding" || continue
+    [ "$env_picked" = "$from_binding" ] || continue
+    from_current=$(read_state current_session_id "")
+    [ "$from_current" = "$from_binding" ] || continue
+    printf '%s' "$from_binding"
+    return 0
   done
   return 1
 }
@@ -431,8 +423,7 @@ resolve_session_id() {
   # Prefer harness stdin over conflicting inherited session env (stale shell
   # must not rebind away from the live harness session).
   if stdin_picked=$(_pick_external_session_id "$stdin_sid"); then
-    if _stdin_env_mismatch_prefers_live_binding "$stdin_picked" "$allow_state_fallback"; then
-      from_binding=$(read_state session_binding "")
+    if from_binding=$(_resolve_delayed_stop_binding "$stdin_picked" "$allow_state_fallback"); then
       printf 'agent-memory: ignoring stale harness stdin; preferring session_binding\n' >&2
       printf '%s' "$from_binding"
       return
