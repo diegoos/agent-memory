@@ -739,6 +739,26 @@ do
     fail "expected stale $stale_env warning"
 done
 
+# --- correctness: delayed Stop must not rewind live session_binding ---
+today=$(date +%Y-%m-%d)
+printf '%s\n' \
+  'session_binding=s-live-delayed' \
+  'current_session_id=s-live-delayed' \
+  'session_binding_host=cursor' \
+  "session_binding_day=$today" \
+  'session_touched_files=live-work.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"session_id":"s-stale-delayed","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-live-delayed \
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/delayed-stop.err" || true
+grep -q 'session_binding=s-live-delayed' .agents/memory/.hook-sync-state ||
+  fail "delayed Stop must not rebind away from live session_binding"
+grep -q 'live-work.txt' .agents/memory/.hook-sync-state ||
+  fail "delayed Stop must not clear paths for the live session"
+grep -qi 'ignoring stale harness stdin' "$TMP/delayed-stop.err" ||
+  fail "expected stale harness stdin warning on delayed Stop"
+
 # --- security: jq parse failure falls back to sed for session id ---
 printf '{"session_id":"jq-fallback-session","cwd":"%s", bad }\n' "$TMP" |
   AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
@@ -993,6 +1013,15 @@ grep -q 'run_sync_ephemeral_checkpoint' ./agent-memory-sync.sh ||
   fail "sync must not call rebind/apply/write/refresh outside the atomic helper"
 grep -q '_run_sync_ephemeral_checkpoint_unlocked' ./agent-memory-common.sh ||
   fail "common must define unlocked atomic sync body"
+
+# --- atomic sessionStart: one lock for current + rebind + branch (structural) ---
+grep -q 'run_session_start_ephemeral_bind' ./agent-memory-session.sh ||
+  fail "session must call run_session_start_ephemeral_bind"
+! grep -qE 'reset_session_state_if_changed|write_current_session_id|refresh_branch_cache|write_state' \
+  ./agent-memory-session.sh ||
+  fail "session must not call rebind/write/refresh outside the atomic helper"
+grep -q '_run_session_start_ephemeral_bind_unlocked' ./agent-memory-common.sh ||
+  fail "common must define unlocked atomic sessionStart body"
 
 # --- concurrent distinct sessions: state stays well-formed (single binding) ---
 printf 'race-a\n' >race-a.txt

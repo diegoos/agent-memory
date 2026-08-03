@@ -395,6 +395,25 @@ _session_binding_env_value() {
   esac
 }
 
+# Delayed Stop: env + binding + current agree on the live session; stdin is stale.
+# Requires env_picked (caller must be in the stdin-vs-env mismatch branch).
+_delayed_stop_stdin_vs_live_binding() {
+  local stdin_picked=$1 env_picked=$2 allow_fallback="${3:-1}"
+  local from_binding from_current
+  [ "$allow_fallback" = "1" ] || return 1
+  [ -n "$env_picked" ] || return 1
+  from_binding=$(read_state session_binding "")
+  is_valid_external_binding_id "$from_binding" || return 1
+  [ "$stdin_picked" != "$from_binding" ] || return 1
+  [ "$env_picked" = "$from_binding" ] || return 1
+  from_current=$(read_state current_session_id "")
+  [ "$from_current" = "$from_binding" ] || return 1
+  if _session_rebind_preserves_paths "$stdin_picked" "$from_binding"; then
+    return 1
+  fi
+  return 0
+}
+
 resolve_session_id() {
   local stdin_sid="${1:-}"
   local allow_state_fallback="${2:-1}"
@@ -406,6 +425,13 @@ resolve_session_id() {
     for env_name in AGENT_MEMORY_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID; do
       if env_picked=$(_pick_external_session_id "$(_session_binding_env_value "$env_name")"); then
         if [ "$stdin_picked" != "$env_picked" ]; then
+          if _delayed_stop_stdin_vs_live_binding "$stdin_picked" "$env_picked" \
+            "$allow_state_fallback"; then
+            from_binding=$(read_state session_binding "")
+            printf 'agent-memory: ignoring stale harness stdin; preferring session_binding\n' >&2
+            printf '%s' "$from_binding"
+            return
+          fi
           printf 'agent-memory: ignoring stale %s; preferring harness stdin session id\n' \
             "$env_name" >&2
           printf '%s' "$stdin_picked"
@@ -480,34 +506,6 @@ _write_state_body() {
 
 _today_ymd() {
   date +%Y-%m-%d
-}
-
-_write_session_binding() {
-  # Single lock + single rewrite for all three keys — avoid torn metadata.
-  agent_memory_with_state_lock _write_session_binding_body "$1"
-}
-
-_write_session_binding_body() {
-  # Under fail-open, skip full-file rewrite (stale snapshot could drop other keys).
-  if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
-    printf 'agent-memory: skip session binding write (lock not held)\n' >&2
-    return 0
-  fi
-  _rebind_session_state_unlocked 0 "$1"
-}
-
-# Atomically update session_binding (+ host/day) and optionally clear paths.
-# Under fail-open, skips entirely — never wipe paths without updating binding.
-_rebind_session_state() {
-  agent_memory_with_state_lock _rebind_session_state_body "$1" "$2"
-}
-
-_rebind_session_state_body() {
-  if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
-    printf 'agent-memory: skip session rebind (lock not held)\n' >&2
-    return 0
-  fi
-  _rebind_session_state_unlocked "$1" "$2"
 }
 
 _rebind_session_state_unlocked() {
@@ -678,6 +676,26 @@ _run_sync_ephemeral_checkpoint_unlocked() {
   rm -f "$list_tmp"
 }
 
+# sessionStart: one lock for current_session_id + rebind + branch (no path merge).
+run_session_start_ephemeral_bind() {
+  local sid="${1:-}"
+  agent_memory_with_state_lock _run_session_start_ephemeral_bind_unlocked "$sid"
+}
+
+_run_session_start_ephemeral_bind_unlocked() {
+  local sid="${1:-}" b
+  if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
+    printf 'agent-memory: skip session start bind (lock not held)\n' >&2
+    return 0
+  fi
+  _write_state_unlocked current_session_id "$sid" || true
+  _reset_session_state_if_changed_unlocked "$sid" sessionStart
+  if [ -n "${cwd:-}" ]; then
+    b=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
+    [ -n "$b" ] && _refresh_branch_cache_unlocked "$b"
+  fi
+}
+
 refresh_branch_cache() {
   [ -n "${cwd:-}" ] || return 0
   local b
@@ -729,6 +747,36 @@ _state_lock_is_stale() {
   return 0
 }
 
+# Refuse symlink or lock paths outside resolved memory before rm -rf.
+_state_lock_path_refused() {
+  local lock_dir=$1 lock_real mem_real
+  if [ -L "$lock_dir" ]; then
+    printf 'agent-memory: refused symlink state lock: %s\n' "$lock_dir" >&2
+    return 0
+  fi
+  if [ -e "$lock_dir" ]; then
+    lock_real=$(agent_memory_resolve_realpath "$lock_dir") || {
+      printf 'agent-memory: refused unresolvable state lock: %s\n' "$lock_dir" >&2
+      return 0
+    }
+    mem_real=$(agent_memory_resolve_realpath "$memory") || return 0
+    if ! agent_memory_path_under_root "$lock_real" "$mem_real"; then
+      printf 'agent-memory: refused state lock outside memory: %s\n' "$lock_dir" >&2
+      return 0
+    fi
+  fi
+  return 1
+}
+
+_state_lock_remove_if_safe() {
+  local lock_dir=$1
+  if _state_lock_path_refused "$lock_dir"; then
+    return 1
+  fi
+  rm -rf "$lock_dir" 2>/dev/null || true
+  return 0
+}
+
 agent_memory_with_state_lock() {
   local lock_dir="${state_file}.lock"
   local waited=0
@@ -745,10 +793,11 @@ agent_memory_with_state_lock() {
     if [ "$waited" -ge "$max_wait" ]; then
       if [ "$stole" = "0" ] && _state_lock_is_stale "$lock_dir"; then
         printf 'agent-memory: removing stale state lock\n' >&2
-        rm -rf "$lock_dir" 2>/dev/null || true
-        stole=1
-        waited=0
-        continue
+        if _state_lock_remove_if_safe "$lock_dir"; then
+          stole=1
+          waited=0
+          continue
+        fi
       fi
       printf 'agent-memory: state lock busy; proceeding fail-open\n' >&2
       break
@@ -760,7 +809,7 @@ agent_memory_with_state_lock() {
   local status=$?
   unset AGENT_MEMORY_LOCK_ACQUIRED
   if [ "$acquired" = "1" ]; then
-    rm -rf "$lock_dir" 2>/dev/null || true
+    _state_lock_remove_if_safe "$lock_dir"
   fi
   return $status
 }
@@ -897,12 +946,6 @@ normalize_repo_rel_path() {
   esac
   [ -n "$rel" ] || return 1
   printf '%s' "$rel"
-}
-
-# Merge paths + advance last_processed_head under one lock (or skip both).
-apply_ephemeral_checkpoint() {
-  local list_tmp=$1
-  agent_memory_with_state_lock _apply_ephemeral_checkpoint_unlocked "$list_tmp"
 }
 
 _apply_ephemeral_checkpoint_unlocked() {

@@ -32,13 +32,7 @@ agent_memory_init_context || exit 0
 [ -d "$memory" ] || exit 0
 
 session_id=$(resolve_session_id "$hook_stdin_session_id" 0)
-[ -n "$session_id" ] || write_state current_session_id ""
-write_current_session_id "$session_id"
-reset_session_state_if_changed "$session_id" sessionStart
-
-if command -v git >/dev/null 2>&1 && git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
-  refresh_branch_cache
-fi
+run_session_start_ephemeral_bind "$session_id"
 
 msg=$(build_session_context_msg)
 
