@@ -70,7 +70,7 @@ Agents write **short, scannable recall** — another session must resume without
 - **One fact per bullet**; prefer outcome over diary (“shipped X” not “ran command Y then Z”).
 - **Links + delta** — point at SoT; never paste doc bodies.
 - **active-work:** Task 1–2 lines; Progress = current facts only (rewrite stale lines — do not replay `log.md`); Next step = one concrete **product** action (never `/agent-memory …` — put skill commands in Validation or the session plan); Validation = copy-pasteable command + expected result.
-- **log.md:** heading outcome ≤ ~10 words; each bullet ≤ ~1–2 lines; group by session `[type]`; skip turns with nothing durable.
+- **log.md:** heading shape `## [YYYY-MM-DD] [session-id?] [type] outcome` (bracket `[type]`; never `type | title`); outcome ≤ ~10 words; each bullet ≤ ~1–2 lines; group by session `[type]`; skip turns with nothing durable; remove `_No entries yet._` when the first heading is written.
 - **learnings:** Insight = reusable pattern (what to do); Evidence = path; Use when = trigger; drop color and incident narrative.
 - **current.md:** In progress = one line per open branch file; Blockers only when shared; Handoff only when explicit.
 
@@ -86,7 +86,7 @@ Agents write **short, scannable recall** — another session must resume without
 - Invalidate when: condition
 ```
 
-Append a `- pending-doc` bullet when it belongs in official docs; keep until that source exists, then pointer or remove via consolidate. Code/config inferences need evidence + date.
+Append a `- pending-doc` bullet when it belongs in official docs, and always pair it with `- Invalidate when: <concrete condition>` naming the canonical doc/section; keep until that source exists, then pointer or remove via consolidate. Code/config inferences need evidence + date.
 
 **Legacy one-liner** (pre-H2 installs): `- [YYYY-MM-DD] [learning|pitfall] [topic] insight — evidence: …; use when: …; verified: …` — still valid; do not rewrite in bulk. Migrate to H2 only when editing that entry or when consolidate moves it.
 
@@ -122,4 +122,4 @@ Every supported harness targets the same memory shape. **Context layer** injects
 
 ## Memory lint boundaries
 
-Run `/agent-memory lint` on request or review. It checks structure, wiring, staleness, links, duplication, legacy mirrors, learnings issues (legacy one-liners, topic-split / `when editing:` hints), empty log headings, missing session log after scaffold (`empty-log` / `empty-log-after-scaffold`), missing resume sections, Checkpoint freshness vs HEAD (`stale-resume`), Checkpoint trailing prose (`checkpoint-prose`), Next step skill-command misuse (`stale-next-step`), Progress replaying log (`dup-progress-log`), missing hook state file (`hook-state-absent` — info, not cleared evidence), pending hook path evidence (`evidence-pending`), uncleared paths after a fresh Checkpoint (`evidence-stale-uncleared`), and `pending-doc` entries whose invalidate condition may already be met; it warns rather than adjudicating product truth or deleting user content. Soft line/heading budgets and auto-fix limits live in the skill's `lint` reference — consolidation handles promotion/pruning and learnings split/merge, not `lint --fix`.
+Run `/agent-memory lint` on request or review. It checks structure, wiring, staleness, links, duplication, legacy mirrors, learnings issues (legacy one-liners, topic-split / `when editing:` hints), empty log headings, missing session log after scaffold (`empty-log` / `empty-log-after-scaffold`), stale `_No entries yet._` beside real headings (`log-placeholder-stale`), hooks/state blocker contradictions (`blocker-hooks-contradiction`), missing resume sections, Checkpoint freshness vs HEAD (`stale-resume`), Checkpoint trailing prose (`checkpoint-prose`), Next step skill-command misuse (`stale-next-step`), Progress replaying log (`dup-progress-log`), missing hook state file (`hook-state-absent` — info, not cleared evidence), pending hook path evidence (`evidence-pending`), uncleared paths after a fresh Checkpoint (`evidence-stale-uncleared`), and `pending-doc` entries whose invalidate condition may already be met; it warns rather than adjudicating product truth or deleting user content. Soft line/heading budgets and auto-fix limits live in the skill's `lint` reference — consolidation handles promotion/pruning and learnings split/merge, not `lint --fix`.

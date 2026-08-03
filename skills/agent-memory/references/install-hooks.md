@@ -58,7 +58,7 @@ Canonical hook sources live under `hooks/` in the [agent-memory](https://github.
 
    Replace `<harness>` with the normalized harness name. Remind: the installer needs Node.js for JSON merges; it creates the harness directory if missing; Codex users should run `/hooks` in the TUI after install; Cursor may need a hooks reload.
 
-5. **Report.** List: harness, that hooks were **not** written by the agent, and the exact commands printed. Suggest `/agent-memory sync` at the next checkpoint after the user installs.
+5. **Report.** List: harness, that hooks were **not** written by the agent, and the exact commands printed. Suggest `/agent-memory sync` at the next checkpoint after the user installs. For OpenCode: restart the harness after install; expect `.hook-sync-state` on `session.idle` / native `/compact` (plugin also listens for `session.compacted`) — DCP commands such as `/dcp-compact` do **not** trigger agent-memory PreCompact.
 
 ## Detecting installed harnesses (`update`)
 

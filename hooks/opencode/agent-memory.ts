@@ -190,8 +190,11 @@ export const agentMemoryPlugin = async (ctx?: PluginCtx) => {
       runSync(projectDir, 'PreCompact', input);
     },
     event: async (input: { event: { type: string; sessionID?: string } }) => {
-      if (input?.event?.type === 'session.idle') {
-        runSync(projectDir, 'Stop', input);
+      const type = input?.event?.type;
+      // idle = end of turn; compacted = after native compact (belt-and-suspenders
+      // with experimental.session.compacting). DCP /dcp-compact does not emit these.
+      if (type === 'session.idle' || type === 'session.compacted') {
+        runSync(projectDir, type === 'session.compacted' ? 'PreCompact' : 'Stop', input);
       }
     },
   };

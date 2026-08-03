@@ -87,3 +87,4 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
 - Prefer linking over copying. Prefer discard of reconstructible path evidence over keeping duplicate lists — without emptying the session log.
 - If `git` is unavailable, do not discard path bullets as "reconstructible" — defer them.
 - Align with the lifecycle and gate in `instructions.md`.
+- **Day-0 / founding session:** after bootstrap or first dogfood on the same calendar day, treat consolidate as **report-only** for prune (pending-doc deferrals, external promotions, uncommitted-scaffold advice). Do not set user expectations for Discard/Trim of founding headings — that waits for a closed session (next day or explicit stream-ended confirmation).
