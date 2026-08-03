@@ -25,9 +25,15 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - Hooks installer: when `package.json` is present, prefer its version over `AGENT_MEMORY_VERSION` (env remains fallback for standalone hooks-only checkouts).
 - CI: pin `actions/checkout` v7.0.1, `actions/setup-node` v7.0.0, and `oven-sh/setup-bun` v2.2.0 (Node 24 action runtime; clears GitHub deprecation warnings forcing Node 20 actions onto 24).
 - Memory skeleton: ship pack-safe `vendor/memory/gitignore` (identical to `.gitignore`); `init` / `update` / `lint` require `.hook-sync-state`, `.hook-sync-state.lock`, and `.hook-sync-state.*` (npm omits files named `.gitignore` from tarballs).
+- Memory method: `instructions.md` harness parity documents four flat hook scripts, `current_session_id` in ephemeral evidence, atomic sync/sessionStart binds under `.hook-sync-state.lock`, and the delayed Stop exception to stdin-wins.
+- Hooks: shared `agent-memory-common.sh` section index (maintainability; no runtime behavior change).
 
 ### Fixed
 
+- Hooks: delayed Stop on sync/Stop prefers canonical `session_binding` when inherited session env, `session_binding`, and `current_session_id` agree on the live id but harness stdin carries a stale id (including OpenCode `ses_*` after rotation); scans all binding env vars before stdin wins on any single stale env.
+- Hooks: `sessionStart` runs `current_session_id` write, session rebind, and branch refresh under one state lock (`run_session_start_ephemeral_bind`); exports `AGENT_MEMORY_SESSION_ID` only when bind succeeded under lock (fail-open must not advertise an unwritten id).
+- Hooks: invalid `session_binding` in state falls through to `current_session_id` when stdin has no valid id (corrupted binding no longer blocks recovery).
+- Hooks: refuse symlink or out-of-memory `.hook-sync-state.lock` before `rm -rf` during lock steal/cleanup.
 - Hooks: `consume-evidence` skips clearing `session_touched_files` when the state lock is not held (fail-open parity with rebind/branch/checkpoint) and compare-and-swaps against the pre-lock snapshot so a concurrent sync cannot lose newly merged paths.
 - Hooks installer: write `.version` via temp+`mv` with symlink refusal (same as `safe_install_file`) so a planted `.version` symlink cannot redirect the stamp outside the hooks dir.
 - OpenCode: `isValidBindingId` rejects reserved `__no_id__` (parity with bash `is_valid_external_binding_id`).
@@ -65,6 +71,9 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ### Security
 
+- Hooks: delayed Stop preserves live `session_binding` when env and state agree (AuthZ — stale Stop payload cannot rewind session after `sessionStart` or OpenCode `ses_*` rotation).
+- Hooks: lock steal refuses symlink lock path before `rm -rf` (Injection / confinement).
+- Hooks: `sessionStart` exports session env only after successful bind under lock (AuthZ — fail-open cannot misalign env with `.hook-sync-state`).
 - Hooks: consume-evidence never clears pending paths under lock fail-open; CAS clear avoids wiping paths merged by a concurrent sync (AuthZ / evidence integrity).
 - Hooks installer: `.version` stamp refuses destination symlinks (Injection / confinement — parity with script install).
 - OpenCode: reject `__no_id__` binding ids before spawn (AuthZ — parity with bash).
@@ -90,7 +99,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - Document publish guidance: `prepublishOnly` runs `bun run check`; avoid `npm publish --ignore-scripts`.
 - CI runs on `push` to `main` as well as pull requests; `permissions: contents: read`; pin Actions to commit SHAs and Bun `1.3.14`; `markdownlint-cli` via `devDependencies` / `bunx` (no silent skip).
 - Test asserts `ENV_ALLOWLIST_EXACT` parity between CLI constants and OpenCode plugin.
-- Clarify env forwarding in `SECURITY.md`: allowlist applies to CLI/OpenCode spawns; stock harness/git invocations inherit full parent env (git-hooks trust model). Drop open `LC_*` prefix forward — only named locale keys.
+- Clarify env forwarding in `SECURITY.md`: allowlist applies to CLI/OpenCode spawns; stock harness/git invocations inherit full parent env (git-hooks trust model). Drop open `LC_*` prefix forward — only named locale keys. Document delayed Stop, sessionStart atomic bind, lock-path refusal before `rm -rf`, and fail-open write semantics.
 - `tests/test-runner.sh` is the single entry for `bun run test`.
 
 ## [0.1.1] - 2026-07-31

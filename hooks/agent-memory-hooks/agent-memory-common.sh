@@ -396,7 +396,7 @@ _session_binding_env_value() {
 }
 
 # Delayed Stop: env + binding + current agree on the live session; stdin is stale.
-# Requires env_picked (caller must be in the stdin-vs-env mismatch branch).
+# Requires env_picked (caller scans all binding env vars before stdin-wins).
 _delayed_stop_stdin_vs_live_binding() {
   local stdin_picked=$1 env_picked=$2 allow_fallback="${3:-1}"
   local from_binding from_current
@@ -408,10 +408,19 @@ _delayed_stop_stdin_vs_live_binding() {
   [ "$env_picked" = "$from_binding" ] || return 1
   from_current=$(read_state current_session_id "")
   [ "$from_current" = "$from_binding" ] || return 1
-  if _session_rebind_preserves_paths "$stdin_picked" "$from_binding"; then
-    return 1
-  fi
   return 0
+}
+
+# Before stdin-wins on any single stale env, check every binding env for delayed Stop.
+_stdin_env_mismatch_prefers_live_binding() {
+  local stdin_picked=$1 allow_fallback="${2:-1}"
+  local env_name env_picked
+  for env_name in AGENT_MEMORY_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID; do
+    env_picked=$(_pick_external_session_id "$(_session_binding_env_value "$env_name")") || continue
+    [ "$stdin_picked" != "$env_picked" ] || continue
+    _delayed_stop_stdin_vs_live_binding "$stdin_picked" "$env_picked" "$allow_fallback" && return 0
+  done
+  return 1
 }
 
 resolve_session_id() {
@@ -422,16 +431,15 @@ resolve_session_id() {
   # Prefer harness stdin over conflicting inherited session env (stale shell
   # must not rebind away from the live harness session).
   if stdin_picked=$(_pick_external_session_id "$stdin_sid"); then
+    if _stdin_env_mismatch_prefers_live_binding "$stdin_picked" "$allow_state_fallback"; then
+      from_binding=$(read_state session_binding "")
+      printf 'agent-memory: ignoring stale harness stdin; preferring session_binding\n' >&2
+      printf '%s' "$from_binding"
+      return
+    fi
     for env_name in AGENT_MEMORY_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID; do
       if env_picked=$(_pick_external_session_id "$(_session_binding_env_value "$env_name")"); then
         if [ "$stdin_picked" != "$env_picked" ]; then
-          if _delayed_stop_stdin_vs_live_binding "$stdin_picked" "$env_picked" \
-            "$allow_state_fallback"; then
-            from_binding=$(read_state session_binding "")
-            printf 'agent-memory: ignoring stale harness stdin; preferring session_binding\n' >&2
-            printf '%s' "$from_binding"
-            return
-          fi
           printf 'agent-memory: ignoring stale %s; preferring harness stdin session id\n' \
             "$env_name" >&2
           printf '%s' "$stdin_picked"
@@ -463,11 +471,9 @@ resolve_session_id() {
     fi
     if is_valid_external_binding_id "$from_binding"; then
       printf '%s' "$from_binding"
-    else
-      printf 'agent-memory: ignoring invalid session_binding in state\n' >&2
-      printf ''
+      return
     fi
-    return
+    printf 'agent-memory: ignoring invalid session_binding in state\n' >&2
   fi
   from_current=$(read_state current_session_id "")
   if [ -n "$from_current" ] && [ "$from_current" != "$NO_ID_SESSION_SENTINEL" ]; then
@@ -487,13 +493,6 @@ resolve_session_id() {
     fi
   done
   printf ''
-}
-
-write_current_session_id() {
-  local sid="${1:-}"
-  # Clearing on empty stops a stale current from surviving after binding moved
-  # to __no_id__.
-  write_state current_session_id "$sid"
 }
 
 _write_state_body() {
@@ -593,12 +592,6 @@ _session_rebind_preserves_paths() {
   return 1
 }
 
-# Bind session and clear path accumulation when the session changes.
-# Falls back to logged_files_session when session_binding is absent.
-reset_session_state_if_changed() {
-  agent_memory_with_state_lock _reset_session_state_if_changed_unlocked "$1" "${2:-sync}"
-}
-
 _reset_session_state_if_changed_unlocked() {
   local sid=$1 context="${2:-sync}"
   local last bound_day clear_paths
@@ -659,17 +652,14 @@ run_sync_ephemeral_checkpoint() {
 }
 
 _run_sync_ephemeral_checkpoint_unlocked() {
-  local sid="${1:-}" list_tmp b
+  local sid="${1:-}" list_tmp
   if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
     printf 'agent-memory: skip sync checkpoint (lock not held)\n' >&2
     return 0
   fi
   _write_state_unlocked current_session_id "$sid" || true
   _reset_session_state_if_changed_unlocked "$sid" sync
-  if [ -n "${cwd:-}" ]; then
-    b=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
-    [ -n "$b" ] && _refresh_branch_cache_unlocked "$b"
-  fi
+  _refresh_branch_from_cwd_unlocked
   list_tmp=$(mktemp "${state_file}.XXXXXX")
   list_non_memory_changes >"$list_tmp" || true
   _apply_ephemeral_checkpoint_unlocked "$list_tmp"
@@ -677,31 +667,31 @@ _run_sync_ephemeral_checkpoint_unlocked() {
 }
 
 # sessionStart: one lock for current_session_id + rebind + branch (no path merge).
+agent_memory_session_bind_ok="${agent_memory_session_bind_ok:-0}"
+
 run_session_start_ephemeral_bind() {
   local sid="${1:-}"
+  agent_memory_session_bind_ok=0
   agent_memory_with_state_lock _run_session_start_ephemeral_bind_unlocked "$sid"
 }
 
 _run_session_start_ephemeral_bind_unlocked() {
-  local sid="${1:-}" b
+  local sid="${1:-}"
   if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
     printf 'agent-memory: skip session start bind (lock not held)\n' >&2
     return 0
   fi
+  agent_memory_session_bind_ok=1
   _write_state_unlocked current_session_id "$sid" || true
   _reset_session_state_if_changed_unlocked "$sid" sessionStart
-  if [ -n "${cwd:-}" ]; then
-    b=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
-    [ -n "$b" ] && _refresh_branch_cache_unlocked "$b"
-  fi
+  _refresh_branch_from_cwd_unlocked
 }
 
-refresh_branch_cache() {
-  [ -n "${cwd:-}" ] || return 0
+_refresh_branch_from_cwd_unlocked() {
   local b
+  [ -n "${cwd:-}" ] || return 0
   b=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
-  [ -n "$b" ] || return 0
-  agent_memory_with_state_lock _refresh_branch_cache_unlocked "$b"
+  [ -n "$b" ] && _refresh_branch_cache_unlocked "$b"
 }
 
 _refresh_branch_cache_unlocked() {

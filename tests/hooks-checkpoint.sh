@@ -235,6 +235,22 @@ awk -F= 'NF < 1 { exit 1 } $1 !~ /^[A-Za-z0-9_]+$/ { exit 1 }' \
   .agents/memory/.hook-sync-state ||
   fail "state file corrupted under lock contention"
 
+# --- security: symlink state lock must not be removed via steal rm -rf ---
+printf '%s\n' 'session_binding=lock-symlink-keep' >.agents/memory/.hook-sync-state
+ln -s "$TMP/symlink-victim" .agents/memory/.hook-sync-state.lock
+mkdir -p "$TMP/symlink-victim"
+printf '{"session_id":"lock-symlink-attack","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=lock-symlink-attack \
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/lock-symlink.err" || true
+grep -q 'session_binding=lock-symlink-keep' .agents/memory/.hook-sync-state ||
+  fail "symlink lock must not allow rebind via steal rm -rf"
+grep -qi 'refused symlink state lock\|fail-open\|lock busy' "$TMP/lock-symlink.err" ||
+  fail "expected symlink lock refusal or fail-open"
+[[ -L .agents/memory/.hook-sync-state.lock ]] ||
+  fail "symlink lock path must remain"
+rm -f .agents/memory/.hook-sync-state.lock
+
 # --- OpenCode ses_* rotation keeps accumulated paths (same day) ---
 today=$(date +%Y-%m-%d)
 printf '%s\n' \
@@ -758,6 +774,25 @@ grep -q 'live-work.txt' .agents/memory/.hook-sync-state ||
   fail "delayed Stop must not clear paths for the live session"
 grep -qi 'ignoring stale harness stdin' "$TMP/delayed-stop.err" ||
   fail "expected stale harness stdin warning on delayed Stop"
+
+# --- correctness: OpenCode delayed Stop must not rewind live ses_* binding ---
+printf '%s\n' \
+  'session_binding=ses_live_delay' \
+  'current_session_id=ses_live_delay' \
+  'session_binding_host=opencode' \
+  "session_binding_day=$today" \
+  'session_touched_files=opencode-live.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"session_id":"ses_stale_delay","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=opencode AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=ses_live_delay \
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/opencode-delayed.err" || true
+grep -q 'session_binding=ses_live_delay' .agents/memory/.hook-sync-state ||
+  fail "opencode delayed Stop must not rebind away from live ses_* binding"
+grep -q 'opencode-live.txt' .agents/memory/.hook-sync-state ||
+  fail "opencode delayed Stop must not clear paths for live ses_* session"
+grep -qi 'ignoring stale harness stdin' "$TMP/opencode-delayed.err" ||
+  fail "expected stale harness stdin warning on opencode delayed Stop"
 
 # --- security: jq parse failure falls back to sed for session id ---
 printf '{"session_id":"jq-fallback-session","cwd":"%s", bad }\n' "$TMP" |

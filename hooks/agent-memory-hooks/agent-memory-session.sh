@@ -33,41 +33,47 @@ agent_memory_init_context || exit 0
 
 session_id=$(resolve_session_id "$hook_stdin_session_id" 0)
 run_session_start_ephemeral_bind "$session_id"
+# Only export session env when bind succeeded under lock (fail-open must not
+# advertise an id that was not written to .hook-sync-state).
+bound_session_id=""
+if [ "${agent_memory_session_bind_ok:-0}" = "1" ] && [ -n "$session_id" ]; then
+  bound_session_id="$session_id"
+fi
 
 msg=$(build_session_context_msg)
 
 case "$host" in
   cursor)
-    if [ -n "$session_id" ]; then
+    if [ -n "$bound_session_id" ]; then
       printf '{"env":{"AGENT_MEMORY_SESSION_ID":"%s"},"additional_context":"%s"}\n' \
-        "$(json_escape "$session_id")" "$(json_escape "$msg")"
+        "$(json_escape "$bound_session_id")" "$(json_escape "$msg")"
     else
       printf '{"additional_context":"%s"}\n' "$(json_escape "$msg")"
     fi
     ;;
   claude)
-    if [ -n "$session_id" ]; then
+    if [ -n "$bound_session_id" ]; then
       printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"},"env":{"AGENT_MEMORY_SESSION_ID":"%s"}}\n' \
-        "$(json_escape "$msg")" "$(json_escape "$session_id")"
+        "$(json_escape "$msg")" "$(json_escape "$bound_session_id")"
     else
       printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' \
         "$(json_escape "$msg")"
     fi
     ;;
   codex)
-    [ -n "$session_id" ] && export AGENT_MEMORY_SESSION_ID="$session_id"
+    [ -n "$bound_session_id" ] && export AGENT_MEMORY_SESSION_ID="$bound_session_id"
     printf '%s\n' "$msg"
     ;;
   copilot)
-    if [ -n "$session_id" ]; then
+    if [ -n "$bound_session_id" ]; then
       printf '{"additionalContext":"%s","env":{"AGENT_MEMORY_SESSION_ID":"%s"}}\n' \
-        "$(json_escape "$msg")" "$(json_escape "$session_id")"
+        "$(json_escape "$msg")" "$(json_escape "$bound_session_id")"
     else
       printf '{"additionalContext":"%s"}\n' "$(json_escape "$msg")"
     fi
     ;;
   opencode)
-    [ -n "$session_id" ] && export AGENT_MEMORY_SESSION_ID="$session_id"
+    [ -n "$bound_session_id" ] && export AGENT_MEMORY_SESSION_ID="$bound_session_id"
     printf '%s\n' "$msg"
     ;;
   gemini)
@@ -75,7 +81,7 @@ case "$host" in
     printf '{"context":"%s"}\n' "$(json_escape "$msg")"
     ;;
   *)
-    [ -n "$session_id" ] && export AGENT_MEMORY_SESSION_ID="$session_id"
+    [ -n "$bound_session_id" ] && export AGENT_MEMORY_SESSION_ID="$bound_session_id"
     printf '%s\n' "$msg"
     ;;
 esac
