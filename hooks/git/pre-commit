@@ -17,10 +17,11 @@ cwd=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 
 hook_dir=$(dirname "$0")
 if [ -x "$hook_dir/agent-memory-sync.sh" ]; then
-  # Pre-commit has no harness stdin session id — drop inherited binding env so a
-  # stale shell cannot rebind away from session_binding in state.
-  AGENT_MEMORY_EVENT=precommit AGENT_MEMORY_PROJECT_DIR="$cwd" \
+  # Pre-commit has no harness stdin session id — drop inherited binding env and
+  # host label so a stale shell cannot rebind or apply OpenCode day-rollover rules.
+  AGENT_MEMORY_EVENT=precommit AGENT_MEMORY_HOST=git AGENT_MEMORY_PROJECT_DIR="$cwd" \
     env -u AGENT_MEMORY_SESSION_ID -u CURSOR_SESSION_ID -u GEMINI_SESSION_ID \
+      -u AGENT_MEMORY_HOST \
     "$hook_dir/agent-memory-sync.sh" || true
 fi
 

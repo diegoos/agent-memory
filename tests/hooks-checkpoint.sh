@@ -1036,6 +1036,22 @@ grep -q 'session_binding=s-precommit-env' .agents/memory/.hook-sync-state ||
 grep -q 'precommit-env-keep.txt' .agents/memory/.hook-sync-state ||
   fail "pre-commit must not clear paths via stale session env rebind"
 
+# --- security: pre-commit unsets stale AGENT_MEMORY_HOST (no OpenCode day rollover) ---
+printf '%s\n' \
+  'session_binding=s-precommit-host' \
+  'session_binding_host=cursor' \
+  'session_binding_day=1999-01-01' \
+  'session_touched_files=precommit-host-keep.txt' \
+  >.agents/memory/.hook-sync-state
+printf 'pc-host\n' >pc-host.txt
+git add pc-host.txt
+AGENT_MEMORY_HOST=opencode \
+  git commit -q -m 'pc-host' >/dev/null 2>&1 || true
+grep -q 'session_binding=s-precommit-host' .agents/memory/.hook-sync-state ||
+  fail "pre-commit must not rebind from stale AGENT_MEMORY_HOST"
+grep -q 'precommit-host-keep.txt' .agents/memory/.hook-sync-state ||
+  fail "pre-commit must not clear paths via stale OpenCode host env"
+
 # --- security: pre-commit ignores non-hex Checkpoint (no git option smuggling) ---
 cat >.agents/memory/active-work/feat-status.md <<'EOF'
 # Active Work — Branch: `feat-status`

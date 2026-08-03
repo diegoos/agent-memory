@@ -56,7 +56,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - Hooks installer: `install-hooks.sh` fails closed when neither `realpath` nor `python3` is available (parity with shared hooks — weak `cd`/`pwd` fallback skipped symlink resolution on the under-project check).
 - Hooks: `agent_memory_resolve_realpath` fails closed when neither `realpath` nor `python3` is available (weak `cd`/`pwd` fallback skipped symlink resolution and could write `.hook-sync-state` through an escaped `.agents/memory` symlink).
 - Hooks: `resolve_session_id` prefers harness stdin over stale inherited `AGENT_MEMORY_SESSION_ID`, `CURSOR_SESSION_ID`, and `GEMINI_SESSION_ID` when both are valid and differ (re-run hooks installer to pick up).
-- Hooks: git `pre-commit` unsets inherited session-binding env vars before sync so stale shell state cannot rebind away from `session_binding` or clear `session_touched_files`.
+- Hooks: git `pre-commit` unsets stale session env and sets `AGENT_MEMORY_HOST=git` before sync so inherited OpenCode host labels cannot trigger day-rollover path clears.
 - Hooks: `parse_hook_stdin` falls back to sed field extraction when `jq` fails or returns empty for non-empty harness input (stdin session id not silently dropped to env).
 - Hooks: `sessionStart` context message includes untrusted-recall framing aligned with agent block / `instructions.md`.
 - CI / `bun run check`: run `build:check` before `test` and `build` so a tampered committed `bin/cli.js` cannot pass after `tests/cli-install.sh` rebuilds the artifact on the runner.
