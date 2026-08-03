@@ -1,10 +1,12 @@
 # Active Work — Branch: `<branch>`
 
-Ephemeral per-branch scratchpad. Copy to `active-work/<branch>.md` (sanitize: non `[A-Za-z0-9._-]` → `-`), set the real `Branch:` header, delete on merge. Create only when work is resumable. Method: `instructions.md`.
+Ephemeral per-branch scratchpad. Copy to `active-work/<branch>.md` (filename sanitize: non `[A-Za-z0-9._-]` → `-`), set the real `Branch:` header, delete on merge. Create only when work is resumable. Method: `instructions.md`.
 
 Checkpoint: YYYY-MM-DD @ SHORT-SHA
 
 Replace `SHORT-SHA` with `git rev-parse --short HEAD` and the date with today. Keep the Checkpoint line machine-parseable: date and sha only after `@` — no backticks and no extra instructions on that line.
+
+Next step is one concrete **product** action (commit, PR, feature work) — never `/agent-memory …` (those belong in Validation or the session plan). When copying to `active-work/<branch>.md`, strip section blurbs under each `##` heading (keep headings and `-` bullets only).
 
 ## Task
 
@@ -19,8 +21,6 @@ Current facts only — not a command diary and not a replay of `log.md`. Prefer 
 - _none_
 
 ## Next step
-
-One concrete **product** next action (commit, PR, feature work). Do **not** put `/agent-memory …` commands here — those belong in Validation or the session plan.
 
 - _none_
 

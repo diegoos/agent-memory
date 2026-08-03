@@ -41,14 +41,14 @@ Minimum pointer line: `- [topic] useful delta — source: [doc](../../path); rel
 ### How to write (concise)
 
 - **One fact per bullet**; outcome over diary; **links + delta** — never paste doc bodies.
-- **active-work:** follow `active-work/TEMPLATE.md` (Progress = current facts, not a `log.md` replay; Next step = one **product** action — never `/agent-memory …`).
+- **active-work:** follow `active-work/TEMPLATE.md` (on copy: strip section blurbs; Progress = current facts, not a `log.md` replay; Next step = one **product** bullet — never `/agent-memory …`).
 - **log.md / decisions.md:** shapes in those files; semantic log bullets only; bracket `[type]`.
 - **current.md:** one In-progress line per open branch file; shared Blockers only; explicit Handoff only.
 - **learnings:** prefer what to do; H2 / **Legacy one-liner** / **Duplicate rule** / `learnings-<topic>.md` / `pending-doc` — skill `references/learn.md`. Never `domains/*` / `features/*`.
 
 ## When starting or resuming work
 
-Create `active-work/<branch>.md` only when resumable. Copy `active-work/TEMPLATE.md` (sanitize, Checkpoint, `../../../` links). Next step = product work only.
+Create `active-work/<branch>.md` only when resumable. Copy `TEMPLATE.md`: sanitize filename; set Checkpoint; strip section blurbs (keep `##` + `-` bullets); `../../../` links. Next step = product bullet only.
 
 ## When stopping (primary write)
 

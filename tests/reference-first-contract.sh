@@ -90,6 +90,18 @@ assert_absent "$skeleton/active-work/TEMPLATE.md" 'Checkpoint: YYYY-MM-DD @ SHOR
   "TEMPLATE Checkpoint line has no trailing prose"
 assert_contains "$skeleton/active-work/TEMPLATE.md" 'product' \
   "TEMPLATE Next step is product work"
+# Product /agent-memory ban lives off-section (Checkpoint-style), not under ## Next step
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'never `/agent-memory' \
+  "TEMPLATE documents Next step product-only ban off-section"
+awk '
+  /^## Next step/ { in_ns=1; next }
+  /^## / { in_ns=0 }
+  in_ns && /\/agent-memory/ { found=1 }
+  END { exit found ? 0 : 1 }
+' "$skeleton/active-work/TEMPLATE.md" &&
+  fail "TEMPLATE ## Next step section must not contain /agent-memory guidance"
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'strip section blurbs' \
+  "TEMPLATE documents blurbs strip on copy"
 assert_contains "$skeleton/active-work/TEMPLATE.md" 'not a replay of `log.md`' \
   "TEMPLATE Progress must not replay log"
 assert_contains "$skeleton/active-work/TEMPLATE.md" 'full closure command' \
@@ -132,6 +144,8 @@ assert_contains "$instructions" 'without invoking the skill command' \
 assert_contains "$instructions" '## Memory lint boundaries' "lint boundaries summary"
 assert_contains "$instructions" 'when editing:' "scope hint convention"
 assert_contains "$instructions" '## When starting or resuming work' "task-organized resume section"
+assert_contains "$instructions" 'strip section blurbs' \
+  "instructions require strip section blurbs when copying TEMPLATE"
 assert_contains "$instructions" '## When stopping (primary write)' "task-organized primary write section"
 assert_contains "$instructions" '## When catching up' "task-organized catch-up section"
 assert_contains "$instructions" 'prefer what to do' "learning writing guidance"
@@ -235,6 +249,8 @@ assert_contains "$lint" 'checkpoint-prose:' \
   "lint warns on Checkpoint trailing TEMPLATE prose"
 assert_contains "$lint" 'stale-next-step:' \
   "lint warns when Next step cites /agent-memory"
+assert_contains "$lint" 'in_ns && /^-/ && /\/agent-memory' \
+  "lint stale-next-step matches action bullets only"
 assert_contains "$lint" 'dup-progress-log' \
   "lint warns when Progress replays log"
 assert_contains "$lint" 'skills/agent-memory/vendor/memory/' \
@@ -270,6 +286,8 @@ assert_contains "$sync" 'full closure command' \
   "sync Validation prefers full project closure"
 assert_contains "$sync" 'Consume pending path evidence (required when eligible)' \
   "sync requires consume when eligible"
+assert_contains "$sync" 'strip section blurbs' \
+  "sync strips TEMPLATE section blurbs on create/refresh"
 assert_contains "$sync" 'It **never** touches `decisions.md`, `learnings.md`,' \
   "sync excludes durable recall"
 assert_contains "$sync" 'learnings-*.md' "sync excludes topic splits"

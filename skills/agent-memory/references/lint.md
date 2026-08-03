@@ -62,11 +62,11 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
      elif ! grep -qE '^Checkpoint: [`"]?[0-9]{4}-[0-9]{2}-[0-9]{2}[`"]? @ [`"]?[0-9a-fA-F]{4,40}[`"]?[[:space:]]*$' "$f"; then
        echo "checkpoint-prose: $f — Checkpoint line must be only date @ sha (no trailing TEMPLATE instructions)"
      fi
-     # Next step must not be a memory skill command (product work only)
+     # Next step action bullets must not be a memory skill command (ignore section blurbs)
      awk '
        /^## Next step/ { in_ns=1; next }
        /^## / { in_ns=0 }
-       in_ns && /\/agent-memory[[:space:]]/ {
+       in_ns && /^-/ && /\/agent-memory[[:space:]]/ {
          print "stale-next-step: '"$f"' — Next step cites /agent-memory; use a product action (skill cmds → Validation or report)"
          exit
        }
@@ -245,7 +245,7 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
 4. **Semantic checks (judgment — report as warnings to review).** These need reading, not grepping; surface them for the user to confirm rather than auto-fixing:
    - **Stale `current.md`** — does _In progress_ still match open active-work?
    - **Missing resume quality** — active-work without a concrete _Next step_ or _Validation_ when _Task_ is non-placeholder.
-   - **Stale Next step (`stale-next-step`)** — _Next step_ cites `/agent-memory …` (especially the command just run); replace with a product action and suggest sync. Deterministic grep above; confirm in judgment when the command already completed this session.
+   - **Stale Next step (`stale-next-step`)** — an action bullet under _Next step_ cites `/agent-memory …` (especially the command just run); replace with a product action and suggest sync. Deterministic check matches `-` bullets only (TEMPLATE/section blurbs that mention the ban do not count). Confirm in judgment when the command already completed this session.
    - **Duplicated Progress (`dup-progress-log`)** — Progress bullets that merely replay the current `log.md` session (bootstrap/init copy); prefer a one-line pointer to log/learnings.
    - **Hypothesis as fact** — assumptions phrased as certainties outside _Assumptions / open questions_.
    - **Duplication** — paraphrased facts also in AGENTS/README/docs/ADR (exact long-line overlap is handled deterministically above; ignore instructions↔vendor dogfood mirrors).
