@@ -28,10 +28,10 @@ Analyze the project and populate the memory as a **source inventory + gaps** —
    - Do **not** create `vision.md`, `architecture.md`, `patterns.md`, `mistakes.md`, `known-issues.md`, `domains/*`, or `features/*`.
    - Do **not** invent product vision/scope. If purpose/scope is undocumented, report the gap — do not write a vision file.
    - Leave `current.md` with empty placeholders if there is no active work — do not invent milestones, Done lists, or roadmaps.
-   - Leave `active-work/` with only its `TEMPLATE.md`.
+   - Leave `active-work/` with only its `TEMPLATE.md` **unless** the branch already has resumable product work (dirty tree / open task). If you create or refresh `active-work/<branch>.md` after bootstrap, set _Next step_ to a **product** action (commit, PR, feature gap) — never “run `/agent-memory lint|sync|consolidate`”. Put memory-command suggestions in the Report, not in Next step. Progress may point at `log.md` / `learnings.md`; do not copy bootstrap bullets into Progress.
    - Do **not** invent decisions — only point at an existing ADR index/dir when helpful, or leave `decisions.md` empty.
    - Create `learnings.md` (or a topic split) only when at least one fact passes the gate (reusable, undocumented, non-obvious, evidenced, no secrets). Use the H2 learning/pitfall format in `instructions.md`. Mark facts that should become official docs with `pending-doc`. Link every new learnings file from `index.md` (optional `when editing:` when paths are clear). Prefer one `learnings.md` on first bootstrap unless a single theme dominates.
-   - Append to `log.md` using the per-session format in `instructions.md`, e.g. `## [YYYY-MM-DD] [docs] bootstrap source inventory` with bullets listing sources indexed / learnings created / gaps reported.
+   - Append **one** synthesis heading to `log.md` for the whole bootstrap (init scaffold + inventory + gaps) — e.g. `## [YYYY-MM-DD] [docs] bootstrap source inventory` — with bullets for sources indexed / learnings created / gaps reported. Do **not** open a second `[ingest]` / init-only heading for the same calendar day; fold init into this heading. Keep bullets short; durable gaps belong in `learnings.md`, not as Progress replay.
    - Keep every `index.md` source line to: link + what it owns + when to read.
 
 5. **Report.** Group clearly:
@@ -39,7 +39,7 @@ Analyze the project and populate the memory as a **source inventory + gaps** —
    - **Gaps kept as learnings** — with evidence.
    - **Contradictions** — need a user decision.
    - **Missing documentation recommended** — suggested external paths (skill does **not** create those docs).
-   - **Ignored** — transient or already covered by a source. Tell the user to run `/agent-memory sync` at checkpoints and `/agent-memory consolidate` periodically to prune noise.
+   - **Ignored** — transient or already covered by a source. Tell the user to run `/agent-memory sync` at checkpoints. Prefer `/agent-memory consolidate` later for **closed**-session noise — not immediately after bootstrap on the same day (founding log headings are current session).
 
 ## Subagent prompts
 

@@ -9,9 +9,10 @@
     "build": "bun build ./install.ts --outfile bin/cli.js --target node --format cjs --banner '#!/usr/bin/env node'",
     "typecheck": "bunx tsc -p tsconfig.json --noEmit",
     "lint:md": "bunx markdownlint '**/*.md' --ignore node_modules --ignore bin",
-    "build:check": "bun build ./install.ts --outfile /tmp/agent-memory-cli-check.js --target node --format cjs --banner '#!/usr/bin/env node' && cmp -s bin/cli.js /tmp/agent-memory-cli-check.js",
+    "build:check": "bash scripts/build-check.sh",
     "test": "bash tests/test-runner.sh",
-    "check": "bun run typecheck && bun run lint:md && bun run build:check && bun run test && bun run build",
+    "check": "bun audit && bun run typecheck && bun run lint:md && bun run build:check && bun run test && bun run build",
+    "prepack": "bun audit && bun run build:check",
     "prepublishOnly": "bun run check"
   },
   "publishConfig": {
@@ -35,7 +36,7 @@
   "devDependencies": {
     "@types/node": "^26.1.1",
     "bun-types": "^1.3.14",
-    "markdownlint-cli": "0.45.0",
+    "markdownlint-cli": "0.49.1",
     "typescript": "7.0.2"
   }
 }

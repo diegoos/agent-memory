@@ -35,6 +35,19 @@ const VERSION: string = JSON.parse(
 const INSTALL_HOOKS_SH = path.join(ROOT, "hooks", "install-hooks.sh");
 const SKILL_SOURCE = path.join(ROOT, "skills", "agent-memory");
 
+/** Source checkout (has install.ts) vs published npm pack (files allowlist only). */
+function isSourceCheckout(): boolean {
+  return fs.existsSync(path.join(ROOT, "install.ts"));
+}
+
+/** How to re-invoke this CLI in printed hints (local bin vs npx). */
+function cliInvocation(): string {
+  if (isSourceCheckout()) {
+    return `node ${path.join(ROOT, "bin", "cli.js")}`;
+  }
+  return "npx @dosx/agent-memory";
+}
+
 function fatal(message: string): never {
   console.error(`${c.red("error:")} ${message}`);
   process.exit(1);
@@ -50,6 +63,11 @@ function printHeader(action: string): void {
     `${c.boldMagenta("agent-memory")} ${c.dim(`v${VERSION}`)}  ${c.dim("·")}  ${c.cyan(action)}`,
   );
   console.log(c.dim(`project  ${path.resolve(projectDir())}`));
+  console.log(
+    c.dim(
+      `source   ${ROOT}${isSourceCheckout() ? " (local checkout)" : ""}`,
+    ),
+  );
 }
 
 function printSection(title: string): void {
@@ -113,10 +131,12 @@ function printAgentNextSteps(primary: "init" | "update"): void {
 
 function printHelp(): void {
   const harnessList = CANONICAL_HARNESSES.join(", ");
+  const local = cliInvocation();
   console.log(`${c.boldMagenta("agent-memory")} ${c.dim(VERSION)}
 
 ${c.cyan("Installer")} for @dosx/agent-memory — copies the skill into the
-project and installs harness lifecycle hooks.
+project and installs harness lifecycle hooks from this package tree
+(never clones GitHub).
 
 ${c.bold("Usage")}
   ${c.cyan("agent-memory install")}                    ${c.dim("# TTY: pick harnesses + skill/hooks")}
@@ -126,6 +146,7 @@ ${c.bold("Usage")}
   ${c.cyan("agent-memory install <harness>")}          ${c.dim("# TTY menu for that harness")}
   ${c.cyan("agent-memory update")}                     ${c.dim("# refresh skill + installed hooks")}
   ${c.cyan("agent-memory update --yes")}               ${c.dim("# non-interactive update")}
+  ${c.cyan("agent-memory update --force --yes")}       ${c.dim("# reinstall even when SemVer matches")}
   ${c.cyan("agent-memory help")}
 
 ${c.bold("Harnesses")}  ${harnessList}
@@ -137,6 +158,12 @@ ${c.bold("Examples")}
   ${c.dim("npx @dosx/agent-memory install hooks cursor")}
   ${c.dim("npx @dosx/agent-memory update")}
   ${c.dim("npx @dosx/agent-memory update --yes")}
+
+${c.bold("Local checkout")} ${c.dim("(dogfood unreleased — same SemVer, new files)")}
+  ${c.dim(`${local} install skill`)}
+  ${c.dim(`${local} install hooks cursor`)}
+  ${c.dim(`${local} update --yes`)} ${c.dim("# auto-refreshes from this tree")}
+  ${c.dim(`${local} update --force --yes`)} ${c.dim("# force refresh from any package")}
 `);
 }
 
@@ -244,9 +271,13 @@ function printUpdateSummary(opts: {
   printAgentNextSteps(memoryExists() ? "update" : "init");
 }
 
-async function cmdUpdate(flags: { yes: boolean }): Promise<void> {
+async function cmdUpdate(flags: { yes: boolean; force: boolean }): Promise<void> {
   const installedSkill = readInstalledSkillVersion();
   const skillMissing = !installedSkill;
+  // Source checkouts fold unreleased work into the current SemVer — refresh
+  // content even when the version stamp matches. Published packs skip that.
+  const refreshSameVersion = flags.force || isSourceCheckout();
+  const cli = cliInvocation();
 
   printHeader("update");
   printSection("Versions");
@@ -254,9 +285,7 @@ async function cmdUpdate(flags: { yes: boolean }): Promise<void> {
   if (skillMissing) {
     printDetail("skill", c.dim("not installed"));
     printStep(
-      c.yellow(
-        `skill missing — hooks-only update; install with: npx @dosx/agent-memory install skill`,
-      ),
+      c.yellow(`skill missing — hooks-only update; install with: ${cli} install skill`),
     );
   } else {
     printDetail(
@@ -265,6 +294,15 @@ async function cmdUpdate(flags: { yes: boolean }): Promise<void> {
     );
   }
   printDetail("hooks", `${VERSION} ${c.dim("package")}`);
+  if (refreshSameVersion) {
+    printStep(
+      c.dim(
+        flags.force
+          ? "force refresh enabled"
+          : "local checkout — refreshing files even when SemVer matches",
+      ),
+    );
+  }
 
   let needSkill = false;
   if (installedSkill) {
@@ -278,6 +316,9 @@ async function cmdUpdate(flags: { yes: boolean }): Promise<void> {
       console.log(
         `  ${c.yellow("!")} installed skill (${installedSkill}) is newer than package (${VERSION}); will not downgrade`,
       );
+    } else if (refreshSameVersion) {
+      needSkill = true;
+      printStep(`skill refresh ${VERSION} ${c.dim("(same version → package tree)")}`);
     } else {
       printStep(`skill already at ${VERSION}`);
     }
@@ -295,6 +336,9 @@ async function cmdUpdate(flags: { yes: boolean }): Promise<void> {
       if (!stamp || compareSemver(VERSION, stamp) > 0) {
         hooksToRefresh.push(h);
         printStep(`hooks ${h}: ${c.yellow(`${stamp ?? "none"} → ${VERSION}`)}`);
+      } else if (refreshSameVersion) {
+        hooksToRefresh.push(h);
+        printStep(`hooks ${h}: refresh ${stamp} ${c.dim("(same version → package tree)")}`);
       } else {
         hooksSkipped.push(h);
         printStep(`hooks ${h}: ${stamp} ${c.dim("(current)")}`);
@@ -310,10 +354,8 @@ async function cmdUpdate(flags: { yes: boolean }): Promise<void> {
     console.error(
       `${c.red("error:")} nothing to update — install the skill and/or hooks first`,
     );
-    console.error(`  ${c.dim("npx @dosx/agent-memory install skill")}`);
-    console.error(
-      `  ${c.dim("npx @dosx/agent-memory install hooks <harness>")}`,
-    );
+    console.error(`  ${c.dim(`${cli} install skill`)}`);
+    console.error(`  ${c.dim(`${cli} install hooks <harness>`)}`);
     process.exit(1);
   }
 
@@ -323,7 +365,7 @@ async function cmdUpdate(flags: { yes: boolean }): Promise<void> {
       `${c.boldGreen("✓")} ${c.bold("Already up to date")} ${c.dim(VERSION)}`,
     );
     if (skillMissing) {
-      printStep(c.dim(`optional: npx @dosx/agent-memory install skill`));
+      printStep(c.dim(`optional: ${cli} install skill`));
     }
     printAgentNextSteps(memoryExists() ? "update" : "init");
     return;
@@ -332,11 +374,17 @@ async function cmdUpdate(flags: { yes: boolean }): Promise<void> {
   if (!flags.yes) {
     if (!isTTY()) {
       failNonTTY("interactive update requires a TTY (or pass --yes).", [
-        "npx @dosx/agent-memory update --yes",
+        `${cli} update --yes`,
       ]);
     }
     const planParts: string[] = [];
-    if (needSkill) planParts.push(`skill ${installedSkill} → ${VERSION}`);
+    if (needSkill) {
+      planParts.push(
+        installedSkill === VERSION
+          ? `skill refresh ${VERSION}`
+          : `skill ${installedSkill} → ${VERSION}`,
+      );
+    }
     if (hooksToRefresh.length > 0) {
       planParts.push(`hooks ${hooksToRefresh.join(", ")} → ${VERSION}`);
     }
@@ -368,18 +416,23 @@ async function cmdUpdate(flags: { yes: boolean }): Promise<void> {
   });
 }
 
-function parseUpdateFlags(args: string[]): { yes: boolean } {
+function parseUpdateFlags(args: string[]): { yes: boolean; force: boolean } {
   let yes = false;
+  let force = false;
   for (const a of args) {
     if (a === "--yes" || a === "-y") {
       yes = true;
+      continue;
+    }
+    if (a === "--force" || a === "-f") {
+      force = true;
       continue;
     }
     console.error(`${c.red("error:")} unexpected argument: ${a}`);
     printHelp();
     process.exit(1);
   }
-  return { yes };
+  return { yes, force };
 }
 
 function harnessOptions(): SelectOption<Harness>[] {
@@ -417,9 +470,10 @@ function fatalUsage(message: string): never {
 
 async function promptInstallChoice(harness: Harness): Promise<void> {
   if (!isTTY()) {
+    const cli = cliInvocation();
     failNonTTY("interactive install requires a TTY.", [
-      `Hooks: npx @dosx/agent-memory install hooks ${harness}`,
-      "Skill: npx @dosx/agent-memory install skill",
+      `Hooks: ${cli} install hooks ${harness}`,
+      `Skill: ${cli} install skill`,
     ]);
   }
 
@@ -445,9 +499,10 @@ async function promptInstallChoice(harness: Harness): Promise<void> {
 
 async function promptInstallBare(): Promise<void> {
   if (!isTTY()) {
+    const cli = cliInvocation();
     failNonTTY("interactive install requires a TTY.", [
-      "Skill: npx @dosx/agent-memory install skill",
-      "Hooks: npx @dosx/agent-memory install hooks <harness>",
+      `Skill: ${cli} install skill`,
+      `Hooks: ${cli} install hooks <harness>`,
     ]);
   }
 
@@ -482,7 +537,7 @@ async function promptInstallBare(): Promise<void> {
 async function promptHooksMultiSelect(): Promise<void> {
   if (!isTTY()) {
     failNonTTY("interactive install hooks requires a TTY.", [
-      "Hooks: npx @dosx/agent-memory install hooks <harness>",
+      `Hooks: ${cliInvocation()} install hooks <harness>`,
     ]);
   }
   const selected = await pickHarnesses();

@@ -10,14 +10,10 @@ fail() {
   exit 1
 }
 
-# Prefer built bin; build if missing/stale for this check only when bun available.
-if command -v bun >/dev/null 2>&1; then
-  (cd "$repo_root" && bun run build >/dev/null)
-fi
-
+# Use committed bin/cli.js; do not rebuild (would hide a stale/tampered artifact).
+# `tests/test-runner.sh` / `bun run check` run build:check first.
 cli="$repo_root/bin/cli.js"
 [[ -f "$cli" ]] || fail "bin/cli.js missing — run bun run build"
-
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
@@ -39,10 +35,19 @@ AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" install hooks cursor >/dev/null
 [[ -f "$TMP/.cursor/hooks/.version" ]] || fail "hooks version stamp missing"
 ! grep -q postToolUse "$TMP/.cursor/hooks.json" || fail "installed cursor config has postToolUse"
 
-# --- update --yes is no-op when current ---
+# --- update --yes refreshes from local checkout even when SemVer matches ---
+# (source tree has install.ts; published packs skip same-version refresh unless --force)
+marker="$TMP/.agents/skills/agent-memory/LOCAL_REFRESH_MARKER.md"
+echo stale >"$marker"
 out=$(AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" update --yes)
-echo "$out" | grep -qi 'up to date\|Update complete\|already' ||
+echo "$out" | grep -qi 'Update complete\|skill ready\|refresh' ||
   fail "update --yes unexpected output: $out"
+[[ ! -e "$marker" ]] || fail "local checkout update did not refresh skill (marker left)"
+
+# --- --force is accepted (same-version refresh from any package shape) ---
+force_out=$(AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" update --force --yes)
+echo "$force_out" | grep -qi 'Update complete\|Already up to date\|skill ready\|refresh' ||
+  fail "update --force --yes unexpected output: $force_out"
 
 # --- harness detect after cursor install ---
 [[ -x "$TMP/.cursor/hooks/agent-memory-sync.sh" ]] || fail "detect marker missing"

@@ -7,13 +7,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHARED_DIR="$SCRIPT_DIR/agent-memory-hooks"
 
-# Prefer version from CLI env; else package.json; fall back for standalone checkout.
-if [[ -n "${AGENT_MEMORY_VERSION:-}" ]]; then
-  VERSION="$AGENT_MEMORY_VERSION"
-elif [[ -f "$SCRIPT_DIR/../package.json" ]] && command -v node >/dev/null 2>&1; then
+# Prefer version from package.json when present; AGENT_MEMORY_VERSION only as
+# fallback for standalone hooks-only checkouts (CLI always sets version from package).
+if [[ -f "$SCRIPT_DIR/../package.json" ]] && command -v node >/dev/null 2>&1; then
   VERSION="$(
     node -p 'require(process.argv[1]).version' "$SCRIPT_DIR/../package.json" 2>/dev/null || true
   )"
+fi
+if [[ -z "${VERSION:-}" && -n "${AGENT_MEMORY_VERSION:-}" ]]; then
+  VERSION="$AGENT_MEMORY_VERSION"
 fi
 VERSION="${VERSION:-0.1.1}"
 
@@ -166,7 +168,8 @@ merge_into() {
 install_shared_scripts() {
   local dest=$1
   local f
-  for f in agent-memory-common.sh agent-memory-sync.sh agent-memory-session.sh; do
+  for f in agent-memory-common.sh agent-memory-sync.sh agent-memory-session.sh \
+    agent-memory-consume-evidence.sh; do
     [[ -f "$SHARED_DIR/$f" ]] || die "missing shared script: $SHARED_DIR/$f"
     safe_install_file "$SHARED_DIR/$f" "$PROJECT_DIR/$dest/$f"
     chmod +x "$PROJECT_DIR/$dest/$f"
@@ -249,7 +252,16 @@ main() {
     gemini) install_gemini ;;
   esac
 
-  printf '%s\n' "$VERSION" >"$PROJECT_DIR/$hooks_dir/.version"
+  # Same symlink refusal + temp+mv as safe_install_file (redirect would follow links).
+  local version_file="$PROJECT_DIR/$hooks_dir/.version" version_tmp
+  if [[ -L "$version_file" ]]; then
+    die "refusing to overwrite symlink: $version_file"
+  fi
+  refuse_symlink_components "$version_file"
+  ensure_resolved_under_project "$version_file"
+  version_tmp="$(mktemp "${version_file}.XXXXXX")"
+  printf '%s\n' "$VERSION" >"$version_tmp"
+  mv "$version_tmp" "$version_file"
   echo "done: agent-memory hooks installed for $harness (v${VERSION})"
 }
 
