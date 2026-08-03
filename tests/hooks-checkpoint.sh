@@ -913,8 +913,13 @@ printf '{"session_id":"s-chmod","cwd":"%s"}\n' "$TMP" |
   AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
   AGENT_MEMORY_EVENT=Stop \
   ./agent-memory-sync.sh >/dev/null 2>/dev/null || true
-mode=$(stat -f '%OLp' .agents/memory/.hook-sync-state 2>/dev/null ||
-  stat -c '%a' .agents/memory/.hook-sync-state 2>/dev/null || echo '')
+# GNU stat accepts -f as filesystem dump (exit 0) — never use BSD -f as the
+# primary probe on Linux or the Linux fallback never runs.
+case "$(uname -s)" in
+  Darwin) mode=$(stat -f '%OLp' .agents/memory/.hook-sync-state 2>/dev/null || echo '') ;;
+  *) mode=$(stat -c '%a' .agents/memory/.hook-sync-state 2>/dev/null || echo '') ;;
+esac
+mode=${mode#0} # tolerate 0600
 [ "$mode" = "600" ] || fail "no-op/heal write_state must chmod 600 (got ${mode:-unknown})"
 
 # --- security: sessionStart includes untrusted-recall cue ---
