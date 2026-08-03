@@ -80,6 +80,8 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ### Security
 
+- Hooks: `json_escape` (shared in `agent-memory-common.sh`) escapes all C0 controls + DEL for sessionStart JSON stdout; covered by `tests/json-escape.sh`.
+- Publish: `.github/workflows/publish.yml` uses npm Trusted Publishing (OIDC, Environment `npm-publish`, no `NPM_TOKEN`); tag must match `package.json` version.
 - Hooks: delayed Stop preserves live `session_binding` when env and state agree (AuthZ — stale Stop payload cannot rewind session after `sessionStart` or OpenCode `ses_*` rotation).
 - Hooks: lock steal refuses symlink lock path before `rm -rf` (Injection / confinement).
 - Hooks: `sessionStart` exports session env only after successful bind under lock (AuthZ — fail-open cannot misalign env with `.hook-sync-state`).

@@ -17,16 +17,6 @@ fi
 # shellcheck source=agent-memory-common.sh
 . "$_common_sh"
 
-json_escape() {
-  local s=$1
-  s=${s//\\/\\\\}
-  s=${s//\"/\\\"}
-  s=${s//$'\n'/\\n}
-  s=${s//$'\r'/\\r}
-  s=${s//$'\t'/\\t}
-  printf '%s' "$s"
-}
-
 agent_memory_init_context || exit 0
 
 [ -d "$memory" ] || exit 0

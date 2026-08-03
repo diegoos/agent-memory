@@ -5,7 +5,7 @@
 # After agent_memory_init_context: cwd, memory, state_file globals.
 #
 # Layout (one file on purpose — flat install beside entrypoints; see hooks/README.md):
-#   1. Stdin / JSON parse
+#   1. Stdin / JSON parse (+ json_escape for sessionStart stdout)
 #   2. Paths / realpath / symlink refuse
 #   3. Project root resolve
 #   4. Session binding / rebind
@@ -20,6 +20,40 @@
 # Filled by parse_hook_stdin (optional).
 hook_stdin_session_id=""
 hook_stdin_cwd=""
+
+# Escape a string for embedding inside a JSON double-quoted value (no surrounding
+# quotes). Byte-safe under LC_ALL=C so UTF-8 payload bytes pass through; escapes
+# ", \, and all C0 controls + DEL (named short forms for n/r/t/b/f).
+json_escape() {
+  local s=$1 out="" i c ord hex
+  local LC_ALL=C
+  local len=${#s}
+  for ((i = 0; i < len; i++)); do
+    c=${s:i:1}
+    case "$c" in
+      \\) out+='\\' ;;
+      \") out+='\"' ;;
+      $'\n') out+='\n' ;;
+      $'\r') out+='\r' ;;
+      $'\t') out+='\t' ;;
+      $'\b') out+='\b' ;;
+      $'\f') out+='\f' ;;
+      *)
+        # Bash may sign-extend high bytes ("'$c"); mask so UTF-8 payload
+        # bytes (0x80–0xFF) pass through and only C0/DEL are \u-escaped.
+        printf -v ord '%d' "'$c"
+        ord=$((ord & 255))
+        if ((ord < 32 || ord == 127)); then
+          printf -v hex '\\u%04x' "$ord"
+          out+=$hex
+        else
+          out+=$c
+        fi
+        ;;
+    esac
+  done
+  printf '%s' "$out"
+}
 
 # Read harness stdin without blocking forever when fd 0 is open but idle (CLI).
 read_hook_stdin() {
