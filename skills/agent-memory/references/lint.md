@@ -276,5 +276,5 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
 
 ## Notes
 
-- Soft budgets and structural scripts above are canonical for lint. Keep `instructions.md` → _Memory lint boundaries_ aligned at the summary level only (no duplicated budget numbers there).
+- Soft budgets and structural scripts above are canonical for lint (including the full _Overbroad `when editing:`_ denylist). Keep `instructions.md` → _Memory lint boundaries_ and _Always load_ `when editing:` match rule at the summary level only (no duplicated budget numbers or denylist there).
 - No `markdownlint` here — Markdown style is the concern of the source repo, not of the installed memory in a user's project.

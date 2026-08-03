@@ -9,6 +9,7 @@ bootstrap="$repo_root/skills/agent-memory/references/bootstrap.md"
 lint="$repo_root/skills/agent-memory/references/lint.md"
 sync="$repo_root/skills/agent-memory/references/sync.md"
 consolidate="$repo_root/skills/agent-memory/references/consolidate.md"
+learn="$repo_root/skills/agent-memory/references/learn.md"
 agent_block="$repo_root/skills/agent-memory/references/agent-block.md"
 session_sh="$repo_root/hooks/agent-memory-hooks/agent-memory-session.sh"
 sync_sh="$repo_root/hooks/agent-memory-hooks/agent-memory-sync.sh"
@@ -105,7 +106,7 @@ assert_contains "$skeleton/decisions.md" 'Rejected alternatives' \
 
 # --- Contract invariants in instructions.md ---
 assert_contains "$instructions" '## Always load' "always-load policy present"
-assert_contains "$instructions" '## Authority by information type' "authority section present"
+assert_contains "$instructions" 'Authority: working rules' "authority map folded into Precedence"
 assert_contains "$instructions" '## Retention gate and lifecycle' "retention gate present"
 assert_contains "$instructions" 'Reusable in another session?' "gate asks reusability"
 assert_contains "$instructions" 'link + delta/relevance' "pointer-over-copy gate"
@@ -129,41 +130,25 @@ assert_contains "$instructions" '**Catch-up (`/agent-memory sync`):**' \
 assert_contains "$instructions" 'without invoking the skill command' \
   "sync may be followed without skill invoke"
 assert_contains "$instructions" '## Memory lint boundaries' "lint boundaries summary"
-assert_contains "$instructions" '## [YYYY-MM-DD] [learning|pitfall] Short topic' \
-  "learning/pitfall H2 entry format"
-assert_contains "$instructions" '- Insight: reusable pattern in one or two sentences.' \
-  "learning Insight field"
-assert_contains "$instructions" 'learnings-<topic>.md' "topic split convention"
 assert_contains "$instructions" 'when editing:' "scope hint convention"
-assert_contains "$instructions" '**/**/*' "overbroad denylist includes **/ **/* equivalent"
-assert_contains "$instructions" '*/**' "overbroad denylist includes */** equivalent"
-assert_contains "$instructions" '**/*.ts' "overbroad denylist includes extension-wide **/*.ts"
-assert_contains "$instructions" '**/**/*.ts' "overbroad denylist includes near-equivalent **/**/*.ts"
-assert_contains "$instructions" 'src/**/*' "overbroad denylist includes src/**/*"
-assert_contains "$instructions" '*/*' "overbroad denylist includes */*"
-assert_contains "$instructions" '?*/*' "overbroad denylist includes ?*/*"
-assert_contains "$instructions" '**/*/*' "overbroad denylist includes **/*/*"
-assert_contains "$instructions" '*/*/*' "overbroad denylist includes */*/*"
-assert_contains "$instructions" '**/*/**' "overbroad denylist includes **/*/**"
-assert_contains "$instructions" 'companions do not redeem' "overbroad rejects banned glob with companions"
-assert_contains "$instructions" 'to fixpoint' "overbroad normalize runs to fixpoint"
-assert_contains "$instructions" '/./hooks/**' "overbroad normalize collapses /./ segments"
-assert_contains "$instructions" './/./hooks/**' "overbroad normalize collapses .//./ segments"
-assert_contains "$instructions" './/hooks/**' "overbroad normalize collapses .// segments"
-assert_contains "$instructions" '/hooks/**' "overbroad normalize strips leading slash"
-assert_contains "$instructions" 'still starts with `/` after normalize' \
-  "overbroad rejects absolute globs after normalize"
-assert_contains "$instructions" 'structural' "overbroad has structural multi-segment reject"
-assert_contains "$instructions" '*/*/*/*' "overbroad structural examples include */*/*/*"
-assert_contains "$instructions" '*/*.<ext>' "overbroad rejects shallow */*.<ext>"
-assert_contains "$instructions" '*/*.*' "overbroad rejects */*.*"
-assert_contains "$instructions" '*/*/*.ts' "overbroad rejects depth≥3 star+ext */*/*.ts"
-assert_contains "$instructions" 'no literal path segment' \
-  "overbroad rejects wildcard-only+ext globs without literal prefix"
-assert_contains "$instructions" 'hooks/**' "overbroad Always-load rejects hooks/**"
-assert_contains "$instructions" '**/*.<ext>' "overbroad Always-load rejects any **/ *.<ext>"
-assert_contains "$instructions" '<top-level-dir>/**' "overbroad Always-load rejects top-level dir/**"
-assert_contains "$instructions" 'src/**' "overbroad denylist includes src/**"
+assert_contains "$instructions" '## When starting or resuming work' "task-organized resume section"
+assert_contains "$instructions" '## When stopping (primary write)' "task-organized primary write section"
+assert_contains "$instructions" '## When catching up' "task-organized catch-up section"
+assert_contains "$instructions" 'prefer what to do' "learning writing guidance"
+assert_contains "$instructions" 'pending-doc' "pending-doc lifecycle"
+assert_contains "$instructions" '/agent-memory learn' "learn command named in method"
+assert_absent "$instructions" 'Soft warning budgets:' \
+  "soft budgets stay in lint reference, not always-load"
+assert_absent "$instructions" '**/**/*' \
+  "overbroad denylist lives in lint, not always-load instructions"
+assert_contains "$learn" '## [YYYY-MM-DD] [learning|pitfall] Short topic' \
+  "learning/pitfall H2 entry format in learn reference"
+assert_contains "$learn" '- Insight: reusable pattern in one or two sentences.' \
+  "learning Insight field in learn reference"
+assert_contains "$learn" 'learnings-<topic>.md' "topic split convention in learn reference"
+assert_contains "$learn" '**Duplicate rule**' "duplicate rule SoT in learn reference"
+assert_contains "$learn" '**Legacy one-liner**' "legacy one-liner SoT in learn reference"
+# Overbroad when-editing denylist SoT is lint (not always-load instructions)
 assert_contains "$lint" 'companions do not redeem' "lint overbroad rejects companions"
 assert_contains "$lint" '?*/*' "lint overbroad includes ?*/*"
 assert_contains "$lint" 'to fixpoint' "lint overbroad normalize runs to fixpoint"
@@ -176,11 +161,21 @@ assert_contains "$lint" 'hooks/**' "lint overbroad rejects hooks/**"
 assert_contains "$lint" '*/*.<ext>' "lint overbroad rejects */*.<ext>"
 assert_contains "$lint" '*/*/*.ts' "lint overbroad rejects */*/*.ts"
 assert_contains "$lint" '*/*.*' "lint overbroad rejects */*.*"
-assert_contains "$instructions" 'prefer what to do' "learning writing guidance"
-assert_contains "$instructions" 'pending-doc' "pending-doc lifecycle"
-assert_contains "$instructions" '/agent-memory learn' "learn command named in method"
-assert_absent "$instructions" 'Soft warning budgets:' \
-  "soft budgets stay in lint reference, not always-load"
+assert_contains "$lint" '**/**/*' "lint overbroad denylist includes **/ **/* equivalent"
+assert_contains "$lint" '*/**' "lint overbroad denylist includes */** equivalent"
+assert_contains "$lint" '**/*.ts' "lint overbroad denylist includes **/*.ts"
+assert_contains "$lint" '**/**/*.ts' "lint overbroad denylist includes **/**/*.ts"
+assert_contains "$lint" 'src/**/*' "lint overbroad denylist includes src/**/*"
+assert_contains "$lint" '*/*' "lint overbroad denylist includes */*"
+assert_contains "$lint" '**/*/*' "lint overbroad denylist includes **/*/*"
+assert_contains "$lint" '*/*/*' "lint overbroad denylist includes */*/*"
+assert_contains "$lint" '**/*/**' "lint overbroad denylist includes **/*/**"
+assert_contains "$lint" '*/*/*/*' "lint overbroad structural examples include */*/*/*"
+assert_contains "$lint" 'no literal path segment' \
+  "lint overbroad rejects wildcard-only+ext globs without literal prefix"
+assert_contains "$lint" '**/*.<ext>' "lint overbroad rejects any **/ *.<ext>"
+assert_contains "$lint" '<top-level-dir>/**' "lint overbroad rejects top-level dir/**"
+assert_contains "$lint" 'src/**' "lint overbroad denylist includes src/**"
 
 # --- Init / update ensure .gitignore (dotfile-safe) ---
 init="$repo_root/skills/agent-memory/references/init.md"
@@ -323,7 +318,6 @@ assert_contains "$consolidate" 'Mixed-type log bullets' \
   "consolidate cleans mixed-type log headings"
 
 # --- Learn ---
-learn="$repo_root/skills/agent-memory/references/learn.md"
 assert_contains "$learn" 'retention gate' "learn applies retention gate"
 assert_contains "$learn" 'learnings-<topic>.md' "learn supports topic splits"
 assert_contains "$learn" 'Does **not** accept `--auto`' "learn has no auto"
@@ -395,11 +389,11 @@ assert_contains "$instructions" 'gitignore-style' \
   "when-editing glob dialect pinned"
 assert_contains "$instructions" 'Match rule: load the file when any task path' \
   "when-editing match rule pinned"
-assert_contains "$instructions" '**Duplicate rule**' "duplicate rule in SoT"
-assert_contains "$instructions" '**Legacy one-liner**' "legacy one-liner documented in SoT"
+assert_contains "$learn" '**Duplicate rule**' "duplicate rule in learn SoT"
+assert_contains "$learn" '**Legacy one-liner**' "legacy one-liner documented in learn SoT"
 assert_contains "$sync" 'never remove or reformat `when editing:` hints' \
   "sync preserves existing hints"
-assert_contains "$consolidate" 'duplicate rule' \
+assert_contains "$consolidate" 'Duplicate rule' \
   "consolidate applies duplicate rule"
 assert_contains "$consolidate" 'Convert moved entries to the H2 form' \
   "consolidate converts on split"
