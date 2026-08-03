@@ -406,7 +406,7 @@ _canonical_binding_over_stale_stdin() {
   return 0
 }
 
-# Delayed Stop: env disagrees with stdin, or no usable env — prefer canonical state.
+# Delayed Stop (sync only): env disagrees with stdin, or stale env==stdin vs canonical state.
 _resolve_delayed_stop_binding() {
   local stdin_picked=$1 allow_fallback="${2:-1}"
   local env_name env_picked from_binding agreeing_env=""
@@ -420,7 +420,10 @@ _resolve_delayed_stop_binding() {
     from_binding=$(read_state session_binding "")
     is_valid_external_binding_id "$from_binding" || continue
     [ "$env_picked" = "$from_binding" ] || continue
-    _canonical_binding_over_stale_stdin "$stdin_picked" && return 0
+    if from_binding=$(_canonical_binding_over_stale_stdin "$stdin_picked"); then
+      printf '%s' "$from_binding"
+      return 0
+    fi
   done
   if [ -z "$agreeing_env" ]; then
     return 1
@@ -458,7 +461,8 @@ resolve_session_id() {
     for env_name in AGENT_MEMORY_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID; do
       if env_picked=$(_pick_external_session_id "$(_session_binding_env_value "$env_name")"); then
         if [ "$stdin_picked" != "$env_picked" ]; then
-          if from_binding=$(_canonical_binding_over_stale_stdin "$stdin_picked"); then
+          if [ "$allow_state_fallback" = "1" ] &&
+            from_binding=$(_canonical_binding_over_stale_stdin "$stdin_picked"); then
             printf 'agent-memory: ignoring stale harness stdin; preferring session_binding\n' >&2
             printf '%s' "$from_binding"
             return

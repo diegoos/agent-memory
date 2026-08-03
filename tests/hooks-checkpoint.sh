@@ -122,6 +122,22 @@ printf '{"session_id":"s2","cwd":"%s"}\n' "$TMP" |
 touched=$(grep '^session_touched_files=' .agents/memory/.hook-sync-state | cut -d= -f2- || true)
 [[ -z "$touched" ]] || fail "new session must clear session_touched_files"
 
+# --- sessionStart with stale env must bind new stdin (not delayed Stop) ---
+printf '%s\n' \
+  'session_binding=s1' \
+  'current_session_id=s1' \
+  'session_touched_files=keep-until-s2.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"session_id":"s2","cwd":"%s"}\n' "$TMP" |
+  env -u CURSOR_SESSION_ID -u GEMINI_SESSION_ID \
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_SESSION_ID=s1 \
+  ./agent-memory-session.sh >/dev/null
+grep -q 'session_binding=s2' .agents/memory/.hook-sync-state ||
+  fail "sessionStart with stale env must bind harness stdin"
+touched_ss=$(grep '^session_touched_files=' .agents/memory/.hook-sync-state | cut -d= -f2- || true)
+[[ -z "$touched_ss" ]] || fail "sessionStart rebind must clear paths when stdin changes"
+
 # --- legacy per-tool event is no-op ---
 printf '{"session_id":"s2","cwd":"%s","tool_input":{"file_path":"%s/x.txt"}}\n' \
   "$TMP" "$TMP" |

@@ -32,7 +32,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 - Hooks: delayed Stop on sync/Stop prefers canonical `session_binding` when `session_binding` and `current_session_id` agree on the live id but harness stdin or inherited env is stale (including when stale env equals stale stdin); scans binding env vars before stdin wins when state is not canonical.
 - Hooks: detached HEAD caches `branch=detached` instead of leaving a stale branch name in `.hook-sync-state`.
-- Hooks: `sessionStart` runs resolve, `current_session_id` write, session rebind, and branch refresh under one state lock (`run_session_start_ephemeral_bind`); exports `AGENT_MEMORY_SESSION_ID` only when bind succeeded under lock (fail-open must not advertise an unwritten id).
+- Hooks: `sessionStart` runs resolve, rebind, and branch refresh under one state lock; exports `AGENT_MEMORY_SESSION_ID` only when bind succeeded under lock; ignores inherited env for delayed Stop (sync-only canonical preference gated on `allow_state_fallback`).
 - Hooks: invalid `session_binding` in state falls through to `current_session_id` when stdin has no valid id (corrupted binding no longer blocks recovery).
 - Hooks: refuse symlink or out-of-memory `.hook-sync-state.lock` before `rm -rf` during lock steal/cleanup.
 - Hooks: `consume-evidence` skips clearing `session_touched_files` when the state lock is not held (fail-open parity with rebind/branch/checkpoint) and compare-and-swaps against the pre-lock snapshot so a concurrent sync cannot lose newly merged paths.
