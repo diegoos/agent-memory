@@ -248,6 +248,8 @@ assert_contains "$lint" 'file) continue' \
   "lint skips when-editing placeholder ./file link"
 assert_contains "$lint" 'evidence-stale-uncleared:' \
   "lint distinguishes uncleared evidence after fresh Checkpoint"
+assert_contains "$lint" 'hook-state-absent:' \
+  "lint reports missing .hook-sync-state as info (not cleared evidence)"
 assert_contains "$lint" 'pending-doc-met:' "lint flags pending-doc whose invalidate may be met"
 assert_contains "$lint" 'Legacy learning one-liner' "lint warns on legacy learning one-liners"
 assert_contains "$lint" 'when editing:' "lint mentions scope hints"

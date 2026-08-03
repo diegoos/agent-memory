@@ -135,7 +135,9 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
      fi
    fi
    state=".agents/memory/.hook-sync-state"
-   if [ -f "$state" ]; then
+   if [ ! -f "$state" ]; then
+     echo "hook-state-absent: .agents/memory/.hook-sync-state missing — hooks unused or not installed (info; not the same as evidence cleared)"
+   else
      paths=$(grep '^session_touched_files=' "$state" | cut -d= -f2- || true)
      if [ -n "$paths" ]; then
        n=$(printf '%s' "$paths" | tr '\036' '\n' | grep -c . || true)
