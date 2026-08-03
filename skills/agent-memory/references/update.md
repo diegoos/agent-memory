@@ -26,7 +26,7 @@ The exact block `init` writes and `update` refreshes is defined in [`references/
 
 2. **Read versions.** Installed = `.agents/memory/.version`. Latest = the newest version section in this skill's `vendor/UPDATE.md`. If equal, still run step 5 (refresh instruction blocks) before reporting "already up to date".
 
-3. **Select migrations.** Read this skill's `vendor/UPDATE.md` (see `SKILL.md` → Repository source) and collect every entry with a version greater than the installed version, up to the latest. Each change is tagged `safe` or `sensitive`. **Skip** any item marked **superseded** (e.g. a later version says it supersedes an earlier sensitive step) — do not apply superseded migrations.
+3. **Select migrations.** Read this skill's `vendor/UPDATE.md` (see `SKILL.md` → Vendor source) and collect every entry with a version greater than the installed version, up to the latest. Each change is tagged `safe` or `sensitive`. **Skip** any item marked **superseded** (e.g. a later version says it supersedes an earlier sensitive step) — do not apply superseded migrations.
 
 4. **Apply, conservatively:**
    - **Automatic (no prompt):**

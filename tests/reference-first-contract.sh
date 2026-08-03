@@ -250,9 +250,15 @@ assert_contains "$lint" "grep -q '<'" \
   "lint skips shape placeholders with angle brackets (learnings-<topic>.md)"
 assert_contains "$lint" 'evidence-stale-uncleared:' \
   "lint distinguishes uncleared evidence after fresh Checkpoint"
+assert_contains "$lint" 'evidence-dirty-requeue:' \
+  "lint treats dirty-tree path re-queue as info when Checkpoint@HEAD"
 assert_contains "$lint" 'hook-state-absent:' \
   "lint reports missing .hook-sync-state as info (not cleared evidence)"
 assert_contains "$lint" 'pending-doc-met:' "lint flags pending-doc whose invalidate may be met"
+assert_contains "$lint" 'Open `pending-doc`' \
+  "lint must not warn on open valid pending-doc backlog"
+assert_contains "$lint" 'never for info' \
+  "lint Fix offer skips info band"
 assert_contains "$lint" 'Legacy learning one-liner' "lint warns on legacy learning one-liners"
 assert_contains "$lint" 'when editing:' "lint mentions scope hints"
 

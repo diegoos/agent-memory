@@ -31,7 +31,7 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
 1. **Guard.** If `.agents/memory/` already exists, stop and tell the user the project is already initialized — suggest `/agent-memory update` or `/agent-memory install hooks <harness>` to refresh hooks. Do not overwrite anything.
 
-2. **Copy the skeleton.** Read this skill's `vendor/memory/` (see `SKILL.md` → Repository source) and copy that directory into the project as `.agents/memory/` (the entire directory, including `active-work/TEMPLATE.md` and the hook-state ignore template). Do not clone or fetch remotely.
+2. **Copy the skeleton.** Read this skill's `vendor/memory/` (see `SKILL.md` → Vendor source) and copy that directory into the project as `.agents/memory/` (the entire directory, including `active-work/TEMPLATE.md` and the hook-state ignore template). Do not clone or fetch remotely.
 
    **Dotfiles (required):** hosts often hide dotfiles from `Glob`, and npm omits files named `.gitignore` from published packs. After the copy, **explicitly** Read `vendor/memory/gitignore` (pack-safe name; same rules as a local `.gitignore` sibling when present) and Write it to `.agents/memory/.gitignore` (create/overwrite to match vendor). Contents must ignore `.hook-sync-state`, `.hook-sync-state.lock`, and `.hook-sync-state.*`. Then verify `.agents/memory/.gitignore` exists before continuing.
 

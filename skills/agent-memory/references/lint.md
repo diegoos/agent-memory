@@ -2,6 +2,16 @@
 
 Check `.agents/memory/` for structural and consistency problems. Report findings; fix only what is safe, and never change user content without confirmation. Semantic promotion/pruning belongs to `/agent-memory consolidate` — not `lint --fix`.
 
+**Severity (report only what needs action):**
+
+| Band | Meaning | Fix offer? |
+| --- | --- | --- |
+| **errors** | Broken structure (links, required headings, orphans, stale `active-work` files) | Yes — safe/`--fix` as below |
+| **warnings** | Actionable drift (stale Checkpoint, uncovered hook evidence, `pending-doc-met`, wiring, budgets, semantic defects) | Yes — sync / consume / consolidate / confirm edit |
+| **info** | Expected or ephemeral noise (missing hook state file, dirty-tree evidence re-queue when meaning already covers, open valid `pending-doc` backlog) | **No** — do not list under Fix offer |
+
+Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whose `Invalidate when` is still false) or for hook path lists that merely mirror an already-documented dirty tree.
+
 ## Steps
 
 1. **Guard.** If `.agents/memory/` does not exist, suggest `/agent-memory init`.
@@ -146,8 +156,6 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
      if [ -n "$paths" ]; then
        n=$(printf '%s' "$paths" | tr '\036' '\n' | grep -c . || true)
        if [ "${n:-0}" -gt 0 ]; then
-         echo "evidence-pending: $n path(s) in .hook-sync-state — confirm active-work/log reflect meaning (sync is catch-up); then consume via agent-memory-consume-evidence.sh"
-         # Uncleared after meaning likely written: Checkpoint matches HEAD and tree clean
          dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
          ck_fresh=false
          if [ -n "$ck_sha" ] && [ -n "$head_full" ]; then
@@ -155,7 +163,14 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
            [ -n "$ck_full" ] && [ "$ck_full" = "$head_full" ] && ck_fresh=true
          fi
          if $ck_fresh && [ "${dirty:-1}" -eq 0 ]; then
+           # Warning — consume was skipped after a covering sync
            echo "evidence-stale-uncleared: $n path(s) remain with Checkpoint@HEAD and clean tree — run consume-evidence (sync step)"
+         elif $ck_fresh && [ "${dirty:-0}" -gt 0 ]; then
+           # Info by default — hooks re-list dirty paths until commit; escalate in judgment only if meaning is missing
+           echo "evidence-dirty-requeue: $n path(s) with Checkpoint@HEAD and dirty tree (info) — expected until commit when Task/Progress/log already cover those paths; escalate to evidence-pending only if meaning is missing"
+         else
+           # Warning — Checkpoint behind or no active-work; need catch-up meaning
+           echo "evidence-pending: $n path(s) in .hook-sync-state — active-work/log lack covering meaning or Checkpoint behind HEAD; run /agent-memory sync then consume"
          fi
        fi
      fi
@@ -179,7 +194,7 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    fi
    ```
 
-   **`pending-doc` invalidate check (warning).** For each H2 learning/pitfall with a `- pending-doc:` (or `- pending-doc`) line, read sibling `- Invalidate when:` / Evidence paths. If the named canonical file already documents the Insight (judgment — or exact phrase overlap ≥ 40 chars in `AGENTS.md` / `README.md` / Evidence target), report `pending-doc-met: <heading> — suggest consolidate promote/remove`.
+   **`pending-doc` invalidate check (warning only when met).** For each H2 learning/pitfall with a `- pending-doc:` (or `- pending-doc`) line, read sibling `- Invalidate when:` / Evidence paths. **Only if** the named canonical file already documents the Insight (judgment — or exact phrase overlap ≥ 40 chars in `AGENTS.md` / `README.md` / Evidence target), report `pending-doc-met: <heading> — suggest consolidate promote/remove`. Open `pending-doc` whose invalidate condition is still false is **healthy backlog** — do **not** report it as a warning, info row, or Fix offer item.
    From the **project root**, check links in `index.md` that point outside memory (e.g. `../../AGENTS.md`, `../../docs/...`) and report missing targets as warnings.
 
    **Exact-duplication candidates (deterministic warning, never auto-fix).** From the project root, extract non-placeholder lines ≥ 60 characters from `.agents/memory/**/*.md` and look for exact matches in common canonical sources (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `README.md`, `docs/`). Report each match as `dup-exact: <memory-file> ↔ <source-file>`. **Skip** when the memory file is `.agents/memory/instructions.md` and the match is under `skills/agent-memory/vendor/memory/` (meta-repo dogfood mirror of the skeleton — expected). Do not treat `skills/agent-memory/vendor/memory/**` as a canonical source for this scan. Judgment paraphrase duplication still belongs in the semantic section below.
@@ -240,7 +255,8 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    - **Legacy learning one-liner** — `- [YYYY-MM-DD] [learning|pitfall] …` without an H2 heading; suggest migrating to the H2 form when editing (do not auto-rewrite).
    - **Invalid or stale `when editing:`** — per the contract in `instructions.md` → _Always load_: glob that matches no repo path, non-repo-root-relative glob, or a topic split with no hint when evidence paths are obvious. Cross-cutting `learnings.md` without a hint is fine.
    - **Overbroad `when editing:`** — reject **any** near-always-on glob in the hint list (companions do not redeem it). Normalize first: run **to fixpoint** — repeat until stable: strip a leading `./`, strip a leading `/`, and collapse `//` empty segments (so `/./hooks/**`, `/.//hooks/**`, `.//./hooks/**`, `././hooks/**`, `./hooks/**`, `.//hooks/**`, and `/hooks/**` all become `hooks/**`); reject any glob that still starts with `/` after normalize; then iteratively collapse `**/**` → `**`. Then reject (1) **structural** — two or more slash-separated segments that are each only `*`, `?*`, or `**` (e.g. `*/*`, `*/*/*`, `*/*/*/*`, `?*/*`, `?*/*/*`, `*/*/**`); also any glob with **no literal path segment** whose parts are only pure wildcards and/or `*.*` / `*.<ext>` at any depth (e.g. `*/*.*`, `*/*.<ext>`, `*/*/*.ts`, `*/*/*/*.json`, `?*/*/*.sh`, `*/*/*.*`); (2) **any** `**/*.<ext>` or `**/*.*`; (3) **any** `<top-level-dir>/**` and near-equivalents (`dir/**/*`, `dir/*/**`, `**/dir/**`) including `hooks/**`, `tests/**`, `docs/**`, `.agents/**`; (4) **explicit denylist** — including `**`, `**/*`, `**/**`, `**/**/*`, `*/**`, `*/*`, `?*/*`, `*/*/*`, `*/*/**`, `**/*/**`, `**/*/*`, `*`, `*.*`, `*.md`, `**/*.md`, `**/*.*`, `*/*.*`, `**/*.ts`, `**/*.tsx`, `**/*.js`, `**/*.jsx`, `**/*.py`, `**/**/*.ts`, `**/*/*.ts`, `*/**/*.ts`, `src/**`, `src/**/*`, `src/**/**`, `lib/**`, `app/**`, or `packages/**`. Prefer path-scoped globs with evidence.
-   - **Stale `pending-doc` learnings** — `Invalidate when` already true, or canonical doc now covers the Insight (`pending-doc-met` above); consolidate should promote/remove.
+   - **Stale `pending-doc` learnings (`pending-doc-met` only)** — `Invalidate when` already true, or canonical doc now covers the Insight; consolidate should promote/remove. **Never** warn on open valid `pending-doc` (bootstrap/learn backlog waiting on external docs).
+   - **`evidence-dirty-requeue` escalate** — when step 2 emitted `evidence-dirty-requeue` and Task / Progress / current-session `log.md` do **not** cover the pending paths, re-report as **warning** `evidence-pending` (need sync meaning). When they do cover, leave it as **info** only — no Fix offer.
    - **Contradictions** — memory vs canonical source or code.
    - **Legacy path-only bullets / empty headings / Touched files** — candidates for consolidate.
    - **Legacy mirrors** — `vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*` with bodies that should be pointers in `index.md` / `decisions.md` / `learnings.md`.
@@ -252,9 +268,9 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    - **Bloat** — always-loaded files grown long or verbose entries.
    - **Quality smoke (optional checklist)** — with only memory open, can you answer: (1) next concrete step, (2) what must not break, (3) where to edit, (4) how to prove it worked?
 
-5. **Report.** Group findings as **errors** (broken links, missing required headings, orphans, stale per-branch files) and **warnings** (semantic, budgets, legacy). For each, name the file and the problem.
+5. **Report.** Group findings as **errors**, **warnings**, and **info** (see Severity above). For each, name the file and the problem. Omit empty bands. Do not promote info into warnings. Do not list open valid `pending-doc` anywhere in the report.
 
-6. **Fix offer.** Offer to fix only safe issues (e.g. remove a dead link, add an orphan recall file to `index.md`). Any fix that edits user content (`current.md`, `decisions.md`, `learnings.md`, `learnings-*.md`, …) must be confirmed first — show the diff. For stale `current.md` / active-work / `log.md` / `stale-next-step`, suggest `/agent-memory sync` (or a direct Next-step edit) rather than inventing product work. For `empty-log` / `empty-log-after-scaffold`, offer to restore one short founding session heading (do not re-run consolidate Discard). For `evidence-stale-uncleared` / covered `evidence-pending`, offer to run `agent-memory-consume-evidence.sh` after confirming meaning coverage. For promotion/pruning / converting legacy mirrors / removing path-only bullets / learnings split-merge, suggest `/agent-memory consolidate` — **do not** do that work in `lint --fix`. For capturing a new gated learning now, suggest `/agent-memory learn`.
+6. **Fix offer.** Offer fixes **only** for errors and warnings — never for info. Safe issues (e.g. remove a dead link, add an orphan recall file to `index.md`) may be applied with confirmation when they edit user content. For stale `current.md` / active-work / `log.md` / `stale-next-step` / uncovered `evidence-pending`, suggest `/agent-memory sync` (or a direct Next-step edit) rather than inventing product work. For `empty-log` / `empty-log-after-scaffold`, offer to restore one short founding session heading (do not re-run consolidate Discard). For `evidence-stale-uncleared` only, offer to run `agent-memory-consume-evidence.sh`. Do **not** offer consume or sync solely for `evidence-dirty-requeue` info. For `pending-doc-met` / promotion/pruning / legacy mirrors / path-only bullets / learnings split-merge, suggest `/agent-memory consolidate` — **do not** do that work in `lint --fix`. For capturing a new gated learning now, suggest `/agent-memory learn`.
 
    `--fix` — with this flag, also offer to **delete stale per-branch `active-work/<branch>.md` files** (files whose branch no longer exists) and, for **delegation-canary** findings (step 2), offer to remove the redundant block from `CLAUDE.md`/`GEMINI.md` that delegate via `@AGENTS.md` (each removal sensitive — show diff, confirm). Each deletion is still confirmed one by one (it removes a file, so it is sensitive) unless combined with an explicit "delete all stale" approval. `--fix` never deletes anything other than stale `active-work` files, never touches `TEMPLATE.md`, never deletes legacy mirror files. Delegation-canary block removal edits only the agent-memory delimiters in `CLAUDE.md`/`GEMINI.md` (with confirmation).
 
