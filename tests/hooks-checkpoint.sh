@@ -245,7 +245,7 @@ printf '{"session_id":"lock-symlink-attack","cwd":"%s"}\n' "$TMP" |
   ./agent-memory-sync.sh >/dev/null 2>"$TMP/lock-symlink.err" || true
 grep -q 'session_binding=lock-symlink-keep' .agents/memory/.hook-sync-state ||
   fail "symlink lock must not allow rebind via steal rm -rf"
-grep -qi 'refused symlink state lock\|fail-open\|lock busy' "$TMP/lock-symlink.err" ||
+grep -qi 'refused symlink state lock\|refused unsafe state lock\|fail-open\|lock busy' "$TMP/lock-symlink.err" ||
   fail "expected symlink lock refusal or fail-open"
 [[ -L .agents/memory/.hook-sync-state.lock ]] ||
   fail "symlink lock path must remain"
@@ -1054,6 +1054,8 @@ grep -q '_run_sync_ephemeral_checkpoint_unlocked' ./agent-memory-common.sh ||
 # --- atomic sessionStart: one lock for current + rebind + branch (structural) ---
 grep -q 'run_session_start_ephemeral_bind' ./agent-memory-session.sh ||
   fail "session must call run_session_start_ephemeral_bind"
+! grep -q 'resolve_session_id' ./agent-memory-session.sh ||
+  fail "session must resolve session id inside run_session_start_ephemeral_bind only"
 ! grep -qE 'reset_session_state_if_changed|write_current_session_id|refresh_branch_cache|write_state' \
   ./agent-memory-session.sh ||
   fail "session must not call rebind/write/refresh outside the atomic helper"

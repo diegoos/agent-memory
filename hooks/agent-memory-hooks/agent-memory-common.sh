@@ -667,21 +667,25 @@ _run_sync_ephemeral_checkpoint_unlocked() {
   rm -f "$list_tmp"
 }
 
-# sessionStart: one lock for current_session_id + rebind + branch (no path merge).
+# sessionStart: one lock for resolve + current_session_id + rebind + branch (no path merge).
 agent_memory_session_bind_ok="${agent_memory_session_bind_ok:-0}"
+agent_memory_bound_session_id="${agent_memory_bound_session_id:-}"
 
 run_session_start_ephemeral_bind() {
-  local sid="${1:-}"
+  local stdin_sid="${1:-}"
   agent_memory_session_bind_ok=0
-  agent_memory_with_state_lock _run_session_start_ephemeral_bind_unlocked "$sid"
+  agent_memory_bound_session_id=""
+  agent_memory_with_state_lock _run_session_start_ephemeral_bind_unlocked "$stdin_sid"
 }
 
 _run_session_start_ephemeral_bind_unlocked() {
-  local sid="${1:-}"
+  local stdin_sid="${1:-}" sid
   if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
     printf 'agent-memory: skip session start bind (lock not held)\n' >&2
     return 0
   fi
+  sid=$(resolve_session_id "$stdin_sid" 0)
+  agent_memory_bound_session_id="$sid"
   agent_memory_session_bind_ok=1
   _write_state_unlocked current_session_id "$sid" || true
   _reset_session_state_if_changed_unlocked "$sid" sessionStart
@@ -774,6 +778,14 @@ agent_memory_with_state_lock() {
   local max_wait=20
   local acquired=0
   local stole=0
+  if _state_lock_path_refused "$lock_dir"; then
+    printf 'agent-memory: refused unsafe state lock path; proceeding fail-open\n' >&2
+    AGENT_MEMORY_LOCK_ACQUIRED=0
+    "$@"
+    local status=$?
+    unset AGENT_MEMORY_LOCK_ACQUIRED
+    return $status
+  fi
   while true; do
     if mkdir "$lock_dir" 2>/dev/null; then
       printf '%s\n' "$$" >"$lock_dir/pid" 2>/dev/null || true

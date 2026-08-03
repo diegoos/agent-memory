@@ -31,13 +31,11 @@ agent_memory_init_context || exit 0
 
 [ -d "$memory" ] || exit 0
 
-session_id=$(resolve_session_id "$hook_stdin_session_id" 0)
-run_session_start_ephemeral_bind "$session_id"
-# Only export session env when bind succeeded under lock (fail-open must not
-# advertise an id that was not written to .hook-sync-state).
+# Resolve + bind under one lock (run_session_start_ephemeral_bind in common.sh).
+run_session_start_ephemeral_bind "$hook_stdin_session_id"
 bound_session_id=""
-if [ "${agent_memory_session_bind_ok:-0}" = "1" ] && [ -n "$session_id" ]; then
-  bound_session_id="$session_id"
+if [ "${agent_memory_session_bind_ok:-0}" = "1" ] && [ -n "${agent_memory_bound_session_id:-}" ]; then
+  bound_session_id="$agent_memory_bound_session_id"
 fi
 
 msg=$(build_session_context_msg)
