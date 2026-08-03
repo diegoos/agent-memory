@@ -1043,6 +1043,8 @@ grep -qi 'realpath or python3' "$TMP/no-resolve.err" ||
 # --- atomic sync: one lock for rebind + path merge (structural) ---
 grep -q 'run_sync_ephemeral_checkpoint' ./agent-memory-sync.sh ||
   fail "sync must call run_sync_ephemeral_checkpoint"
+! grep -q 'resolve_session_id' ./agent-memory-sync.sh ||
+  fail "sync must resolve session id inside run_sync_ephemeral_checkpoint only"
 ! grep -qE 'reset_session_state_if_changed|apply_ephemeral_checkpoint|write_current_session_id|refresh_branch_cache' \
   ./agent-memory-sync.sh ||
   fail "sync must not call rebind/apply/write/refresh outside the atomic helper"

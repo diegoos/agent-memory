@@ -643,20 +643,21 @@ _reset_session_state_if_changed_unlocked() {
   _rebind_session_state_unlocked 1 "$NO_ID_SESSION_SENTINEL"
 }
 
-# Sync path: one lock for current_session_id + rebind + branch + path merge.
+# Sync path: one lock for resolve + current_session_id + rebind + branch + path merge.
 # Stops concurrent syncs from mixing session_touched_files across bindings.
 run_sync_ephemeral_checkpoint() {
-  local sid="${1:-}"
+  local stdin_sid="${1:-}"
   agent_memory_include_commit_files=1
-  agent_memory_with_state_lock _run_sync_ephemeral_checkpoint_unlocked "$sid"
+  agent_memory_with_state_lock _run_sync_ephemeral_checkpoint_unlocked "$stdin_sid"
 }
 
 _run_sync_ephemeral_checkpoint_unlocked() {
-  local sid="${1:-}" list_tmp
+  local stdin_sid="${1:-}" list_tmp sid
   if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
     printf 'agent-memory: skip sync checkpoint (lock not held)\n' >&2
     return 0
   fi
+  sid=$(resolve_session_id "$stdin_sid")
   _write_state_unlocked current_session_id "$sid" || true
   _reset_session_state_if_changed_unlocked "$sid" sync
   _refresh_branch_from_cwd_unlocked

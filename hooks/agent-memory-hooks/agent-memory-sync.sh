@@ -1,7 +1,7 @@
 #!/bin/bash
 # Deterministic checkpoint — writes .hook-sync-state only (no Markdown writes).
 #
-# Session id: resolve_session_id in agent-memory-common.sh (stdin over stale env).
+# Session id: resolved under lock inside run_sync_ephemeral_checkpoint (common.sh).
 # Set AGENT_MEMORY_HOST when possible; when omitted, rebind keeps session_binding_host.
 #
 # AGENT_MEMORY_EVENT aliases (any host naming):
@@ -38,8 +38,7 @@ agent_memory_init_context || exit 0
 command -v git >/dev/null 2>&1 || exit 0
 git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
-session_id=$(resolve_session_id "$hook_stdin_session_id")
-# One lock: persist current id, rebind if needed, refresh branch, merge paths.
-run_sync_ephemeral_checkpoint "$session_id"
+# One lock: resolve session id, persist, rebind, refresh branch, merge paths.
+run_sync_ephemeral_checkpoint "$hook_stdin_session_id"
 
 exit 0
