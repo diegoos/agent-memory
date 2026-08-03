@@ -72,7 +72,13 @@ export function detectInstalledHarnesses(): Harness[] {
   );
   check(
     "opencode",
-    fs.existsSync(path.join(root, ".opencode", "plugin", "agent-memory.ts")) ||
+    fs.existsSync(
+      path.join(root, ".opencode", "plugins", "agent-memory.ts"),
+    ) ||
+      // Legacy singular path (pre-fix; OpenCode never auto-loaded it)
+      fs.existsSync(
+        path.join(root, ".opencode", "plugin", "agent-memory.ts"),
+      ) ||
       fs.existsSync(
         path.join(root, ".opencode", "hooks", "agent-memory-sync.sh"),
       ),

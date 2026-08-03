@@ -20,7 +20,7 @@ Accepted `<harness>` values (aliases in parentheses):
 | `cursor`   | —             | `.cursor/`                            | `.cursor/hooks/` + merge `hooks.json`    |
 | `claude`   | `claude-code` | `.claude/`                            | `.claude/hooks/` + merge `settings.json` |
 | `codex`    | —             | `.codex/`                             | `.codex/hooks/` + merge `hooks.json`     |
-| `opencode` | —             | `.opencode/`                          | `.opencode/hooks/` + plugin `.ts`        |
+| `opencode` | —             | `.opencode/`                          | `.opencode/hooks/` + `.opencode/plugins/*.ts` |
 | `copilot`  | `github`      | `.github/`                            | `.github/hooks/` + `agent-memory.json`   |
 | `gemini`   | —             | `.gemini/`                            | `.gemini/hooks/` + merge `settings.json` |
 
@@ -58,7 +58,7 @@ Canonical hook sources live under `hooks/` in the [agent-memory](https://github.
 
    Replace `<harness>` with the normalized harness name. Remind: the installer needs Node.js for JSON merges; it creates the harness directory if missing; Codex users should run `/hooks` in the TUI after install; Cursor may need a hooks reload.
 
-5. **Report.** List: harness, that hooks were **not** written by the agent, and the exact commands printed. Suggest `/agent-memory sync` at the next checkpoint after the user installs.
+5. **Report.** List: harness, that hooks were **not** written by the agent, and the exact commands printed. Suggest `/agent-memory sync` at the next checkpoint after the user installs. For OpenCode: restart the harness after install; expect `.hook-sync-state` on `session.idle` / native `/compact` (plugin also listens for `session.compacted`) — DCP commands such as `/dcp-compact` do **not** trigger agent-memory PreCompact.
 
 ## Detecting installed harnesses (`update`)
 
@@ -69,7 +69,7 @@ A harness counts as **already installed** when its prerequisite dir exists **and
 | `cursor`   | `.cursor/hooks/agent-memory-sync.sh` or agent-memory in `.cursor/hooks.json`            |
 | `claude`   | `.claude/hooks/agent-memory-sync.sh`                                                    |
 | `codex`    | `.codex/hooks/agent-memory-sync.sh`                                                     |
-| `opencode` | `.opencode/plugin/agent-memory.ts` or `.opencode/hooks/agent-memory-sync.sh`            |
+| `opencode` | `.opencode/plugins/agent-memory.ts` (+ `safe-script.ts`) or `.opencode/hooks/agent-memory-sync.sh` |
 | `copilot`  | `.github/hooks/agent-memory.json` or `.github/hooks/agent-memory-sync.sh`               |
 | `gemini`   | `.gemini/settings.json` containing agent-memory or `.gemini/hooks/agent-memory-sync.sh` |
 

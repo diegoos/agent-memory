@@ -30,6 +30,9 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ### Fixed
 
+- Tests: chmod-heal assertion uses `uname` to pick BSD vs GNU `stat` (Linux `stat -f` dumps filesystem info with exit 0, so the old `stat -f || stat -c` probe never reached `%a`).
+- OpenCode: install plugin to `.opencode/plugins/` (OpenCode auto-load path) with `safe-script.ts` beside it; migrate/remove legacy `.opencode/plugin/`; plugin uses harness `directory` for project root, logs spawn failures to stderr, and checkpoints on `session.compacted` as well as idle / `experimental.session.compacting` (DCP `/dcp-compact` is documented as out of scope).
+- Memory method/skill: sync clears observably false hooks/state blockers; pending hook evidence counts as resumable; consume required when meaning covers paths even if the tree is dirty; bootstrap requires learnings `pending-doc` + `Invalidate when` for durable doc gaps; init/bootstrap/SKILL tell users to re-sync after hooks; lint warns `blocker-hooks-contradiction` and `log-placeholder-stale`; log headings must use bracketed `[type]` (no `type | title`); founding-day consolidate is report-only for prune; vendor `log.md` notes removing `_No entries yet._` on first heading.
 - Hooks: OpenCode day rollover and ses_* path preserve key off `session_binding_host` in state, not inherited `AGENT_MEMORY_HOST`.
 - Hooks: delayed Stop on sync/Stop prefers canonical `session_binding` when `session_binding` and `current_session_id` agree on the live id but harness stdin or inherited env is stale (including when stale env equals stale stdin); scans binding env vars before stdin wins when state is not canonical.
 - Hooks: detached HEAD caches `branch=detached` instead of leaving a stale branch name in `.hook-sync-state`.

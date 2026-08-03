@@ -160,6 +160,23 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
        fi
      fi
    fi
+   # Memory claims hooks/state absent while FS shows otherwise
+   if grep -qiE 'hooks? (not |never )?installed|\.hook-sync-state.*(absent|missing)|checkpoint path evidence unavailable' \
+     .agents/memory/current.md .agents/memory/log.md 2>/dev/null; then
+     carrier=false
+     { test -f .cursor/hooks.json || test -f .claude/hooks/agent-memory-sync.sh || \
+       test -f .opencode/plugins/agent-memory.ts || test -f .opencode/plugin/agent-memory.ts || \
+       test -f .codex/hooks/agent-memory-sync.sh || test -f .gemini/hooks/agent-memory-sync.sh || \
+       test -f .github/hooks/agent-memory-sync.sh || test -f .github/hooks/agent-memory.json; } && carrier=true
+     if [ -f "$state" ] || $carrier; then
+       echo "blocker-hooks-contradiction: current.md/log claim hooks or .hook-sync-state absent, but state and/or harness carrier exists — suggest /agent-memory sync"
+     fi
+   fi
+   # Scaffold placeholder left after real session headings exist
+   if grep -qE '^## \[[0-9]{4}-[0-9]{2}-[0-9]{2}\]' .agents/memory/log.md 2>/dev/null && \
+     grep -q '_No entries yet\._' .agents/memory/log.md 2>/dev/null; then
+     echo "log-placeholder-stale: _No entries yet._ coexists with a session heading — remove placeholder (bootstrap/sync)"
+   fi
    ```
 
    **`pending-doc` invalidate check (warning).** For each H2 learning/pitfall with a `- pending-doc:` (or `- pending-doc`) line, read sibling `- Invalidate when:` / Evidence paths. If the named canonical file already documents the Insight (judgment — or exact phrase overlap ≥ 40 chars in `AGENTS.md` / `README.md` / Evidence target), report `pending-doc-met: <heading> — suggest consolidate promote/remove`.
@@ -228,7 +245,10 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    - **Legacy path-only bullets / empty headings / Touched files** — candidates for consolidate.
    - **Legacy mirrors** — `vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*` with bodies that should be pointers in `index.md` / `decisions.md` / `learnings.md`.
    - **Mixed log heading** — bullets under a `[type]` / outcome that clearly belong to another concern (e.g. consolidate notes under `[docs] bootstrap`); suggest split heading on next sync.
+   - **Malformed log heading shape** — session line uses `type | title` pipes or unbracketed type instead of `## [YYYY-MM-DD] [session-id?] [type] outcome`; suggest sync rewrite.
    - **Empty log after scaffold (`empty-log` / `empty-log-after-scaffold`)** — zero `## [date]` headings while learnings/index show bootstrap recall; suggest restoring a short founding session heading (consolidate must not empty current session).
+   - **Stale log placeholder (`log-placeholder-stale`)** — `_No entries yet._` still present after a real session heading exists (deterministic grep above).
+   - **Hooks/state blocker contradiction (`blocker-hooks-contradiction`)** — memory claims hooks or `.hook-sync-state` absent while state/carrier exists (deterministic above); suggest sync.
    - **Bloat** — always-loaded files grown long or verbose entries.
    - **Quality smoke (optional checklist)** — with only memory open, can you answer: (1) next concrete step, (2) what must not break, (3) where to edit, (4) how to prove it worked?
 

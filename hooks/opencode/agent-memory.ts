@@ -7,7 +7,7 @@
 //
 // Install (see hooks/README.md):
 //   hooks/agent-memory-hooks/*.sh → .opencode/hooks/
-//   this file → .opencode/plugin/agent-memory.ts
+//   this file + safe-script.ts → .opencode/plugins/ (OpenCode auto-load path)
 
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
@@ -20,8 +20,20 @@ import {
 const HOOKS_DIR = '.opencode/hooks';
 const SYNC_SCRIPT = `${HOOKS_DIR}/agent-memory-sync.sh`;
 
-function hasMemory(): boolean {
-  return fs.existsSync(path.join(process.cwd(), '.agents', 'memory'));
+type PluginCtx = {
+  directory?: string;
+  worktree?: string;
+};
+
+function resolveProjectDir(ctx?: PluginCtx): string {
+  if (typeof ctx?.directory === 'string' && ctx.directory.length > 0) {
+    return ctx.directory;
+  }
+  return process.cwd();
+}
+
+function hasMemory(projectDir: string): boolean {
+  return fs.existsSync(path.join(projectDir, '.agents', 'memory'));
 }
 
 function bindingScopes(input: unknown): {
@@ -108,6 +120,7 @@ const ENV_ALLOWLIST_EXACT = new Set([
 function buildChildEnv(
   host: string,
   event: string,
+  projectDir: string,
   sessionId?: string
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
@@ -117,33 +130,40 @@ function buildChildEnv(
   }
   env.AGENT_MEMORY_HOST = host;
   env.AGENT_MEMORY_EVENT = event;
-  env.AGENT_MEMORY_PROJECT_DIR = process.cwd();
+  env.AGENT_MEMORY_PROJECT_DIR = projectDir;
   if (sessionId) env.AGENT_MEMORY_SESSION_ID = sessionId;
   return env;
 }
 
 function runScript(
+  projectDir: string,
   script: string,
   event: string,
   host: string,
   sessionId?: string
 ): boolean {
-  const cwd = process.cwd();
-  const scriptPath = assertSafeHookScript(cwd, script, HOOKS_DIR);
-  if (!scriptPath) return false;
+  const scriptPath = assertSafeHookScript(projectDir, script, HOOKS_DIR);
+  if (!scriptPath) {
+    console.error(
+      `agent-memory: OpenCode refusing unsafe or missing sync script (${script})`
+    );
+    return false;
+  }
   const stdinPayload = sessionId
     ? JSON.stringify({ session_id: sessionId })
     : undefined;
   try {
     execFileSync('bash', [scriptPath], {
-      cwd,
-      env: buildChildEnv(host, event, sessionId),
+      cwd: projectDir,
+      env: buildChildEnv(host, event, projectDir, sessionId),
       input: stdinPayload,
-      stdio: ['pipe', 'ignore', 'ignore'],
+      stdio: ['pipe', 'ignore', 'pipe'],
       timeout: 15_000,
     });
     return true;
-  } catch {
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error(`agent-memory: OpenCode hook sync failed (${event}): ${detail}`);
     return false;
   }
 }
@@ -154,23 +174,27 @@ function resolveBindingId(input: unknown): string | undefined {
   return extractConversationId(input) || extractSessionId(input);
 }
 
-function runSync(event: string, input?: unknown): void {
-  if (!hasMemory()) return;
+function runSync(projectDir: string, event: string, input?: unknown): void {
+  if (!hasMemory(projectDir)) return;
   const bindingId = resolveBindingId(input);
   // Pass binding as session_id so shared hooks treat it as the session key.
-  runScript(SYNC_SCRIPT, event, 'opencode', bindingId);
+  runScript(projectDir, SYNC_SCRIPT, event, 'opencode', bindingId);
 }
 
-export const agentMemoryPlugin = async () => {
-  if (!hasMemory()) return {};
+export const agentMemoryPlugin = async (ctx?: PluginCtx) => {
+  const projectDir = resolveProjectDir(ctx);
+  if (!hasMemory(projectDir)) return {};
 
   return {
     'experimental.session.compacting': async (input: unknown) => {
-      runSync('PreCompact', input);
+      runSync(projectDir, 'PreCompact', input);
     },
     event: async (input: { event: { type: string; sessionID?: string } }) => {
-      if (input?.event?.type === 'session.idle') {
-        runSync('Stop', input);
+      const type = input?.event?.type;
+      // idle = end of turn; compacted = after native compact (belt-and-suspenders
+      // with experimental.session.compacting). DCP /dcp-compact does not emit these.
+      if (type === 'session.idle' || type === 'session.compacted') {
+        runSync(projectDir, type === 'session.compacted' ? 'PreCompact' : 'Stop', input);
       }
     },
   };

@@ -72,7 +72,7 @@ Pre-approved via the `allowed-tools` frontmatter — a space-separated, host-spe
 
 ### Write boundary
 
-Create, edit, or delete **only** under the memory content paths listed in `allowed-tools`. Harness instruction files in `references/init.md` may be edited **only** during `/agent-memory init` or `/agent-memory update`, **only the agent-memory block** (between `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain tags; for `.mdc`/`.instructions.md`, frontmatter plus delimited body) — expect a host permission prompt. **`instructions.md` is not pre-approved** — only `/agent-memory update` may edit it, and the host should prompt. Creating a **subdirectory** inside an existing harness dir (e.g. `.cursor/rules/`, `.github/instructions/`) is allowed when wiring native instruction files; never create the harness root itself unless the user explicitly requests it. **Never** write under `.cursor/hooks/`, `.claude/hooks/`, `.codex/hooks/`, `.opencode/hooks/`, `.opencode/plugin/`, `.github/hooks/`, `.gemini/hooks/`, or merge `hooks.json` / harness `settings.json` for hooks. Never touch content outside those scopes, application code, other configs, or other docs. Read the rest of the workspace freely.
+Create, edit, or delete **only** under the memory content paths listed in `allowed-tools`. Harness instruction files in `references/init.md` may be edited **only** during `/agent-memory init` or `/agent-memory update`, **only the agent-memory block** (between `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain tags; for `.mdc`/`.instructions.md`, frontmatter plus delimited body) — expect a host permission prompt. **`instructions.md` is not pre-approved** — only `/agent-memory update` may edit it, and the host should prompt. Creating a **subdirectory** inside an existing harness dir (e.g. `.cursor/rules/`, `.github/instructions/`) is allowed when wiring native instruction files; never create the harness root itself unless the user explicitly requests it. **Never** write under `.cursor/hooks/`, `.claude/hooks/`, `.codex/hooks/`, `.opencode/hooks/`, `.opencode/plugins/`, `.github/hooks/`, `.gemini/hooks/`, or merge `hooks.json` / harness `settings.json` for hooks. Never touch content outside those scopes, application code, other configs, or other docs. Read the rest of the workspace freely.
 
 ### Repository source (vendor)
 
@@ -131,10 +131,10 @@ For `/agent-memory help` (and for any empty or unknown invocation), output the f
 
 **Getting started**
 
-- New project? Run `init` (or `init <harness>` — e.g. `init cursor` if you use Cursor and already have a `.cursor/` directory), then optionally `bootstrap` to index sources (not copy docs). Install hooks with the printed `npx` or shell command.
-- Memory exists but hooks missing or stale? Run `install hooks <harness>` for instructions, or re-run the installer from the release tag.
-- Keeping the memory current? Write resume fields + semantic `log.md` in the turn (primary); run `sync` at checkpoints for catch-up (or follow `references/sync.md` without invoking the skill). Use `sync --auto` for low-friction routine flushes.
-- Pruning noise? Run `consolidate` periodically (guided; never automatic).
+- New project? Run `init` (or `init <harness>` — e.g. `init cursor` if you use Cursor and already have a `.cursor/` directory), then optionally `bootstrap` to index sources (not copy docs). Install hooks with the printed `npx` or shell command, then **re-run `sync`** so blockers/evidence catch up.
+- Memory exists but hooks missing or stale? Run `install hooks <harness>` for instructions, or re-run the installer from the release tag, then `/agent-memory sync`. OpenCode: files must be under `.opencode/plugins/` (with `safe-script.ts`); restart OpenCode; state appears on `session.idle` / native `/compact` — not from DCP-only commands (`/dcp-compact`).
+- Keeping the memory current? Write resume fields + semantic `log.md` in the turn (primary); run `sync` at checkpoints for catch-up (or follow `references/sync.md` without invoking the skill). Use `sync --auto` for low-friction routine flushes — sync **must consume** pending hook paths when meaning covers them (dirty tree does not skip consume).
+- Pruning noise? Run `consolidate` for **closed** sessions (guided; never automatic). Same-day after bootstrap is report-only — do not expect Discard of founding log headings.
 - Capture a lesson now? Run `learn [>topic] <clue>` (retention gate; confirm).
 - Already set up? Use `lint` to check health (`lint --fix` also removes stale per-branch files), `update` to upgrade memory scaffolding, then refresh hooks with the user-run installer if needed.
 

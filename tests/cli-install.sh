@@ -74,7 +74,27 @@ for h in claude codex opencode copilot gemini; do
 done
 [[ -x "$TMP/.claude/hooks/agent-memory-sync.sh" ]] || fail "claude sync missing"
 [[ -x "$TMP/.codex/hooks/agent-memory-sync.sh" ]] || fail "codex sync missing"
-[[ -f "$TMP/.opencode/plugin/agent-memory.ts" ]] || fail "opencode plugin missing"
+[[ -f "$TMP/.opencode/plugins/agent-memory.ts" ]] || fail "opencode plugin missing"
+[[ -f "$TMP/.opencode/plugins/safe-script.ts" ]] ||
+  fail "opencode safe-script.ts missing beside plugin"
+# Legacy singular path must not be the install target
+[[ ! -f "$TMP/.opencode/plugin/agent-memory.ts" ]] ||
+  fail "opencode must not install to legacy .opencode/plugin/"
+# Installed artifact must resolve its relative import (dogfood: missing safe-script broke load)
+(
+  cd "$TMP/.opencode/plugins" &&
+    bun -e 'import("./agent-memory.ts").then(() => {}).catch((e) => { console.error(e); process.exit(1) })'
+) || fail "opencode plugin import failed (safe-script / plugins path)"
+
+# Re-install migrates leftover singular path → plugins/
+mkdir -p "$TMP/.opencode/plugin"
+printf '// legacy\n' >"$TMP/.opencode/plugin/agent-memory.ts"
+AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" install hooks opencode >/dev/null ||
+  fail "opencode reinstall for legacy migrate failed"
+[[ -f "$TMP/.opencode/plugins/agent-memory.ts" ]] ||
+  fail "opencode plugins path missing after migrate"
+[[ ! -f "$TMP/.opencode/plugin/agent-memory.ts" ]] ||
+  fail "legacy .opencode/plugin/agent-memory.ts should be removed on reinstall"
 [[ -f "$TMP/.github/hooks/agent-memory.json" ]] ||
   [[ -x "$TMP/.github/hooks/agent-memory-sync.sh" ]] || fail "copilot hooks missing"
 [[ -x "$TMP/.gemini/hooks/agent-memory-sync.sh" ]] || fail "gemini sync missing"

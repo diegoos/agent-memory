@@ -50,7 +50,7 @@ Examples:
    - Invalidate when: condition
    ```
 
-   Use today's date for the heading and `Verified`. Choose `learning` or `pitfall`. Add `- pending-doc` only when the fact belongs in official docs.
+   Use today's date for the heading and `Verified`. Choose `learning` or `pitfall`. When the fact belongs in official docs, add **both** `- pending-doc` and `- Invalidate when: <concrete condition naming the canonical doc/section>` (not `pending-doc` alone).
 
 7. **Draft the `index.md` line.** When the file is new or unlisted, add the link. When the file is already listed **without** a `when editing:` hint and Evidence lists **1–3 concrete repo-relative paths** (files or narrow globs with a literal segment — never denylist/overbroad forms), **propose** updating that line in place with `when editing: <globs>; <short description>` (never a second entry; never invent globs). Path-specific topic splits should usually get a hint; cross-cutting `learnings.md` may still get one when Evidence is path-obvious. Hints follow `instructions.md` → _Always load_.
 

@@ -207,6 +207,9 @@ Format:
 - safe: `learn` command (`references/learn.md`) — gated capture into `learnings.md` / `learnings-<topic>.md`; conflict/dirty guards; slug sanitize; deterministic routing; duplicate-rule skip. Skill routing + help updated; shared-rules exception for in-turn / bootstrap / learn primary write.
 - safe: `bootstrap` / `sync` / `lint` / `consolidate` / `update` references — H2 format; topic splits; `when editing:` preserve/validate; consolidate split/merge converts moved entries to H2.
 - safe: OpenCode plugin — refuse symlink hook scripts; confine resolved paths under `.opencode/hooks`; validate session/conversation binding IDs. **User must re-run the hooks installer** for OpenCode.
+- safe: OpenCode plugin install path — `.opencode/plugins/` (OpenCode auto-load; was singular `.opencode/plugin/`) + copy `safe-script.ts` beside `agent-memory.ts`; installer removes legacy singular files; plugin also handles `session.compacted`. **User must re-run** `install hooks opencode` then restart OpenCode.
+- safe: `sync` / `bootstrap` / `init` / `lint` / `learn` / `consolidate` / `SKILL.md` — dogfood plan: false hooks blockers cleared on sync; pending evidence resumable; consume even when dirty; bootstrap pending-doc + Invalidate when; re-sync after hooks; lint `blocker-hooks-contradiction` / `log-placeholder-stale`; founding-day consolidate report-only.
+- sensitive: `instructions.md` / `log.md` — pending-doc pairs with Invalidate when; log heading shape; remove `_No entries yet._` on first heading. Show diff and confirm.
 - safe: Document trust boundary in `SECURITY.md` (package docs; no consumer memory change).
 - safe: CLI build publishes `bin/cli.js` without minify for supply-chain auditability. Re-run `npx @dosx/agent-memory update` (or install) after upgrading the npm package. Memory migration remains `/agent-memory update` in-agent.
 - safe: Cross-package docs pin `hooks/README.md` / examples to `0.1.1`.

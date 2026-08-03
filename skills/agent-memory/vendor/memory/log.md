@@ -21,6 +21,6 @@ Hooks never write this file. Path evidence lives in `.hook-sync-state` (gitignor
 
 **OpenCode:** when `ses_*` IDs rotate the same day, prefer one semantic heading per calendar day for that work stream.
 
----
+When the first real session heading is added, remove this scaffold placeholder:
 
 _No entries yet._
