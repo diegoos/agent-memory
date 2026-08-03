@@ -1,8 +1,21 @@
-# agent-memory shared helpers — source from session/sync hooks only.
+# agent-memory shared helpers — source from session/sync/consume hooks only.
 # Ephemeral evidence in .hook-sync-state only; never edit Markdown under .agents/memory/.
 # See instructions.md → Harness parity — memory contract.
 #
 # After agent_memory_init_context: cwd, memory, state_file globals.
+#
+# Layout (one file on purpose — flat install beside entrypoints; see hooks/README.md):
+#   1. Stdin / JSON parse
+#   2. Paths / realpath / symlink refuse
+#   3. Project root resolve
+#   4. Session binding / rebind
+#   5. State lock + read/write
+#   6. Worktree paths + ephemeral checkpoint
+#   7. Consume evidence + sessionStart Status
+
+# ---------------------------------------------------------------------------
+# 1. Stdin / JSON parse
+# ---------------------------------------------------------------------------
 
 # Filled by parse_hook_stdin (optional).
 hook_stdin_session_id=""
@@ -97,6 +110,10 @@ parse_hook_stdin() {
   fi
   _parse_hook_stdin_sed "$input"
 }
+
+# ---------------------------------------------------------------------------
+# 2. Paths / realpath / symlink refuse
+# ---------------------------------------------------------------------------
 
 agent_memory_resolve_realpath() {
   local p=$1
@@ -259,6 +276,10 @@ _hooks_env_entrypoint_diverges_from_running() {
   return 1
 }
 
+# ---------------------------------------------------------------------------
+# 3. Project root resolve
+# ---------------------------------------------------------------------------
+
 # Prefer explicit env, then install-site anchor; never trust stdin cwd alone.
 # When install-site resolves and env points elsewhere, prefer install-site
 # (stale shell AGENT_MEMORY_PROJECT_DIR / CURSOR_PROJECT_DIR must not retarget state)
@@ -319,6 +340,10 @@ resolve_project_dir() {
   fi
   printf '%s' "$chosen"
 }
+
+# ---------------------------------------------------------------------------
+# 4. Session binding / rebind
+# ---------------------------------------------------------------------------
 
 # Second arg: allow_state_fallback (1=sync default, 0=sessionStart — no stale ID).
 NO_ID_SESSION_SENTINEL="__no_id__"
@@ -686,6 +711,10 @@ sanitize_branch() {
   printf '%s' "$b" | tr -c 'A-Za-z0-9._-' '-'
 }
 
+# ---------------------------------------------------------------------------
+# 5. State lock + read/write
+# ---------------------------------------------------------------------------
+
 # Portable lock around state mutations. Fail-open after timeout so harnesses
 # are never blocked. Only the process that acquired the lock may remove it.
 # Sets AGENT_MEMORY_LOCK_ACQUIRED=1|0 for the locked body.
@@ -801,6 +830,10 @@ write_state() {
   agent_memory_with_state_lock _write_state_body "$@"
 }
 
+# ---------------------------------------------------------------------------
+# 6. Worktree paths + ephemeral checkpoint
+# ---------------------------------------------------------------------------
+
 agent_memory_include_commit_files="${agent_memory_include_commit_files:-0}"
 
 list_worktree_changes() {
@@ -894,6 +927,10 @@ _apply_ephemeral_checkpoint_unlocked() {
     _write_state_unlocked last_processed_head "$current_head"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# 7. Consume evidence + sessionStart Status
+# ---------------------------------------------------------------------------
 
 # Clear session_touched_files after the agent recorded semantic outcomes (sync).
 # Preserves binding, branch, last_processed_head.
