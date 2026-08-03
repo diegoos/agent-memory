@@ -46,27 +46,14 @@ json_string_field() {
 
 _parse_hook_stdin_sed() {
   local input="${1:-}"
-  local a b c d e picked body
+  local a b c d e body
   a=$(json_string_field "$input" session_id)
   b=$(json_string_field "$input" conversation_id)
   c=$(json_string_field "$input" sessionId)
   d=$(json_string_field "$input" conversationId)
   e=$(json_string_field "$input" composer_id)
   hook_stdin_session_id=""
-  if picked=$(_pick_external_session_id "$a"); then
-    hook_stdin_session_id=$picked
-  elif picked=$(_pick_external_session_id "$b"); then
-    hook_stdin_session_id=$picked
-  elif picked=$(_pick_external_session_id "$c"); then
-    hook_stdin_session_id=$picked
-  elif picked=$(_pick_external_session_id "$d"); then
-    hook_stdin_session_id=$picked
-  elif picked=$(_pick_external_session_id "$e"); then
-    hook_stdin_session_id=$picked
-  else
-    # Keep first non-empty raw value so resolve_session_id can warn on invalid.
-    hook_stdin_session_id=${a:-${b:-${c:-${d:-$e}}}}
-  fi
+  _assign_hook_stdin_session_from_candidates "$a" "$b" "$c" "$d" "$e"
   hook_stdin_cwd=$(json_string_field "$input" cwd)
   if [ -z "$hook_stdin_cwd" ]; then
     body=$(_amc_flat_json_body "$input")
@@ -79,7 +66,7 @@ _parse_hook_stdin_sed() {
 
 parse_hook_stdin() {
   local input="${1:-}"
-  local parsed a b c d e cwd_raw rest picked
+  local parsed a b c d e cwd_raw rest
   hook_stdin_session_id=""
   hook_stdin_cwd=""
   [ -n "$input" ] || return 0
@@ -103,19 +90,7 @@ parse_hook_stdin() {
       rest=${rest#*$'\t'}
       e=${rest%%$'\t'*}
       cwd_raw=${rest#*$'\t'}
-      if picked=$(_pick_external_session_id "$a"); then
-        hook_stdin_session_id=$picked
-      elif picked=$(_pick_external_session_id "$b"); then
-        hook_stdin_session_id=$picked
-      elif picked=$(_pick_external_session_id "$c"); then
-        hook_stdin_session_id=$picked
-      elif picked=$(_pick_external_session_id "$d"); then
-        hook_stdin_session_id=$picked
-      elif picked=$(_pick_external_session_id "$e"); then
-        hook_stdin_session_id=$picked
-      else
-        hook_stdin_session_id=${a:-${b:-${c:-${d:-$e}}}}
-      fi
+      _assign_hook_stdin_session_from_candidates "$a" "$b" "$c" "$d" "$e"
       hook_stdin_cwd=$cwd_raw
       return 0
     fi
@@ -365,6 +340,24 @@ _pick_external_session_id() {
   local cand="${1:-}"
   is_valid_external_binding_id "$cand" || return 1
   printf '%s' "$cand"
+}
+
+# First valid among stdin binding fields; else first non-empty raw (for invalid warn).
+_assign_hook_stdin_session_from_candidates() {
+  local a=$1 b=$2 c=$3 d=$4 e=$5 picked
+  if picked=$(_pick_external_session_id "$a"); then
+    hook_stdin_session_id=$picked
+  elif picked=$(_pick_external_session_id "$b"); then
+    hook_stdin_session_id=$picked
+  elif picked=$(_pick_external_session_id "$c"); then
+    hook_stdin_session_id=$picked
+  elif picked=$(_pick_external_session_id "$d"); then
+    hook_stdin_session_id=$picked
+  elif picked=$(_pick_external_session_id "$e"); then
+    hook_stdin_session_id=$picked
+  else
+    hook_stdin_session_id=${a:-${b:-${c:-${d:-$e}}}}
+  fi
 }
 
 # Fixed names only — no dynamic eval of env keys.
@@ -903,22 +896,48 @@ _apply_ephemeral_checkpoint_unlocked() {
 }
 
 # Clear session_touched_files after the agent recorded semantic outcomes (sync).
-# Preserves binding, branch, last_processed_head. Fail-open when lock unavailable.
+# Preserves binding, branch, last_processed_head.
+# Skip when lock not held (same as rebind/branch/checkpoint — never clear under fail-open).
+# Compare-and-swap: clear only if pending paths still match the pre-lock snapshot.
 consume_pending_path_evidence() {
-  local bits
-  bits=$(read_state session_touched_files "")
-  [ -n "$bits" ] || return 0
-  agent_memory_with_state_lock _consume_pending_path_evidence_locked
+  local expected
+  expected=$(read_state session_touched_files "")
+  [ -n "$expected" ] || return 0
+  agent_memory_with_state_lock _consume_pending_path_evidence_locked "$expected"
 }
 
 _consume_pending_path_evidence_locked() {
+  local expected=$1 current
+  if [ "${AGENT_MEMORY_LOCK_ACQUIRED:-0}" != "1" ]; then
+    printf 'agent-memory: skip consume-evidence (lock not held)\n' >&2
+    return 0
+  fi
+  current=$(read_state session_touched_files "")
+  if [ "$current" != "$expected" ]; then
+    printf 'agent-memory: skip consume-evidence (pending paths changed under lock)\n' >&2
+    return 0
+  fi
   _write_state_unlocked session_touched_files "" || true
+}
+
+# Extract hex SHA from a Checkpoint: line (optional legacy backticks around date/sha).
+# Prints SHA and returns 0 when valid; else prints nothing and returns 1.
+# SoT for Status; hooks/git/pre-commit keeps a /bin/sh-safe copy of the same sed.
+parse_checkpoint_sha() {
+  local line=$1 sha
+  sha=$(printf '%s' "$line" | sed -E 's/^Checkpoint:[[:space:]]*[`"]?[0-9]{4}-[0-9]{2}-[0-9]{2}[`"]?[[:space:]]*@[[:space:]]*[`"]?([0-9a-fA-F]{4,40})[`"]?.*/\1/')
+  if [[ "$sha" =~ ^[0-9a-fA-F]{4,40}$ ]] && [ "$sha" != "<short-sha>" ]; then
+    printf '%s' "$sha"
+    return 0
+  fi
+  return 1
 }
 
 # Contextual sessionStart message: obligation + branch/checkpoint/path status.
 # Never writes Markdown. Safe when git or active-work is missing.
 build_session_context_msg() {
-  local branch sanitized aw head_full head_short ck_line ck_sha status bits path_count dirty action
+  local branch sanitized aw head_full head_short ck_line ck_sha status bits path_count action
+  local consume_hint dirty_tracked
   branch=""
   if command -v git >/dev/null 2>&1 && [ -n "${cwd:-}" ] &&
     git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
@@ -931,21 +950,18 @@ build_session_context_msg() {
 
   status="branch=${sanitized}"
   aw="${memory}/active-work/${sanitized}.md"
+  head_full=""
+  head_short=""
+  ck_sha=""
+  if command -v git >/dev/null 2>&1 && [ -n "${cwd:-}" ]; then
+    head_full=$(git -C "$cwd" rev-parse HEAD 2>/dev/null || true)
+    head_short=$(git -C "$cwd" rev-parse --short HEAD 2>/dev/null || true)
+  fi
   if [ -f "$aw" ]; then
     status="${status}; active-work=yes"
     ck_line=$(grep -E '^Checkpoint:' "$aw" 2>/dev/null | head -1 || true)
-    ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint:[[:space:]]*[`"]?[0-9]{4}-[0-9]{2}-[0-9]{2}[`"]?[[:space:]]*@[[:space:]]*[`"]?([0-9a-fA-F]{4,40})[`"]?.*/\1/')
-    # Only trust hex SHAs in status text (avoid prompt-injection via active-work).
-    if ! [[ "$ck_sha" =~ ^[0-9a-fA-F]{4,40}$ ]]; then
-      ck_sha=""
-    fi
-    head_full=""
-    head_short=""
-    if command -v git >/dev/null 2>&1 && [ -n "${cwd:-}" ]; then
-      head_full=$(git -C "$cwd" rev-parse HEAD 2>/dev/null || true)
-      head_short=$(git -C "$cwd" rev-parse --short HEAD 2>/dev/null || true)
-    fi
-    if [ -n "$ck_sha" ] && [ "$ck_sha" != "<short-sha>" ] && [ -n "$head_full" ]; then
+    ck_sha=$(parse_checkpoint_sha "$ck_line" || true)
+    if [ -n "$ck_sha" ] && [ -n "$head_full" ]; then
       if [ "$(git -C "$cwd" rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)" = "$head_full" ]; then
         status="${status}; Checkpoint=${head_short} (fresh)"
       else
@@ -969,18 +985,30 @@ build_session_context_msg() {
     status="${status}; pending paths=${path_count}"
   fi
 
-  dirty=0
+  # Tracked dirty only (diff/cached) — avoid full porcelain + untracked walk on sessionStart.
   if command -v git >/dev/null 2>&1 && [ -n "${cwd:-}" ] &&
     git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
-    dirty=$(git -C "$cwd" status --porcelain 2>/dev/null | wc -l | tr -d ' ' || echo 0)
-  fi
-  if [ "${dirty:-0}" -gt 0 ] 2>/dev/null; then
-    status="${status}; dirty=${dirty}"
+    dirty_tracked=0
+    if ! git -C "$cwd" diff --quiet HEAD 2>/dev/null; then
+      dirty_tracked=1
+    elif ! git -C "$cwd" diff --cached --quiet 2>/dev/null; then
+      dirty_tracked=1
+    fi
+    if [ "$dirty_tracked" -eq 1 ]; then
+      status="${status}; dirty"
+    fi
   fi
 
   action="primary-write before stop when durable progress (after commit / before compact); sync is catch-up"
   if [ "$path_count" -gt 0 ] 2>/dev/null; then
-    action="${action}; if meaning already in log/active-work, run agent-memory-consume-evidence.sh"
+    consume_hint="agent-memory-consume-evidence.sh"
+    if [ -n "${script_dir:-}" ] && [ -n "${cwd:-}" ]; then
+      case "$script_dir" in
+        "$cwd"/*) consume_hint="${script_dir#"$cwd"/}/agent-memory-consume-evidence.sh" ;;
+        *) consume_hint="$script_dir/agent-memory-consume-evidence.sh" ;;
+      esac
+    fi
+    action="${action}; if meaning already in log/active-work, run bash ${consume_hint}"
   fi
   if [ -f "$aw" ] && [ -n "$ck_sha" ] && [ -n "$head_full" ] &&
     [ "$(git -C "$cwd" rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)" != "$head_full" ]; then

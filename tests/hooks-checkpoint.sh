@@ -28,6 +28,18 @@ cp -R "$skeleton" .agents/memory
 cp "$hook_dir"/agent-memory-*.sh .
 chmod +x agent-memory-*.sh
 
+# --- parse_checkpoint_sha (SoT for Status; pre-commit keeps /bin/sh copy) ---
+# shellcheck source=../hooks/agent-memory-hooks/agent-memory-common.sh
+. ./agent-memory-common.sh
+[[ "$(parse_checkpoint_sha 'Checkpoint: 2026-08-02 @ abcdef1')" == "abcdef1" ]] ||
+  fail "parse_checkpoint_sha plain form"
+[[ "$(parse_checkpoint_sha 'Checkpoint: `2026-08-02` @ `abcdef12`')" == "abcdef12" ]] ||
+  fail "parse_checkpoint_sha legacy backticks"
+parse_checkpoint_sha 'Checkpoint: 2026-08-02 @ abcdef1 see TEMPLATE' >/dev/null ||
+  fail "parse_checkpoint_sha should accept trailing prose (sha still extracted)"
+! parse_checkpoint_sha 'Checkpoint: not-a-date @ zz' >/dev/null ||
+  fail "parse_checkpoint_sha should reject non-hex"
+
 # Snapshot Markdown before hooks
 md_checksum() {
   find .agents/memory -name '*.md' | sort | while read -r f; do
@@ -494,6 +506,8 @@ grep -q 'Action:' "$TMP/session-status.json" ||
   fail "session Status should include Action guidance"
 grep -qE 'primary-write|Checkpoint stale' "$TMP/session-status.json" ||
   fail "session Action should mention primary-write or Checkpoint stale"
+grep -qE 'bash [^;]*agent-memory-consume-evidence\.sh' "$TMP/session-status.json" ||
+  fail "session Action should cite bash path to consume-evidence when paths pending"
 
 # --- consume-evidence clears session_touched_files only ---
 printf '%s\n' \
@@ -514,6 +528,27 @@ grep -q 'session_binding=s-consume' .agents/memory/.hook-sync-state ||
   fail "consume-evidence must preserve session_binding"
 grep -q 'last_processed_head=deadbeef' .agents/memory/.hook-sync-state ||
   fail "consume-evidence must preserve last_processed_head"
+
+# --- consume-evidence fail-open must not clear paths while lock held ---
+printf '%s\n' \
+  'current_session_id=s-consume-lock' \
+  'session_binding=s-consume-lock' \
+  'session_binding_host=cursor' \
+  'session_touched_files=keep-under-lock.txt' \
+  'last_processed_head=deadbeef' \
+  'branch=feat-status' \
+  >.agents/memory/.hook-sync-state
+mkdir -p .agents/memory/.hook-sync-state.lock
+printf '%s\n' "$$" >.agents/memory/.hook-sync-state.lock/pid
+AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  bash ./agent-memory-consume-evidence.sh >"$TMP/consume-lock.err" 2>&1 || true
+grep -qi 'skip consume-evidence\|lock not held\|fail-open\|lock busy' "$TMP/consume-lock.err" ||
+  fail "consume under lock contention should log skip/fail-open"
+grep -q 'session_touched_files=keep-under-lock.txt' .agents/memory/.hook-sync-state ||
+  fail "fail-open consume must leave session_touched_files intact"
+[[ -d .agents/memory/.hook-sync-state.lock ]] ||
+  fail "consume fail-open must not remove foreign lock"
+rm -rf .agents/memory/.hook-sync-state.lock
 
 # --- conversationId accepted when session_id absent ---
 printf '{"conversationId":"cursor-conv-1","cwd":"%s"}\n' "$TMP" |

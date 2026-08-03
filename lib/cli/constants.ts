@@ -27,7 +27,7 @@ export const HARNESS_HOOKS_DIR: Record<Harness, string> = {
 
 /**
  * Env keys forwarded to install-hooks.sh (keep in sync with OpenCode
- * ENV_ALLOWLIST_EXACT + prefixes in hooks/opencode/agent-memory.ts).
+ * ENV_ALLOWLIST_EXACT in hooks/opencode/agent-memory.ts).
  */
 export const ENV_ALLOWLIST_EXACT = new Set([
   "PATH",

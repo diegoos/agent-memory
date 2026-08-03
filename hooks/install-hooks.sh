@@ -252,7 +252,16 @@ main() {
     gemini) install_gemini ;;
   esac
 
-  printf '%s\n' "$VERSION" >"$PROJECT_DIR/$hooks_dir/.version"
+  # Same symlink refusal + temp+mv as safe_install_file (redirect would follow links).
+  local version_file="$PROJECT_DIR/$hooks_dir/.version" version_tmp
+  if [[ -L "$version_file" ]]; then
+    die "refusing to overwrite symlink: $version_file"
+  fi
+  refuse_symlink_components "$version_file"
+  ensure_resolved_under_project "$version_file"
+  version_tmp="$(mktemp "${version_file}.XXXXXX")"
+  printf '%s\n' "$VERSION" >"$version_tmp"
+  mv "$version_tmp" "$version_file"
   echo "done: agent-memory hooks installed for $harness (v${VERSION})"
 }
 

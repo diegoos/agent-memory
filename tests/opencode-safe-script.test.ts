@@ -24,6 +24,11 @@ describe('isValidBindingId', () => {
     expect(isValidBindingId('id\nx')).toBe(false);
     expect(isValidBindingId('a'.repeat(129))).toBe(false);
   });
+
+  test('rejects reserved __no_id__ sentinel (bash parity)', () => {
+    expect(isValidBindingId('__no_id__')).toBe(false);
+    expect(firstBindingId(['__no_id__', 'ses_ok'])).toBe('ses_ok');
+  });
 });
 
 describe('firstBindingId', () => {

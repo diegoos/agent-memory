@@ -1,11 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-/** Mirrors hooks bash is_valid_external_binding_id charset/length (no __no_id__). */
+/** Mirrors hooks bash is_valid_external_binding_id (charset/length + no __no_id__). */
 const BINDING_ID_RE = /^[A-Za-z0-9._:@/-]{1,128}$/;
+const NO_ID_SESSION_SENTINEL = '__no_id__';
 
 export function isValidBindingId(id: string): boolean {
-  return BINDING_ID_RE.test(id);
+  return BINDING_ID_RE.test(id) && id !== NO_ID_SESSION_SENTINEL;
 }
 
 /**

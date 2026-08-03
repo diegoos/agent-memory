@@ -123,12 +123,14 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
    aw=".agents/memory/active-work/${branch}.md"
    head_full=$(git rev-parse HEAD 2>/dev/null || true)
    head_short=$(git rev-parse --short HEAD 2>/dev/null || true)
+   ck_sha=""
    if [ -f "$aw" ] && [ -n "$head_full" ]; then
      ck_line=$(grep -E '^Checkpoint:' "$aw" | head -1 || true)
      # Strip optional backticks around date/sha (legacy TEMPLATE copies)
      ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint:[[:space:]]*[`"]?[0-9]{4}-[0-9]{2}-[0-9]{2}[`"]?[[:space:]]*@[[:space:]]*[`"]?([0-9a-fA-F]{4,40})[`"]?.*/\1/')
      if ! printf '%s' "$ck_sha" | grep -Eq '^[0-9a-fA-F]{4,40}$'; then
        echo "stale-resume: $aw Checkpoint missing, placeholder, or non-hex (HEAD $head_short)"
+       ck_sha=""
      else
        ck_full=$(git rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)
        if [ -z "$ck_full" ] || [ "$ck_full" != "$head_full" ]; then
@@ -148,13 +150,9 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
          # Uncleared after meaning likely written: Checkpoint matches HEAD and tree clean
          dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
          ck_fresh=false
-         if [ -f "$aw" ] && [ -n "$head_full" ]; then
-           ck_line=$(grep -E '^Checkpoint:' "$aw" | head -1 || true)
-           ck_sha=$(printf '%s' "$ck_line" | sed -E 's/^Checkpoint:[[:space:]]*[`"]?[0-9]{4}-[0-9]{2}-[0-9]{2}[`"]?[[:space:]]*@[[:space:]]*[`"]?([0-9a-fA-F]{4,40})[`"]?.*/\1/')
-           if printf '%s' "$ck_sha" | grep -Eq '^[0-9a-fA-F]{4,40}$'; then
-             ck_full=$(git rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)
-             [ -n "$ck_full" ] && [ "$ck_full" = "$head_full" ] && ck_fresh=true
-           fi
+         if [ -n "$ck_sha" ] && [ -n "$head_full" ]; then
+           ck_full=$(git rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)
+           [ -n "$ck_full" ] && [ "$ck_full" = "$head_full" ] && ck_fresh=true
          fi
          if $ck_fresh && [ "${dirty:-1}" -eq 0 ]; then
            echo "evidence-stale-uncleared: $n path(s) remain with Checkpoint@HEAD and clean tree — run consume-evidence (sync step)"
