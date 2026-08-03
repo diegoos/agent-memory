@@ -15,6 +15,8 @@ Check `.agents/memory/` for structural and consistency problems. Report findings
        case "$f" in
          file) continue ;; # when editing: contract placeholder
        esac
+       # Shape examples in index.md — e.g. learnings-<topic>.md
+       printf '%s' "$f" | grep -q '<' && continue
        test -e "$f" || echo "missing: $f"
      done
 

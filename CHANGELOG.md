@@ -10,6 +10,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ### Changed
 
+- Memory method: lint skips `index.md` Shape placeholders whose path contains `<…>` (e.g. `learnings-<topic>.md`) — no false `missing:` on contract examples.
 - Memory method: lint reports `hook-state-absent` when `.hook-sync-state` is missing (info — not “evidence cleared”); distinguishes absence from pending/cleared state.
 - Memory method: consolidate Report always names retained current-session founding log headings; plan table marks them Retained (not Discard); sync suggests consolidate only for **closed**-session noise (not same-day bootstrap); Validation prefers full project closure (`check` over narrow `test` when defined). Fold into next bump with prior consolidate/sync/TEMPLATE lines.
 - Memory method: consolidate guards against emptying `log.md` — define **current session** (session-id match, same-day bootstrap/ingest/dogfood, sole remaining heading); “already in index/learnings” is Trim/Defer not Discard; Progress follow-up only after closed-session log removal; bootstrap writes **one** synthesis log heading; sync prefers refining today's heading over a second `[ingest]`; lint `empty-log` / `empty-log-after-scaffold`. Fold into next bump: `sensitive: instructions.md`; `safe:` consolidate/bootstrap/sync/lint refs.

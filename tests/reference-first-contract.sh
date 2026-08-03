@@ -246,6 +246,8 @@ assert_contains "$lint" 'skills/agent-memory/vendor/memory/' \
   "lint skips dogfood instructions↔vendor dup-exact"
 assert_contains "$lint" 'file) continue' \
   "lint skips when-editing placeholder ./file link"
+assert_contains "$lint" "grep -q '<'" \
+  "lint skips shape placeholders with angle brackets (learnings-<topic>.md)"
 assert_contains "$lint" 'evidence-stale-uncleared:' \
   "lint distinguishes uncleared evidence after fresh Checkpoint"
 assert_contains "$lint" 'hook-state-absent:' \
