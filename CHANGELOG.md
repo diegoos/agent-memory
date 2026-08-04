@@ -16,6 +16,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - Pack-safe `vendor/memory/gitignore` (npm omits `.gitignore` from tarballs); `init` / `update` / `lint` require `.hook-sync-state`, `.hook-sync-state.lock`, and `.hook-sync-state.*`.
 - Lint severity bands (**errors** / **warnings** / **info**) and findings including `empty-optional-section`, `evidence-pending` / `evidence-dirty-requeue` / `evidence-stale-uncleared`, `checkpoint-prose`, `stale-next-step`, `dup-progress-log`, `pending-doc-met`, `hook-state-absent`, `empty-log` / `empty-log-after-scaffold`.
 - Always-on hot-path byte ceiling in `tests/reference-first-contract.sh` (injected block + `instructions` + `index` + `current`).
+- `tests/npm-pack-parity.sh` asserts published packs omit `install.ts` / `lib/` and that packed CLI skips same-SemVer skill refresh unless `--force` (local checkout still refreshes).
 
 ### Changed
 

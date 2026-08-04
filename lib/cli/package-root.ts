@@ -1,6 +1,7 @@
 /**
- * Resolve package root at runtime. Do not use __dirname — Bun `--format cjs`
- * may bake it to the build-time source directory (breaks npx installs).
+ * Resolve package root at runtime (local checkout or npx cache). Skill/hooks
+ * install always from this tree — never clone GitHub. Do not use __dirname —
+ * Bun `--format cjs` may bake it to the build-time source directory (breaks npx).
  */
 import fs from "node:fs";
 import path from "node:path";
