@@ -8,14 +8,21 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-04
+
+### Added
+
+- `agent-memory-consume-evidence.sh` — clears pending `session_touched_files` when meaning covers paths and Checkpoint matches HEAD (compare-and-swap; skip under lock fail-open).
+- Pack-safe `vendor/memory/gitignore` (npm omits `.gitignore` from tarballs); `init` / `update` / `lint` require `.hook-sync-state`, `.hook-sync-state.lock`, and `.hook-sync-state.*`.
+- Lint severity bands (**errors** / **warnings** / **info**) and findings including `empty-optional-section`, `evidence-pending` / `evidence-dirty-requeue` / `evidence-stale-uncleared`, `checkpoint-prose`, `stale-next-step`, `dup-progress-log`, `pending-doc-met`, `hook-state-absent`, `empty-log` / `empty-log-after-scaffold`.
+- Always-on hot-path byte ceiling in `tests/reference-first-contract.sh` (injected block + `instructions` + `index` + `current`).
+
 ### Changed
 
-- Memory method: further always-on slim — compress `instructions.md` (permission table → ownership bullets; optional active-work sections; denser workflow), drop redundant `index.md` _Read first_, slim `current.md` blurbs, shorten injected `agent-block` primary-write line; always-on hot path (injected block + instructions + index + current) ~12–13% smaller vs prior baseline with contract/retention gate preserved (soft ceiling in `tests/reference-first-contract.sh`).
-- Memory method: `active-work/TEMPLATE.md` ships required core only (Task / Progress / Next step / Validation / Checkpoint); optional Assumptions / Blockers / Rejected approaches / References are added only with content — capture-when-discovered stays in `instructions.md`; lint `empty-optional-section` + sync/bootstrap/update aligned.
+- Memory method: always-on slim — denser `instructions.md` (ownership/precedence bullets; optional active-work sections; task-organized When starting/stopping/catching-up; Authority folded into Precedence; glob denylist SoT `references/lint.md`; learning format SoT `references/learn.md`), map-only `index.md` (no _Read first_), minimal `current.md` blurbs, shorter injected `agent-block`; always-on hot path ~12–13% smaller vs prior baseline with contract/retention gate preserved.
+- Memory method: `active-work/TEMPLATE.md` ships required core only (Task / Progress / Next step / Validation / Checkpoint); optional Assumptions / Blockers / Rejected approaches / References added only with content; Next step `/agent-memory` ban **off-section**; strip section blurbs on copy; lint `empty-optional-section` + sync/bootstrap/update aligned.
 - Soft budgets tightened (`current` > 30, `active-work` > 45, `index` > 80).
 - `update` delegates carrier write-target table to `init.md` (no duplicate harness table).
-- Memory method: slim always-on `instructions.md` (~70 lines; Authority folded into Precedence; task-organized When starting/stopping/catching-up; `when editing:` match rule stays; full glob denylist SoT is `references/lint.md`; learning H2/legacy/duplicate/topic-split SoT is `references/learn.md`) and shorten harness `agent-block.md` to a few short sentences (untrusted recall + Read hot path + primary write / catch-up / consume; consumers refresh carriers via `/agent-memory update`).
-- Memory method: `TEMPLATE.md` keeps Next step `/agent-memory` ban **off-section** (Checkpoint-style); sync/bootstrap/instructions require stripping section blurbs when copying to `active-work/<branch>.md` (keep `##` + `-` bullets); lint `stale-next-step` matches action bullets only.
 - Lint: severity bands **errors** / **warnings** / **info** — Fix offer only for errors and warnings; open valid `pending-doc` is backlog (not reported); hook evidence splits into `evidence-pending` (uncovered / Checkpoint behind), `evidence-dirty-requeue` (info when Checkpoint@HEAD + dirty tree and meaning covers), and `evidence-stale-uncleared` (consume on clean tree); escalate dirty-requeue to pending only when meaning is missing.
 - Memory method: lint reuses one Checkpoint SHA parse; skips `index.md` Shape placeholders with `<…>` (e.g. `learnings-<topic>.md`); reports `hook-state-absent` when `.hook-sync-state` is missing (info).
 - Memory method: consolidate never empties `log.md` (current-session / sole-heading / Trim-Defer); Report names retained founding headings; sync suggests consolidate only for **closed**-session noise; bootstrap writes **one** synthesis log heading; lint `empty-log` / `empty-log-after-scaffold`; Validation prefers full project closure (`check` over narrow `test` when defined).
@@ -32,9 +39,9 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - CI: `bun install --frozen-lockfile --ignore-scripts`; repo `bunfig.toml` defaults `ignoreScripts` for Bun installs to match; `bun audit` in both CI and `bun run check` / `prepublishOnly`; `prepack` runs `bun audit` + `build:check` so `npm pack` cannot skip integrity gates; `build:check` lives in `scripts/build-check.sh` (private `mktemp` outfile); `tests/test-runner.sh` runs `build:check` before fixtures; `cli-install.sh` no longer rebuilds `bin/cli.js`; bump `markdownlint-cli` to `0.49.1`.
 - Hooks installer: when `package.json` is present, prefer its version over `AGENT_MEMORY_VERSION` (env remains fallback for standalone hooks-only checkouts).
 - CI: pin `actions/checkout` v7.0.1, `actions/setup-node` v7.0.0, and `oven-sh/setup-bun` v2.2.0 (Node 24 action runtime; clears GitHub deprecation warnings forcing Node 20 actions onto 24).
-- Memory skeleton: ship pack-safe `vendor/memory/gitignore` (identical to `.gitignore`); `init` / `update` / `lint` require `.hook-sync-state`, `.hook-sync-state.lock`, and `.hook-sync-state.*` (npm omits files named `.gitignore` from tarballs).
 - Memory method: `instructions.md` harness parity documents four flat hook scripts, `current_session_id` in ephemeral evidence, atomic sync/sessionStart binds under `.hook-sync-state.lock`, and the delayed Stop exception to stdin-wins.
 - Hooks: shared `agent-memory-common.sh` section index (maintainability; no runtime behavior change).
+- Cross-package docs pin `hooks/README.md` / examples to `0.2.0`.
 
 ### Fixed
 
@@ -443,7 +450,8 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 
 - Initial Agent Memory method, skill, and `.agents/memory/` skeleton.
 
-[unreleased]: https://github.com/diegoos/agent-memory/compare/0.1.1...HEAD
+[unreleased]: https://github.com/diegoos/agent-memory/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/diegoos/agent-memory/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/diegoos/agent-memory/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/diegoos/agent-memory/compare/0.0.14...0.1.0
 [0.0.14]: https://github.com/diegoos/agent-memory/compare/0.0.13...0.0.14

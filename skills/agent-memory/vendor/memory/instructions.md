@@ -46,7 +46,7 @@ Create `active-work/<branch>.md` only when resumable. Copy `TEMPLATE.md`: saniti
 
 ### Harness parity — memory contract
 
-Same memory shape on every harness. Context = read/maintain; checkpoint = **ephemeral evidence only** in `.hook-sync-state` — [hooks README](https://github.com/diegoos/agent-memory/blob/0.1.1/hooks/README.md). **Hooks own ephemeral evidence only:** binding, branch, touched paths, `last_processed_head` — they never create or edit Markdown under `.agents/memory/`. **Agent owns all versioned Markdown:** active-work, `current.md`, semantic `log.md`, `index.md`, decisions, gated learnings. Meaning in-turn; sync is catch-up.
+Same memory shape on every harness. Context = read/maintain; checkpoint = **ephemeral evidence only** in `.hook-sync-state` — [hooks README](https://github.com/diegoos/agent-memory/blob/0.2.0/hooks/README.md). **Hooks own ephemeral evidence only:** binding, branch, touched paths, `last_processed_head` — they never create or edit Markdown under `.agents/memory/`. **Agent owns all versioned Markdown:** active-work, `current.md`, semantic `log.md`, `index.md`, decisions, gated learnings. Meaning in-turn; sync is catch-up.
 
 ## Memory lint boundaries
 
