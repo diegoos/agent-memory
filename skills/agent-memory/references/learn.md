@@ -36,21 +36,27 @@ Examples:
    - Without topic: default `learnings.md`. If the clue explicitly names an existing split's slug, or exactly one existing split unambiguously owns the theme, propose that file in the confirmation diff. If more than one split could own it, **stop** and ask the user for `>topic` — do not guess.
    - Never write under `domains/*` or `features/*`.
 
-5. **Dedupe.** Read the target file first. Skip and report the existing entry — without writing — when the duplicate rule in `instructions.md` matches: same normalized topic + equivalent Insight in an H2 entry, or a legacy one-liner covering the same insight. When a legacy one-liner duplicates the lesson, offer to convert it to H2 in the same confirmed diff instead of appending. **On any skip** (dedupe or gate failure): print a clear report naming the rule/step, the matching existing heading or reason, and what to do instead — do **not** silently no-op. Optionally add one Progress bullet in the branch `active-work` (host may prompt — outside learn Boundary) such as `learn skipped: dup of "[topic]"` so the hot path records the attempt.
+5. **Dedupe.** Read the target file first. Skip and report the existing entry — without writing — when the **Duplicate rule** (step 6) matches: same normalized topic + equivalent Insight in an H2 entry, or a legacy one-liner covering the same insight. When a legacy one-liner duplicates the lesson, offer to convert it to H2 in the same confirmed diff instead of appending. **On any skip** (dedupe or gate failure): print a clear report naming the rule/step, the matching existing heading or reason, and what to do instead — do **not** silently no-op. Optionally add one Progress bullet in the branch `active-work` (host may prompt — outside learn Boundary) such as `learn skipped: dup of "[topic]"` so the hot path records the attempt.
 
-6. **Draft the entry** in the canonical H2 form from `instructions.md` (concise Insight — see _How to write_):
+6. **Draft the entry** in the canonical H2 form (concise Insight — prefer what to do; generalize beyond this incident):
 
    ```md
    ## [YYYY-MM-DD] [learning|pitfall] Short topic
 
-   - Insight: reusable pattern (prefer what to do; generalize beyond this incident).
+   - Insight: reusable pattern in one or two sentences.
    - Evidence: path|link
    - Use when: trigger
    - Verified: YYYY-MM-DD
    - Invalidate when: condition
    ```
 
-   Use today's date for the heading and `Verified`. Choose `learning` or `pitfall`. When the fact belongs in official docs, add **both** `- pending-doc` and `- Invalidate when: <concrete condition naming the canonical doc/section>` (not `pending-doc` alone).
+   Use today's date for the heading and `Verified`. Choose `learning` or `pitfall`. When the fact belongs in official docs, add **both** `- pending-doc` and `- Invalidate when: <concrete condition naming the canonical doc/section>` (not `pending-doc` alone). Code/config inferences need evidence + date.
+
+   **Legacy one-liner** (pre-H2 installs): `- [YYYY-MM-DD] [learning|pitfall] [topic] insight — evidence: …; use when: …; verified: …` — still valid; migrate to H2 only when editing that entry or when consolidate moves it.
+
+   **Duplicate rule** — never record the same lesson twice across formats: skip a new entry when an existing H2 has the same normalized topic and equivalent Insight, or when a legacy one-liner covers the same insight (same evidence/use-when, minor wording aside). Applies to in-turn writes, `/agent-memory learn`, and consolidate promotions.
+
+   **Topic splits** — use `learnings.md` for cross-cutting lessons. When a theme has several entries (or lint warns `learnings.md` > 200 lines), split into `learnings-<topic>.md` where `<topic>` is a lowercase slug `[a-z0-9]+(-[a-z0-9]+)*`. Do not create `domains/*` or `features/*`. Link every learnings file from `index.md`; any learnings link may carry a `when editing:` hint (`instructions.md` → _Always load_). Consolidate may propose split or merge (convert moved entries to H2); never auto-split without confirmation.
 
 7. **Draft the `index.md` line.** When the file is new or unlisted, add the link. When the file is already listed **without** a `when editing:` hint and Evidence lists **1–3 concrete repo-relative paths** (files or narrow globs with a literal segment — never denylist/overbroad forms), **propose** updating that line in place with `when editing: <globs>; <short description>` (never a second entry; never invent globs). Path-specific topic splits should usually get a hint; cross-cutting `learnings.md` may still get one when Evidence is path-obvious. Hints follow `instructions.md` → _Always load_.
 
@@ -62,6 +68,6 @@ Examples:
 
 ## Notes
 
-- Align with writing guidance in `instructions.md`: generalize; prefer correct patterns over “don’t” lists.
+- Align with writing guidance in `instructions.md` → _How to write_: generalize; prefer correct patterns over “don’t” lists. Canonical H2 / legacy / duplicate / topic-split rules live in this file (step 6).
 - Primary write in-turn may still append learnings without this command; `learn` is the explicit capture path when the user wants a gated write now.
 - `/agent-memory consolidate` remains the path for promoting closed-session log noise into learnings and for proposing topic splits/merges.

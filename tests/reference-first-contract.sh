@@ -9,6 +9,7 @@ bootstrap="$repo_root/skills/agent-memory/references/bootstrap.md"
 lint="$repo_root/skills/agent-memory/references/lint.md"
 sync="$repo_root/skills/agent-memory/references/sync.md"
 consolidate="$repo_root/skills/agent-memory/references/consolidate.md"
+learn="$repo_root/skills/agent-memory/references/learn.md"
 agent_block="$repo_root/skills/agent-memory/references/agent-block.md"
 session_sh="$repo_root/hooks/agent-memory-hooks/agent-memory-session.sh"
 sync_sh="$repo_root/hooks/agent-memory-hooks/agent-memory-sync.sh"
@@ -72,13 +73,18 @@ cmp -s "$skeleton/.gitignore" "$skeleton/gitignore" ||
   fail "skeleton .gitignore and gitignore must stay identical"
 assert_contains "$skeleton/current.md" '## In progress' "current keeps In progress"
 assert_contains "$skeleton/active-work/TEMPLATE.md" '## Task' "active-work keeps Task"
+assert_contains "$skeleton/active-work/TEMPLATE.md" '## Progress' "active-work keeps Progress"
 assert_contains "$skeleton/active-work/TEMPLATE.md" '## Next step' "active-work keeps Next step"
 assert_contains "$skeleton/active-work/TEMPLATE.md" '## Validation' "active-work keeps Validation"
-assert_contains "$skeleton/active-work/TEMPLATE.md" '## Assumptions / open questions' \
-  "active-work keeps Assumptions"
-assert_contains "$skeleton/active-work/TEMPLATE.md" '## Rejected approaches' \
-  "active-work keeps Rejected approaches"
-assert_contains "$skeleton/active-work/TEMPLATE.md" '## References' "active-work keeps References"
+# Optional sections: documented for capture, not pre-created empty in TEMPLATE
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'Assumptions / open questions' \
+  "TEMPLATE documents optional Assumptions"
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'Rejected approaches' \
+  "TEMPLATE documents optional Rejected approaches"
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'References' \
+  "TEMPLATE documents optional References"
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'Omit empty optional sections' \
+  "TEMPLATE omits empty optional sections"
 assert_contains "$skeleton/active-work/TEMPLATE.md" 'Checkpoint:' "active-work has Checkpoint"
 assert_contains "$skeleton/active-work/TEMPLATE.md" 'Checkpoint: YYYY-MM-DD @ SHORT-SHA' \
   "TEMPLATE Checkpoint uses plain SHORT-SHA placeholder"
@@ -89,6 +95,18 @@ assert_absent "$skeleton/active-work/TEMPLATE.md" 'Checkpoint: YYYY-MM-DD @ SHOR
   "TEMPLATE Checkpoint line has no trailing prose"
 assert_contains "$skeleton/active-work/TEMPLATE.md" 'product' \
   "TEMPLATE Next step is product work"
+# Product /agent-memory ban lives off-section (Checkpoint-style), not under ## Next step
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'never `/agent-memory' \
+  "TEMPLATE documents Next step product-only ban off-section"
+awk '
+  /^## Next step/ { in_ns=1; next }
+  /^## / { in_ns=0 }
+  in_ns && /\/agent-memory/ { found=1 }
+  END { exit found ? 0 : 1 }
+' "$skeleton/active-work/TEMPLATE.md" &&
+  fail "TEMPLATE ## Next step section must not contain /agent-memory guidance"
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'strip section blurbs' \
+  "TEMPLATE documents blurbs strip on copy"
 assert_contains "$skeleton/active-work/TEMPLATE.md" 'not a replay of `log.md`' \
   "TEMPLATE Progress must not replay log"
 assert_contains "$skeleton/active-work/TEMPLATE.md" 'full closure command' \
@@ -103,9 +121,29 @@ assert_contains "$skeleton/decisions.md" 'Superseded by:' "decisions supersessio
 assert_contains "$skeleton/decisions.md" 'Rejected alternatives' \
   "decisions format lists Rejected alternatives"
 
+# --- Hot-path size ceiling (always-on: injected block + instructions + index + current) ---
+# Baseline before this slim ~10627 B; ceiling is a regression guard with margin (not exact equality).
+# Further cuts below ~12% would remove retention-gate / workflow contract text.
+hot_path_ceiling=9500
+template_ceiling=1400
+block_body=$(
+  awk '
+    /^```md$/ { inb=1; next }
+    /^```$/ && inb { exit }
+    inb { printf "%s\n", $0 }
+  ' "$agent_block"
+)
+block_bytes=$(printf '%s' "$block_body" | wc -c)
+hot_path_bytes=$(( block_bytes + $(wc -c <"$instructions") + $(wc -c <"$skeleton/index.md") + $(wc -c <"$skeleton/current.md") ))
+template_bytes=$(wc -c <"$skeleton/active-work/TEMPLATE.md")
+[[ "$hot_path_bytes" -le "$hot_path_ceiling" ]] ||
+  fail "always-on hot-path bytes $hot_path_bytes exceed ceiling $hot_path_ceiling (baseline ~10627)"
+[[ "$template_bytes" -le "$template_ceiling" ]] ||
+  fail "TEMPLATE.md bytes $template_bytes exceed ceiling $template_ceiling"
+
 # --- Contract invariants in instructions.md ---
 assert_contains "$instructions" '## Always load' "always-load policy present"
-assert_contains "$instructions" '## Authority by information type' "authority section present"
+assert_contains "$instructions" 'Authority: working rules' "authority map folded into Precedence"
 assert_contains "$instructions" '## Retention gate and lifecycle' "retention gate present"
 assert_contains "$instructions" 'Reusable in another session?' "gate asks reusability"
 assert_contains "$instructions" 'link + delta/relevance' "pointer-over-copy gate"
@@ -120,6 +158,10 @@ assert_contains "$instructions" '**Primary-write triggers**' \
   "workflow lists primary-write triggers"
 assert_contains "$instructions" '### How to write (concise)' \
   "instructions teach concise memory writing"
+assert_contains "$instructions" 'Omit empty optional sections' \
+  "instructions omit empty optional active-work sections"
+assert_contains "$instructions" 'record them when discovered' \
+  "instructions require capturing optional sections when found"
 assert_contains "$instructions" '**Must consume** pending path evidence' \
   "workflow requires consuming pending path evidence when eligible"
 assert_contains "$instructions" 'never `/agent-memory …`' \
@@ -129,41 +171,27 @@ assert_contains "$instructions" '**Catch-up (`/agent-memory sync`):**' \
 assert_contains "$instructions" 'without invoking the skill command' \
   "sync may be followed without skill invoke"
 assert_contains "$instructions" '## Memory lint boundaries' "lint boundaries summary"
-assert_contains "$instructions" '## [YYYY-MM-DD] [learning|pitfall] Short topic' \
-  "learning/pitfall H2 entry format"
-assert_contains "$instructions" '- Insight: reusable pattern in one or two sentences.' \
-  "learning Insight field"
-assert_contains "$instructions" 'learnings-<topic>.md' "topic split convention"
 assert_contains "$instructions" 'when editing:' "scope hint convention"
-assert_contains "$instructions" '**/**/*' "overbroad denylist includes **/ **/* equivalent"
-assert_contains "$instructions" '*/**' "overbroad denylist includes */** equivalent"
-assert_contains "$instructions" '**/*.ts' "overbroad denylist includes extension-wide **/*.ts"
-assert_contains "$instructions" '**/**/*.ts' "overbroad denylist includes near-equivalent **/**/*.ts"
-assert_contains "$instructions" 'src/**/*' "overbroad denylist includes src/**/*"
-assert_contains "$instructions" '*/*' "overbroad denylist includes */*"
-assert_contains "$instructions" '?*/*' "overbroad denylist includes ?*/*"
-assert_contains "$instructions" '**/*/*' "overbroad denylist includes **/*/*"
-assert_contains "$instructions" '*/*/*' "overbroad denylist includes */*/*"
-assert_contains "$instructions" '**/*/**' "overbroad denylist includes **/*/**"
-assert_contains "$instructions" 'companions do not redeem' "overbroad rejects banned glob with companions"
-assert_contains "$instructions" 'to fixpoint' "overbroad normalize runs to fixpoint"
-assert_contains "$instructions" '/./hooks/**' "overbroad normalize collapses /./ segments"
-assert_contains "$instructions" './/./hooks/**' "overbroad normalize collapses .//./ segments"
-assert_contains "$instructions" './/hooks/**' "overbroad normalize collapses .// segments"
-assert_contains "$instructions" '/hooks/**' "overbroad normalize strips leading slash"
-assert_contains "$instructions" 'still starts with `/` after normalize' \
-  "overbroad rejects absolute globs after normalize"
-assert_contains "$instructions" 'structural' "overbroad has structural multi-segment reject"
-assert_contains "$instructions" '*/*/*/*' "overbroad structural examples include */*/*/*"
-assert_contains "$instructions" '*/*.<ext>' "overbroad rejects shallow */*.<ext>"
-assert_contains "$instructions" '*/*.*' "overbroad rejects */*.*"
-assert_contains "$instructions" '*/*/*.ts' "overbroad rejects depth≥3 star+ext */*/*.ts"
-assert_contains "$instructions" 'no literal path segment' \
-  "overbroad rejects wildcard-only+ext globs without literal prefix"
-assert_contains "$instructions" 'hooks/**' "overbroad Always-load rejects hooks/**"
-assert_contains "$instructions" '**/*.<ext>' "overbroad Always-load rejects any **/ *.<ext>"
-assert_contains "$instructions" '<top-level-dir>/**' "overbroad Always-load rejects top-level dir/**"
-assert_contains "$instructions" 'src/**' "overbroad denylist includes src/**"
+assert_contains "$instructions" '## When starting or resuming work' "task-organized resume section"
+assert_contains "$instructions" 'strip section blurbs' \
+  "instructions require strip section blurbs when copying TEMPLATE"
+assert_contains "$instructions" '## When stopping (primary write)' "task-organized primary write section"
+assert_contains "$instructions" '## When catching up' "task-organized catch-up section"
+assert_contains "$instructions" 'prefer what to do' "learning writing guidance"
+assert_contains "$instructions" 'pending-doc' "pending-doc lifecycle"
+assert_contains "$instructions" '/agent-memory learn' "learn command named in method"
+assert_absent "$instructions" 'Soft warning budgets:' \
+  "soft budgets stay in lint reference, not always-load"
+assert_absent "$instructions" '**/**/*' \
+  "overbroad denylist lives in lint, not always-load instructions"
+assert_contains "$learn" '## [YYYY-MM-DD] [learning|pitfall] Short topic' \
+  "learning/pitfall H2 entry format in learn reference"
+assert_contains "$learn" '- Insight: reusable pattern in one or two sentences.' \
+  "learning Insight field in learn reference"
+assert_contains "$learn" 'learnings-<topic>.md' "topic split convention in learn reference"
+assert_contains "$learn" '**Duplicate rule**' "duplicate rule SoT in learn reference"
+assert_contains "$learn" '**Legacy one-liner**' "legacy one-liner SoT in learn reference"
+# Overbroad when-editing denylist SoT is lint (not always-load instructions)
 assert_contains "$lint" 'companions do not redeem' "lint overbroad rejects companions"
 assert_contains "$lint" '?*/*' "lint overbroad includes ?*/*"
 assert_contains "$lint" 'to fixpoint' "lint overbroad normalize runs to fixpoint"
@@ -176,11 +204,21 @@ assert_contains "$lint" 'hooks/**' "lint overbroad rejects hooks/**"
 assert_contains "$lint" '*/*.<ext>' "lint overbroad rejects */*.<ext>"
 assert_contains "$lint" '*/*/*.ts' "lint overbroad rejects */*/*.ts"
 assert_contains "$lint" '*/*.*' "lint overbroad rejects */*.*"
-assert_contains "$instructions" 'prefer what to do' "learning writing guidance"
-assert_contains "$instructions" 'pending-doc' "pending-doc lifecycle"
-assert_contains "$instructions" '/agent-memory learn' "learn command named in method"
-assert_absent "$instructions" 'Soft warning budgets:' \
-  "soft budgets stay in lint reference, not always-load"
+assert_contains "$lint" '**/**/*' "lint overbroad denylist includes **/ **/* equivalent"
+assert_contains "$lint" '*/**' "lint overbroad denylist includes */** equivalent"
+assert_contains "$lint" '**/*.ts' "lint overbroad denylist includes **/*.ts"
+assert_contains "$lint" '**/**/*.ts' "lint overbroad denylist includes **/**/*.ts"
+assert_contains "$lint" 'src/**/*' "lint overbroad denylist includes src/**/*"
+assert_contains "$lint" '*/*' "lint overbroad denylist includes */*"
+assert_contains "$lint" '**/*/*' "lint overbroad denylist includes **/*/*"
+assert_contains "$lint" '*/*/*' "lint overbroad denylist includes */*/*"
+assert_contains "$lint" '**/*/**' "lint overbroad denylist includes **/*/**"
+assert_contains "$lint" '*/*/*/*' "lint overbroad structural examples include */*/*/*"
+assert_contains "$lint" 'no literal path segment' \
+  "lint overbroad rejects wildcard-only+ext globs without literal prefix"
+assert_contains "$lint" '**/*.<ext>' "lint overbroad rejects any **/ *.<ext>"
+assert_contains "$lint" '<top-level-dir>/**' "lint overbroad rejects top-level dir/**"
+assert_contains "$lint" 'src/**' "lint overbroad denylist includes src/**"
 
 # --- Init / update ensure .gitignore (dotfile-safe) ---
 init="$repo_root/skills/agent-memory/references/init.md"
@@ -203,6 +241,10 @@ assert_contains "$update" '.hook-sync-state.*' \
   "update merge requires temp sibling ignore"
 assert_contains "$update" '`when editing:` scope hints' \
   "update preserves when-editing hints on index merge"
+assert_contains "$update" 'optional sections' \
+  "update documents optional active-work sections"
+assert_contains "$update" 'same carriers and rules as `references/init.md`' \
+  "update delegates carrier table to init"
 assert_contains "$lint" '.agents/memory/.gitignore' "lint checks .gitignore"
 assert_contains "$lint" 'vendor/memory/gitignore' "lint remediation uses pack-safe gitignore"
 assert_contains "$lint" '.hook-sync-state.lock' \
@@ -215,6 +257,8 @@ assert_contains "$bootstrap" 'A — Source inventory.' "bootstrap inventories so
 assert_contains "$bootstrap" 'never paste' "bootstrap does not copy bodies"
 assert_contains "$bootstrap" 'Do **not** create `vision.md`' "bootstrap forbids vision mirrors"
 assert_contains "$bootstrap" 'H2 learning/pitfall format' "bootstrap uses H2 learning format"
+assert_contains "$bootstrap" 'omit empty optional sections' \
+  "bootstrap omits empty optional active-work sections"
 assert_contains "$bootstrap" 'Put memory-command suggestions in the Report' \
   "bootstrap keeps skill commands out of Next step"
 assert_contains "$bootstrap" 'Append **one** synthesis heading' \
@@ -227,6 +271,10 @@ assert_contains "$lint" 'Legacy mirrors' "lint identifies mirrors"
 assert_contains "$lint" 'never deletes' "lint does not delete user files"
 assert_contains "$lint" '## Next step' "lint checks Next step"
 assert_contains "$lint" '## Validation' "lint checks Validation"
+assert_contains "$lint" 'empty-optional-section:' \
+  "lint warns on empty optional active-work sections"
+assert_contains "$lint" 'Required headings for resume (agent-owned) — core only' \
+  "lint requires core resume headings only"
 assert_contains "$lint" 'empty-log-heading' "lint checks empty headings"
 assert_contains "$lint" 'empty-log:' "lint warns when log has no session headings"
 assert_contains "$lint" 'empty-log-after-scaffold:' \
@@ -240,6 +288,8 @@ assert_contains "$lint" 'checkpoint-prose:' \
   "lint warns on Checkpoint trailing TEMPLATE prose"
 assert_contains "$lint" 'stale-next-step:' \
   "lint warns when Next step cites /agent-memory"
+assert_contains "$lint" 'in_ns && /^-/ && /\/agent-memory' \
+  "lint stale-next-step matches action bullets only"
 assert_contains "$lint" 'dup-progress-log' \
   "lint warns when Progress replays log"
 assert_contains "$lint" 'skills/agent-memory/vendor/memory/' \
@@ -250,9 +300,15 @@ assert_contains "$lint" "grep -q '<'" \
   "lint skips shape placeholders with angle brackets (learnings-<topic>.md)"
 assert_contains "$lint" 'evidence-stale-uncleared:' \
   "lint distinguishes uncleared evidence after fresh Checkpoint"
+assert_contains "$lint" 'evidence-dirty-requeue:' \
+  "lint treats dirty-tree path re-queue as info when Checkpoint@HEAD"
 assert_contains "$lint" 'hook-state-absent:' \
   "lint reports missing .hook-sync-state as info (not cleared evidence)"
 assert_contains "$lint" 'pending-doc-met:' "lint flags pending-doc whose invalidate may be met"
+assert_contains "$lint" 'Open `pending-doc`' \
+  "lint must not warn on open valid pending-doc backlog"
+assert_contains "$lint" 'never for info' \
+  "lint Fix offer skips info band"
 assert_contains "$lint" 'Legacy learning one-liner' "lint warns on legacy learning one-liners"
 assert_contains "$lint" 'when editing:' "lint mentions scope hints"
 
@@ -269,6 +325,8 @@ assert_contains "$sync" 'full closure command' \
   "sync Validation prefers full project closure"
 assert_contains "$sync" 'Consume pending path evidence (required when eligible)' \
   "sync requires consume when eligible"
+assert_contains "$sync" 'strip section blurbs' \
+  "sync strips TEMPLATE section blurbs on create/refresh"
 assert_contains "$sync" 'It **never** touches `decisions.md`, `learnings.md`,' \
   "sync excludes durable recall"
 assert_contains "$sync" 'learnings-*.md' "sync excludes topic splits"
@@ -278,7 +336,11 @@ assert_contains "$sync" '^[0-9a-fA-F]{4,40}$' \
 assert_contains "$sync" '--end-of-options' \
   "sync prefers end-of-options for last-log-sha diff"
 assert_contains "$sync" '_Validation_' "sync fills Validation"
-assert_contains "$sync" '_Workflow_' "sync links live Workflow section"
+assert_contains "$sync" '_When catching up_' "sync links catch-up section"
+assert_contains "$sync" 'omit empty optional sections' \
+  "sync omits empty optional active-work sections"
+assert_contains "$sync" 'only when evidence supports content' \
+  "sync adds optional sections only with evidence"
 assert_contains "$sync" '**Catch-up**' "sync is catch-up not primary write"
 assert_contains "$sync" '**Meaning sources' "sync prefers meaning sources over path lists"
 assert_contains "$sync" 'agent-memory-consume-evidence.sh' \
@@ -317,7 +379,6 @@ assert_contains "$consolidate" 'Mixed-type log bullets' \
   "consolidate cleans mixed-type log headings"
 
 # --- Learn ---
-learn="$repo_root/skills/agent-memory/references/learn.md"
 assert_contains "$learn" 'retention gate' "learn applies retention gate"
 assert_contains "$learn" 'learnings-<topic>.md' "learn supports topic splits"
 assert_contains "$learn" 'Does **not** accept `--auto`' "learn has no auto"
@@ -389,11 +450,11 @@ assert_contains "$instructions" 'gitignore-style' \
   "when-editing glob dialect pinned"
 assert_contains "$instructions" 'Match rule: load the file when any task path' \
   "when-editing match rule pinned"
-assert_contains "$instructions" '**Duplicate rule**' "duplicate rule in SoT"
-assert_contains "$instructions" '**Legacy one-liner**' "legacy one-liner documented in SoT"
+assert_contains "$learn" '**Duplicate rule**' "duplicate rule in learn SoT"
+assert_contains "$learn" '**Legacy one-liner**' "legacy one-liner documented in learn SoT"
 assert_contains "$sync" 'never remove or reformat `when editing:` hints' \
   "sync preserves existing hints"
-assert_contains "$consolidate" 'duplicate rule' \
+assert_contains "$consolidate" 'Duplicate rule' \
   "consolidate applies duplicate rule"
 assert_contains "$consolidate" 'Convert moved entries to the H2 form' \
   "consolidate converts on split"

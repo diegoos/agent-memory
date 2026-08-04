@@ -1,10 +1,6 @@
 # Decisions
 
-Pointers to the project's ADR / decision system, or a local fallback when none exists. Oldest first — append at the **bottom**. On conflict, keep both and mark supersession — never silently delete a replaced decision. Record when you make, confirm, or change a non-trivial choice; do not copy ADR bodies or index every ADR.
-
-## When to record
-
-Viable approach trade-offs; conventions spanning files; anything a future agent would re-litigate. Skip trivial renames, obvious fixes, formatting-only changes.
+Pointers to the project's ADR / decision system, or a local fallback when none exists. Oldest first — append at the **bottom**. On conflict, keep both and mark supersession — never silently delete a replaced decision. Record when you make, confirm, or change a non-trivial choice; do not copy ADR bodies or index every ADR. Skip trivial renames, obvious fixes, formatting-only changes.
 
 ## Format — pointer (preferred)
 

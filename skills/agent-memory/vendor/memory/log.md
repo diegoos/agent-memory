@@ -4,8 +4,6 @@ Recent session **semantic** deltas. Oldest first — append at the **bottom**. C
 
 ## Format
 
-One heading per session with outcome bullets (not a new heading per checkpoint):
-
 ```md
 ## [YYYY-MM-DD] [session-id] [type] short session outcome
 
