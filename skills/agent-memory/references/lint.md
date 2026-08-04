@@ -46,13 +46,24 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
      done
    done
 
-   # Required headings for resume (agent-owned)
+   # Required headings for resume (agent-owned) — core only
    grep -q '^## In progress' current.md || echo "missing-heading: current.md ## In progress"
    find active-work -name '*.md' ! -name 'TEMPLATE.md' 2>/dev/null | while read -r f; do
-     for h in '## Task' '## Progress' '## Next step' '## Validation' \
-              '## Assumptions / open questions' '## Blockers' \
-              '## Rejected approaches' '## References'; do
+     for h in '## Task' '## Progress' '## Next step' '## Validation'; do
        grep -q "^${h}" "$f" || echo "missing-heading: $f $h"
+     done
+     # Optional sections: validate shape when present; empty (_none_ only) → suggest strip
+     for h in '## Assumptions / open questions' '## Blockers' \
+              '## Rejected approaches' '## References'; do
+       grep -q "^${h}" "$f" || continue
+       awk -v heading="$h" '
+         $0 == heading { in_sec=1; next }
+         /^## / { in_sec=0 }
+         in_sec && /^- / && $0 !~ /^- _none_$/ { has=1 }
+         END {
+           if (!has) print "empty-optional-section: '"$f"' " heading " — omit empty optional sections (add only with content)"
+         }
+       ' "$f"
      done
      # Allow optional backticks around date/sha (legacy); prefer plain form
      if ! grep -qE '^Checkpoint: [`"]?[0-9]{4}-[0-9]{2}-[0-9]{2}[`"]? @ [`"]?[0-9a-fA-F]{4,40}' "$f"; then
@@ -236,15 +247,15 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
    Report each finding as a **warning** with the suggested fix (remove redundant block from the delegating file or from `AGENTS.md` when not a shared carrier). `--fix` may offer to remove the block from the delegating file in case (b) (**sensitive** — show diff, confirm per file). `--fix` never removes blocks from `AGENTS.md` when it is a shared carrier for codex/opencode/delegation.
 
 3. **Soft budgets (warnings only).** Count non-empty lines:
-   - `current.md` > 40 → warn bloat.
-   - each `active-work/*.md` (except TEMPLATE) > 60 → warn bloat.
-   - `index.md` > 100 → warn bloat.
+   - `current.md` > 30 → warn bloat.
+   - each `active-work/*.md` (except TEMPLATE) > 45 → warn bloat.
+   - `index.md` > 80 → warn bloat.
    - `log.md` > 30 session headings (`^## \[`) → suggest consolidate.
    - `decisions.md` or any `learnings.md` / `learnings-*.md` > 200 → suggest topic splits or consolidate merge (do not auto-split).
 
 4. **Semantic checks (judgment — report as warnings to review).** These need reading, not grepping; surface them for the user to confirm rather than auto-fixing:
    - **Stale `current.md`** — does _In progress_ still match open active-work?
-   - **Missing resume quality** — active-work without a concrete _Next step_ or _Validation_ when _Task_ is non-placeholder.
+   - **Missing resume quality** — active-work without a concrete _Next step_ or _Validation_ when _Task_ is non-placeholder. Optional sections (`Assumptions / open questions`, `Blockers`, `Rejected approaches`, `References`) are not required; when evidence exists and the section is missing, suggest adding it (do not invent content).
    - **Stale Next step (`stale-next-step`)** — an action bullet under _Next step_ cites `/agent-memory …` (especially the command just run); replace with a product action and suggest sync. Deterministic check matches `-` bullets only (TEMPLATE/section blurbs that mention the ban do not count). Confirm in judgment when the command already completed this session.
    - **Duplicated Progress (`dup-progress-log`)** — Progress bullets that merely replay the current `log.md` session (bootstrap/init copy); prefer a one-line pointer to log/learnings.
    - **Hypothesis as fact** — assumptions phrased as certainties outside _Assumptions / open questions_.

@@ -1,16 +1,14 @@
 # Active Work — Branch: `<branch>`
 
-Ephemeral per-branch scratchpad. Copy to `active-work/<branch>.md` (filename sanitize: non `[A-Za-z0-9._-]` → `-`), set the real `Branch:` header, delete on merge. Create only when work is resumable. Method: `instructions.md`.
+Ephemeral per-branch scratchpad. Copy to `active-work/<branch>.md` (sanitize: non `[A-Za-z0-9._-]` → `-`), set real `Branch:` header, delete on merge. Create only when resumable. Method: `instructions.md`.
 
 Checkpoint: YYYY-MM-DD @ SHORT-SHA
 
-Replace `SHORT-SHA` with `git rev-parse --short HEAD` and the date with today. Keep the Checkpoint line machine-parseable: date and sha only after `@` — no backticks and no extra instructions on that line.
+Replace `SHORT-SHA` with `git rev-parse --short HEAD` and the date with today. Checkpoint line: date and sha only after `@` — no backticks, no trailing prose.
 
-Next step is one concrete **product** action (commit, PR, feature work) — never `/agent-memory …` (those belong in Validation or the session plan). When copying to `active-work/<branch>.md`, strip section blurbs under each `##` heading (keep headings and `-` bullets only).
+Next step is one concrete **product** action — never `/agent-memory …` (skill cmds → Validation or session plan). On copy: strip section blurbs (keep `##` + `-` bullets only). Omit empty optional sections; add Assumptions / open questions, Blockers, Rejected approaches, or References only with content (repo-root links use `../../../…`).
 
 ## Task
-
-**Required.** 1–2 lines: what this branch is delivering.
 
 - _No active task._
 
@@ -27,27 +25,5 @@ Current facts only — not a command diary and not a replay of `log.md`. Prefer 
 ## Validation
 
 Exact command and expected result. Prefer copy-pasteable lines. Prefer the project's full closure command when known (e.g. `bun run check` over a narrower suite alone).
-
-- _none_
-
-## Assumptions / open questions
-
-Unconfirmed hypotheses and open questions — never present as facts.
-
-- _none_
-
-## Blockers
-
-- _none_
-
-## Rejected approaches
-
-Tried paths that failed, with why. Prevents rediscovery.
-
-- _none_
-
-## References
-
-Pointers only: `path` or link + why it matters for this task. From this folder, repo-root docs are `../../../…` (example shape: `[CHANGELOG.md](../../../CHANGELOG.md)` — Unreleased scope).
 
 - _none_

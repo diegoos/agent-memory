@@ -12,13 +12,7 @@ Migrate an existing `.agents/memory/` to the latest structure from this skill's 
 
 The exact block `init` writes and `update` refreshes is defined in [`references/agent-block.md`](./agent-block.md) — read it from there; do not inline the block text here. Each wired file's block is **replaced verbatim** with that canonical block during update (single source of truth).
 
-**Instruction file targets** (same as `init`; see `references/init.md` for carrier rules):
-
-| File                                                | Notes                                                   |
-| --------------------------------------------------- | ------------------------------------------------------- |
-| `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`               | Root agent files                                        |
-| `.cursor/rules/agent-memory.mdc`                    | Compare body only; keep `alwaysApply: true` frontmatter |
-| `.github/instructions/agent-memory.instructions.md` | Copilot path-specific; keep `applyTo: "**"` frontmatter |
+**Instruction file targets** — same carriers and rules as `references/init.md` (harness table, Cursor/Copilot wrappers, delegation/copilot coexistence). Read that reference for write targets; do not restate the table here.
 
 ## Steps
 
@@ -35,7 +29,7 @@ The exact block `init` writes and `update` refreshes is defined in [`references/
    - **Always confirm with a diff before applying:**
      - `instructions.md` when the installed copy differs from the skill's current `vendor/memory/instructions.md` (identical → nothing to do). `instructions.md` is **outside** skill `allowed-tools` — expect a host permission prompt; still show the unified diff and confirm before applying.
      - `current.md` structural cleanup from `UPDATE.md` (e.g. 0.0.14 removal of legacy `Version / milestone` / `Done` / `Next steps`) — preserve `## In progress` and any still-useful bullets the user wants kept.
-     - `active-work/*.md` and `TEMPLATE.md` from 0.1.0 — add missing resume sections (`Next step`, `Validation`, `Assumptions / open questions`, `Rejected approaches`, `References`, `Checkpoint:`); offer removal of legacy `## Touched files` (sensitive — show diff, confirm). Preserve existing semantic content. Refresh TEMPLATE: Next step product guidance off-section; for existing branch files, strip leftover TEMPLATE section blurbs under `##` headings.
+     - `active-work/*.md` and `TEMPLATE.md` — ensure required core resume sections (`Task`, `Progress`, `Next step`, `Validation`, `Checkpoint:`); optional sections (`Assumptions / open questions`, `Blockers`, `Rejected approaches`, `References`) only when they have content — offer to remove empty `_none_` optional sections (sensitive — show diff, confirm); offer removal of legacy `## Touched files` (sensitive — show diff, confirm). Preserve existing semantic content. Refresh TEMPLATE: Next step product guidance off-section; optional sections documented but not pre-created empty; for existing branch files, strip leftover TEMPLATE section blurbs under `##` headings.
      - `log.md` / `decisions.md` scaffolding from 0.1.0 — refresh format docs only; preserve entries; do not invent headings. Legacy path-only bullets and empty closed-session headings are consolidate candidates (confirm).
      - Any change to a file that can hold user content — including `index.md` (merge structural sections; **preserve** the user's _Canonical project sources_ and _Recall files_ lists, including `learnings.md` / topic splits and any `when editing:` scope hints on existing learnings link lines). Legacy Domains/Features sections are not auto-preserved — convert them to pointers via `lint` / `consolidate`.
      - Any rename, move, or deletion.

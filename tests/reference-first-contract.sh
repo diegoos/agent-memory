@@ -73,13 +73,18 @@ cmp -s "$skeleton/.gitignore" "$skeleton/gitignore" ||
   fail "skeleton .gitignore and gitignore must stay identical"
 assert_contains "$skeleton/current.md" '## In progress' "current keeps In progress"
 assert_contains "$skeleton/active-work/TEMPLATE.md" '## Task' "active-work keeps Task"
+assert_contains "$skeleton/active-work/TEMPLATE.md" '## Progress' "active-work keeps Progress"
 assert_contains "$skeleton/active-work/TEMPLATE.md" '## Next step' "active-work keeps Next step"
 assert_contains "$skeleton/active-work/TEMPLATE.md" '## Validation' "active-work keeps Validation"
-assert_contains "$skeleton/active-work/TEMPLATE.md" '## Assumptions / open questions' \
-  "active-work keeps Assumptions"
-assert_contains "$skeleton/active-work/TEMPLATE.md" '## Rejected approaches' \
-  "active-work keeps Rejected approaches"
-assert_contains "$skeleton/active-work/TEMPLATE.md" '## References' "active-work keeps References"
+# Optional sections: documented for capture, not pre-created empty in TEMPLATE
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'Assumptions / open questions' \
+  "TEMPLATE documents optional Assumptions"
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'Rejected approaches' \
+  "TEMPLATE documents optional Rejected approaches"
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'References' \
+  "TEMPLATE documents optional References"
+assert_contains "$skeleton/active-work/TEMPLATE.md" 'Omit empty optional sections' \
+  "TEMPLATE omits empty optional sections"
 assert_contains "$skeleton/active-work/TEMPLATE.md" 'Checkpoint:' "active-work has Checkpoint"
 assert_contains "$skeleton/active-work/TEMPLATE.md" 'Checkpoint: YYYY-MM-DD @ SHORT-SHA' \
   "TEMPLATE Checkpoint uses plain SHORT-SHA placeholder"
@@ -116,6 +121,26 @@ assert_contains "$skeleton/decisions.md" 'Superseded by:' "decisions supersessio
 assert_contains "$skeleton/decisions.md" 'Rejected alternatives' \
   "decisions format lists Rejected alternatives"
 
+# --- Hot-path size ceiling (always-on: injected block + instructions + index + current) ---
+# Baseline before this slim ~10627 B; ceiling is a regression guard with margin (not exact equality).
+# Further cuts below ~12% would remove retention-gate / workflow contract text.
+hot_path_ceiling=9500
+template_ceiling=1400
+block_body=$(
+  awk '
+    /^```md$/ { inb=1; next }
+    /^```$/ && inb { exit }
+    inb { printf "%s\n", $0 }
+  ' "$agent_block"
+)
+block_bytes=$(printf '%s' "$block_body" | wc -c)
+hot_path_bytes=$(( block_bytes + $(wc -c <"$instructions") + $(wc -c <"$skeleton/index.md") + $(wc -c <"$skeleton/current.md") ))
+template_bytes=$(wc -c <"$skeleton/active-work/TEMPLATE.md")
+[[ "$hot_path_bytes" -le "$hot_path_ceiling" ]] ||
+  fail "always-on hot-path bytes $hot_path_bytes exceed ceiling $hot_path_ceiling (baseline ~10627)"
+[[ "$template_bytes" -le "$template_ceiling" ]] ||
+  fail "TEMPLATE.md bytes $template_bytes exceed ceiling $template_ceiling"
+
 # --- Contract invariants in instructions.md ---
 assert_contains "$instructions" '## Always load' "always-load policy present"
 assert_contains "$instructions" 'Authority: working rules' "authority map folded into Precedence"
@@ -133,6 +158,10 @@ assert_contains "$instructions" '**Primary-write triggers**' \
   "workflow lists primary-write triggers"
 assert_contains "$instructions" '### How to write (concise)' \
   "instructions teach concise memory writing"
+assert_contains "$instructions" 'Omit empty optional sections' \
+  "instructions omit empty optional active-work sections"
+assert_contains "$instructions" 'record them when discovered' \
+  "instructions require capturing optional sections when found"
 assert_contains "$instructions" '**Must consume** pending path evidence' \
   "workflow requires consuming pending path evidence when eligible"
 assert_contains "$instructions" 'never `/agent-memory …`' \
@@ -212,6 +241,10 @@ assert_contains "$update" '.hook-sync-state.*' \
   "update merge requires temp sibling ignore"
 assert_contains "$update" '`when editing:` scope hints' \
   "update preserves when-editing hints on index merge"
+assert_contains "$update" 'optional sections' \
+  "update documents optional active-work sections"
+assert_contains "$update" 'same carriers and rules as `references/init.md`' \
+  "update delegates carrier table to init"
 assert_contains "$lint" '.agents/memory/.gitignore' "lint checks .gitignore"
 assert_contains "$lint" 'vendor/memory/gitignore' "lint remediation uses pack-safe gitignore"
 assert_contains "$lint" '.hook-sync-state.lock' \
@@ -224,6 +257,8 @@ assert_contains "$bootstrap" 'A — Source inventory.' "bootstrap inventories so
 assert_contains "$bootstrap" 'never paste' "bootstrap does not copy bodies"
 assert_contains "$bootstrap" 'Do **not** create `vision.md`' "bootstrap forbids vision mirrors"
 assert_contains "$bootstrap" 'H2 learning/pitfall format' "bootstrap uses H2 learning format"
+assert_contains "$bootstrap" 'omit empty optional sections' \
+  "bootstrap omits empty optional active-work sections"
 assert_contains "$bootstrap" 'Put memory-command suggestions in the Report' \
   "bootstrap keeps skill commands out of Next step"
 assert_contains "$bootstrap" 'Append **one** synthesis heading' \
@@ -236,6 +271,10 @@ assert_contains "$lint" 'Legacy mirrors' "lint identifies mirrors"
 assert_contains "$lint" 'never deletes' "lint does not delete user files"
 assert_contains "$lint" '## Next step' "lint checks Next step"
 assert_contains "$lint" '## Validation' "lint checks Validation"
+assert_contains "$lint" 'empty-optional-section:' \
+  "lint warns on empty optional active-work sections"
+assert_contains "$lint" 'Required headings for resume (agent-owned) — core only' \
+  "lint requires core resume headings only"
 assert_contains "$lint" 'empty-log-heading' "lint checks empty headings"
 assert_contains "$lint" 'empty-log:' "lint warns when log has no session headings"
 assert_contains "$lint" 'empty-log-after-scaffold:' \
@@ -297,7 +336,11 @@ assert_contains "$sync" '^[0-9a-fA-F]{4,40}$' \
 assert_contains "$sync" '--end-of-options' \
   "sync prefers end-of-options for last-log-sha diff"
 assert_contains "$sync" '_Validation_' "sync fills Validation"
-assert_contains "$sync" '_Workflow_' "sync links live Workflow section"
+assert_contains "$sync" '_When catching up_' "sync links catch-up section"
+assert_contains "$sync" 'omit empty optional sections' \
+  "sync omits empty optional active-work sections"
+assert_contains "$sync" 'only when evidence supports content' \
+  "sync adds optional sections only with evidence"
 assert_contains "$sync" '**Catch-up**' "sync is catch-up not primary write"
 assert_contains "$sync" '**Meaning sources' "sync prefers meaning sources over path lists"
 assert_contains "$sync" 'agent-memory-consume-evidence.sh' \

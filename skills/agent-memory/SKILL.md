@@ -38,13 +38,13 @@ Manual-only orchestrator for the local **agent-memory** method. Skeleton and mig
 
 Pre-approved tools live in the `allowed-tools` frontmatter ([spec](https://agentskills.io/specification#allowed-tools-field); host-specific / experimental — unsupported hosts ignore it). Names follow Agent Skills / Claude Code; adapt if the host differs.
 
-| Tool                         | Used for                                                                                                                                                                                                                                                                                                    |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Read`, `Grep`, `Glob`       | Read-only analysis, lint, migration diffs, `references/*`, `vendor/`.                                                                                                                                                                                                                                       |
-| `Task`                       | Parallel read-only subagents in `bootstrap` (optional; sequential fallback).                                                                                                                                                                                                                                |
-| `Edit`, `Write` (scoped)     | Hot path only: `current.md`, `index.md`, `log.md`, `active-work/**`, `.version`, `.gitignore`. Host prompts for `decisions.md` / `learnings.md` / `learnings-*.md` (`learn` / `consolidate` / gated in-turn), `instructions.md`, harness carriers, and hook paths — keeps sync `--auto` off durable recall. |
-| `Bash(git …)`                | Read-only for `sync` / `lint`: `branch --show-current`, `status`, `status -sb`. Host prompts for `git diff` / `git log` (avoids globbing `diff --output` / suffix chaining). Mutative git stays off.                                                                                                        |
-| `Bash(…consume-evidence.sh)` | After sync meaning covers pending paths: clear `session_touched_files` only (harness `hooks/` or meta-repo `hooks/agent-memory-hooks/`).                                                                                                                                                                    |
+| Tool                         | Used for                                                                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Read`, `Grep`, `Glob`       | Read-only analysis, lint, migration diffs, `references/*`, `vendor/`.                                                                                                    |
+| `Task`                       | Parallel read-only subagents in `bootstrap` (optional; sequential fallback).                                                                                             |
+| `Edit`, `Write` (scoped)     | Hot path only (`current` / `index` / `log` / `active-work/**` / `.version` / `.gitignore`). Host prompts for decisions/learnings/instructions/carriers/hooks.           |
+| `Bash(git …)`                | Read-only `branch --show-current` / `status` / `status -sb`. Host prompts for `git diff` / `git log`. Mutative git stays off.                                            |
+| `Bash(…consume-evidence.sh)` | After sync meaning covers pending paths: clear `session_touched_files` only.                                                                                             |
 
 ### Write scope
 

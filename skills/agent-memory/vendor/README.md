@@ -25,7 +25,7 @@ Short version: before a task read `index.md`, `current.md`, and the branch `acti
 | `instructions.md` | Canonical method (read first).                        |
 | `index.md`        | Map of canonical sources + recall files.              |
 | `current.md`      | Shared active state (in progress / blockers handoff). |
-| `active-work/`    | Per-branch resume scratchpad (create when resumable). |
+| `active-work/`    | Per-branch resume scratchpad (create when resumable; optional sections only with content). |
 | `decisions.md`    | Decision pointers or local fallback ADRs.             |
 | `log.md`          | Recent semantic session deltas.                       |
 | `.gitignore`      | Ignores hook-local state.                             |
