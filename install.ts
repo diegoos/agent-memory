@@ -35,7 +35,15 @@ const VERSION: string = JSON.parse(
 const INSTALL_HOOKS_SH = path.join(ROOT, "hooks", "install-hooks.sh");
 const SKILL_SOURCE = path.join(ROOT, "skills", "agent-memory");
 
-/** Source checkout (has install.ts) vs published npm pack (files allowlist only). */
+/**
+ * Install source is always `ROOT/skills/agent-memory` + `ROOT/hooks/` (never GitHub clone).
+ *
+ * - Local checkout (`node ./bin/cli.js` / `bun ./install.ts`): ROOT is this repo — rule 1.
+ * - `npx @dosx/agent-memory` (published pack): ROOT is the npm package tree (`files` allowlist,
+ *   no `install.ts`) — rule 2; same copy path, SemVer-gated update unless `--force`.
+ *
+ * `install.ts` presence distinguishes dogfood refresh (same SemVer) from registry packs.
+ */
 function isSourceCheckout(): boolean {
   return fs.existsSync(path.join(ROOT, "install.ts"));
 }
