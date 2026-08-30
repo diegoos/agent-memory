@@ -148,14 +148,50 @@ awk '
   }
 ' log.md
 
+# Closed [type] missing from a session heading
+awk '
+  /^```/ { fence = !fence; next }
+  fence { next }
+  /^## \[[0-9]{4}-[0-9]{2}-[0-9]{2}\]/ {
+    if ($0 !~ /\[(feat|fix|chore|review|docs|refactor|test|perf|security|release|ingest|improve)\]/)
+      print "log-unknown-type: " $0 " — rewrite [type] to a closed token (feat|fix|chore|review|docs|refactor|test|perf|security|release|ingest|improve)"
+  }
+' log.md
+
+# Superseded decision still carrying Context/Decision body
+awk '
+  /^```/ { fence = !fence; next }
+  fence { next }
+  /^## \[[0-9]{4}-[0-9]{2}-[0-9]{2}\]/ {
+    flush()
+    heading = $0
+    in_e = 1
+    super = 0
+    body = 0
+    next
+  }
+  /^## / {
+    flush()
+    in_e = 0
+    next
+  }
+  in_e && /\*\*Status:\*\*[[:space:]]*superseded/ { super = 1 }
+  in_e && /\*\*(Context|Decision):\*\*/ { body = 1 }
+  END { flush() }
+  function flush() {
+    if (in_e && super && body)
+      print "decision-body-bloat: " heading " — collapse superseded to heading + Status + Superseded by:"
+  }
+' decisions.md
+
 # Canonical source catalog (index is a short map, not a bibliography)
 awk '
   /^## Canonical project sources/ { in_src = 1; next }
   /^## / { in_src = 0 }
   in_src && /^- / && $0 !~ /_None yet/ { n++ }
   END {
-    if (n > 8)
-      print "index-catalog: " n " canonical source bullets — keep a short map; extra docs stay in Git or when editing:"
+    if (n > 3)
+      print "index-catalog: " n " canonical source bullets — max 3; project docs live on AGENTS.md; extra stay in Git or when editing:"
   }
 ' index.md
 
@@ -378,6 +414,75 @@ fi
 if grep -qE '^## \[[0-9]{4}-[0-9]{2}-[0-9]{2}\]' .agents/memory/log.md 2>/dev/null && \
   grep -q '_No entries yet\._' .agents/memory/log.md 2>/dev/null; then
   echo "log-placeholder-stale: _No entries yet._ coexists with a session heading — remove placeholder (bootstrap/sync)"
+fi
+
+# AGENTS.md is SoT for project docs — Canonical bullets that AGENTS already links
+if [ -f AGENTS.md ] && [ -f .agents/memory/index.md ]; then
+  grep -oE '\[[^]]+\]\([^)]+\)' AGENTS.md | sed -E 's/^[^]]*\]\(//; s/\)$//' | while IFS= read -r u; do
+    case "$u" in http*|https*|'#'*) continue ;; esac
+    p=$(printf '%s' "$u" | sed 's/#.*//; s|^\./||; s|^/||')
+    [ -n "$p" ] || continue
+    printf '%s\n' "$p"
+  done | sort -u > /tmp/am-agents-hrefs.$$
+  awk '
+    /^## Canonical project sources/ { in_src=1; next }
+    /^## / { in_src=0 }
+    in_src && /^- / {
+      if (match($0, /\[[^]]+\]\([^)]+\)/)) {
+        u = substr($0, RSTART, RLENGTH)
+        sub(/^\[[^]]*\]\(/, "", u)
+        sub(/\)$/, "", u)
+        print u
+      }
+    }
+  ' .agents/memory/index.md | while IFS= read -r u; do
+    case "$u" in http*|https*|'#'*) continue ;; esac
+    rel=$(printf '%s' "$u" | sed 's/#.*//; s|^\./||')
+    # index.md lives in .agents/memory/ — ../../docs/foo → docs/foo
+    case "$rel" in
+      ../../*) rel=${rel#../../} ;;
+      ../*) rel=${rel#../} ;;
+    esac
+    grep -qxF "$rel" /tmp/am-agents-hrefs.$$ && \
+      echo "index-dup-agents: Canonical source $rel is already linked from AGENTS.md — drop the index bullet"
+  done
+  rm -f /tmp/am-agents-hrefs.$$
+fi
+
+# Ghost docs/ADR links in memory (skip instructions.md)
+find .agents/memory -name '*.md' ! -name 'instructions.md' 2>/dev/null | while read -r f; do
+  grep -oE '\[[^]]+\]\([^)]+\)' "$f" | sed -E 's/^[^]]*\]\(//; s/\)$//' | while IFS= read -r u; do
+    case "$u" in http*|https*|'#'*) continue ;; esac
+    file_part=$(printf '%s' "$u" | sed 's/#.*//')
+    printf '%s' "$file_part" | grep -qE 'docs/|adr/' || continue
+    dir=$(CDPATH= cd -- "$(dirname -- "$f")" && pwd)
+    if ! ( CDPATH= cd -- "$dir" && test -e "$file_part" ); then
+      echo "memory-ghost-docs: $f -> $file_part"
+    fi
+  done
+done
+
+# Project-docs index exists but AGENTS.md omits it
+if [ -f AGENTS.md ]; then
+  agents_txt=$(cat AGENTS.md)
+  check_gap() {
+    path=$1
+    if [ -e "$path" ]; then
+      printf '%s' "$agents_txt" | grep -qF "$path" || \
+        echo "agents-docs-gap: $path exists and AGENTS.md does not link it — docs map is AGENTS.md (init/update/consolidate)"
+    fi
+  }
+  check_gap docs/README.md
+  [ -d docs/architecture ] && [ -n "$(find docs/architecture -type f 2>/dev/null | head -1)" ] && \
+    check_gap docs/architecture
+  [ -d docs/specs ] && [ -n "$(find docs/specs -type f 2>/dev/null | head -1)" ] && \
+    check_gap docs/specs
+  for d in docs/architecture/decisions docs/decisions adr docs/adr; do
+    if [ -d "$d" ] && [ -n "$(find "$d" -type f 2>/dev/null | head -1)" ]; then
+      check_gap "$d"
+      break
+    fi
+  done
 fi
 
 # Helper: true if file contains an agent-memory block

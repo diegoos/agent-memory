@@ -4,7 +4,7 @@ Print how to install or refresh lifecycle hooks for one harness. **This skill do
 
 Does **not** create `.agents/memory/`, touch project memory content, or wire agent instruction files — use `init` for that.
 
-Also used by `init` (step 6) and `update` (refresh already-installed harnesses) to print the same instructions.
+Also used by `init` (step 7) and `update` (refresh already-installed harnesses) to print the same instructions.
 
 ## Invocation
 
@@ -28,7 +28,7 @@ Canonical hook sources live under `hooks/` in the [agent-memory](https://github.
 
 ## Steps
 
-1. **Guard.** If `.agents/memory/` does not exist, stop and suggest `/agent-memory init` first. (Skip this guard when called from `init` step 6.)
+1. **Guard.** If `.agents/memory/` does not exist, stop and suggest `/agent-memory init` first. (Skip this guard when called from `init` step 7.)
 
 2. **Parse harness.** Read `<harness>` from the invocation. Normalize aliases (`claude-code` → `claude`, `github` → `copilot`). If missing, stop and list accepted values.
 

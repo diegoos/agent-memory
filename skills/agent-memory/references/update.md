@@ -4,9 +4,9 @@ Migrate `.agents/memory/` from this skill's `vendor/`. Refresh the harness **blo
 
 ## Boundary (read before doing anything)
 
-- **Preserve unique recall:** keep decision bodies, log outcomes, learnings H2s, live Task/Next step, and the user's Canonical project sources, except the mechanical edits in `update-graph.md`.
+- **Preserve unique recall:** keep decision bodies, log outcomes, learnings H2s, live Task/Next step, and Canonical sources that still pass the index rule — except the mechanical edits in `update-graph.md` (drop bullets `AGENTS.md` already covers or that point at missing docs trees).
 - **Scaffolding:** `instructions.md`, `index.md` structure, `.version`, missing core files, harness block, leftover `TEMPLATE.md`, `.gitignore`.
-- **Harness files:** edit only the delimited agent-memory block. For `.cursor/rules/agent-memory.mdc`, keep YAML frontmatter and replace the delimited body.
+- **Harness files:** edit the delimited agent-memory block; **plus** the `AGENTS.md` docs map outside that block (`references/docs-map.md`). For `.cursor/rules/agent-memory.mdc`, keep YAML frontmatter and replace the delimited body.
 - **Learnings / hints:** leave new `learnings.md` rows and new `when editing:` globs to learn / consolidate / write-floor (path evidence required).
 
 ## Canonical memory block
@@ -34,7 +34,7 @@ The exact block `init` writes and `update` refreshes is defined in [`references/
      - `current.md` structural cleanup from `UPDATE.md` (e.g. 0.0.14 removal of legacy `Version / milestone` / `Done` / `Next steps`) — preserve `## In progress` and any still-useful bullets the user wants kept.
      - `active-work/*.md` (per-branch files only) — ensure required core resume sections (`Task`, `Next step`, `Validation`, `Checkpoint:`); `Progress` is optional (keep if it has content; offer to drop empty `## Progress` / `_none_` — sensitive). Other optional sections (`Assumptions / open questions`, `Blockers`, `Rejected approaches`, `References`, `Hold`) only when they have content (`Hold` max 3 bullets — offer trim or `/agent-memory learn` if over) — offer to remove empty `_none_` optional sections (sensitive — show diff, confirm); offer removal of legacy `## Touched files` (sensitive — show diff, confirm). Preserve existing semantic content. For existing branch files, strip leftover instructional paragraphs under `##` headings. Copy shape: this skill's `references/active-work-template.md`.
      - `log.md` / `decisions.md` scaffolding from 0.1.0 — refresh format docs only; preserve entries; do not invent headings. Legacy path-only bullets and empty closed-session headings are consolidate candidates (confirm).
-     - Any change to a file that can hold user content — including `index.md` (merge structural sections; **preserve** the user's _Canonical project sources_ and existing `learnings.md` / topic-split lines with `when editing:` hints).
+     - Any change to a file that can hold user content — including `index.md` (merge structural sections; **preserve** `when editing:` hints; **drop** Canonical bullets that `AGENTS.md` already links or that target missing `docs/` / ADR trees).
      - Any rename, move, or deletion listed in `UPDATE.md` or `update-graph.md`.
    - **Skip superseded items** — e.g. skip agent-merge of `.cursor/hooks.json` `afterFileEdit` when `UPDATE.md` marks that 0.0.10 step as superseded (hooks refresh is user-run installer only).
    - Present each sensitive change as a unified diff and ask the user to approve, skip, or abort. Apply only what is approved.
@@ -42,26 +42,28 @@ The exact block `init` writes and `update` refreshes is defined in [`references/
      **Done when:** `update-graph.md` completion criteria hold, or every remaining item was an explicit skip.
 
 5. **Refresh instruction blocks.** Read the canonical block from [`references/agent-block.md`](./agent-block.md). For **each wired target** that exists at the project root (table above), decide what changed:
-   - **A delimited block exists** (`<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain `<agent-memory>` … `</agent-memory>`): compare its current text (between the delimiters, inclusive) against the canonical block, byte-for-byte. **Identical → skip (already current).** Different → replace block content with the canonical block (comment delimiters). For `.mdc`, replace only the delimited body; preserve existing frontmatter (or apply the canonical frontmatter from `agent-block.md` — `alwaysApply: true` for Cursor, `applyTo: "**"` for Copilot — if missing). **Sensitive** — show the unified diff, confirm first. Never touch anything outside the delimiters.
+   - **A delimited block exists** (`<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain `<agent-memory>` … `</agent-memory>`): compare its current text (between the delimiters, inclusive) against the canonical block, byte-for-byte. **Identical → skip (already current).** Different → replace block content with the canonical block (comment delimiters). For `.mdc`, replace only the delimited body; preserve existing frontmatter (or apply the canonical frontmatter from `agent-block.md` — `alwaysApply: true` for Cursor, `applyTo: "**"` for Copilot — if missing). **Sensitive** — show the unified diff, confirm first. Do not edit outside the delimiters **in this step**.
    - **No block yet, but a legacy `## Agent Memory` section exists** (installed by an older `init` without delimiters): replace that section with the canonical block (delimiters and content). **Sensitive** — show the diff, confirm first.
    - **No block and no legacy section:** skip (the file was never wired by `init`). Do not create a block here — that is `init`'s job. Mention it in the report so the user can run `init` if they want the file wired.
 
-   **Migration — cursor/copilot from `AGENTS.md` only** (sensitive, with diff): if `.cursor/rules/agent-memory.mdc` or `.github/instructions/agent-memory.instructions.md` is missing but the block lives in `AGENTS.md`, and no codex/opencode/claude-via-delegation needs that carrier, offer to **move** the block from `AGENTS.md` to the harness native file (create native if needed).
+   **Migration — cursor/copilot from `AGENTS.md` only** (sensitive, with diff): if `.cursor/rules/agent-memory.mdc` or `.github/instructions/agent-memory.instructions.md` is missing but the block lives in `AGENTS.md`, and no codex/opencode/claude-via-delegation needs that carrier, offer to **move** the block from `AGENTS.md` to the harness native file (create native if needed). Keep any `## Docs` / Quick Reference map in `AGENTS.md`.
 
    **Migration — delegation canary** (sensitive, with diff): if `CLAUDE.md` or `GEMINI.md` contains the block **and** `@AGENTS.md` (or `@./AGENTS.md`) while `AGENTS.md` also contains the block, offer to **remove** the block from the file that delegates (double injection from older installs).
 
    Apply only what is approved. If every wired file's block is already byte-identical to the canonical block, report "instruction blocks already current" and move on.
 
+   **Docs map.** Follow [`references/docs-map.md`](./docs-map.md): patch `AGENTS.md` **outside** the block when project-docs indices exist and AGENTS omits them. Confirm. Do not add those links to `index.md`. Skip when no such indices exist.
+
 6. **Instruct hook refresh.** Follow [`references/install-hooks.md`](./install-hooks.md) → **Detecting installed harnesses** and for each installed harness print the user-run refresh commands (step 4 of that reference). **Do not** copy scripts or merge configs. Run even when the installed version already equals the latest (hook scripts may have changed without a memory migration). Report which harnesses need a user refresh and which were skipped.
 
 7. **Finalize.** Update `.agents/memory/.version` to the latest. Append one `log.md` heading `## [YYYY-MM-DD] [chore] agent-memory update to <version>` (merge into today's existing `[chore]` heading when Graph reshape already coalesced same-day `[chore]`).
 
-8. **Report.** Summarize what was applied automatically, what was confirmed, and what was skipped — including graph-reshape deletions and rewrites (`update-graph.md` Report), which instruction files had their block refreshed, which had a legacy section migrated, delegation-canary removals offered/applied, which files were left untouched, and which harness hook refresh commands were printed.
+8. **Report.** Summarize what was applied automatically, what was confirmed, and what was skipped — including graph-reshape deletions and rewrites (`update-graph.md` Report), **docs-map** patches or skips, which instruction files had their block refreshed, which had a legacy section migrated, delegation-canary removals offered/applied, which files were left untouched, and which harness hook refresh commands were printed.
 
    For Cursor, note that `.cursor/rules/agent-memory.mdc` is the **context layer** (always-on rules) and hooks are the **checkpoint layer** — both are recommended after `init cursor`. If `.cursor/hooks/agent-memory-sync.sh` exists but `.cursor/rules/agent-memory.mdc` is missing, suggest `/agent-memory init cursor` to add the context layer (likewise for Copilot: if `.github/hooks/` is wired but `.github/instructions/agent-memory.instructions.md` is missing).
 
 ## Gotchas
 
 - Treat an ambiguous edit as sensitive and confirm.
-- Block refresh: only the delimiters (comment form or legacy plain tags). Missing delimiters → legacy `## Agent Memory` case in step 5, or skip and report.
+- Block refresh: only the delimiters (comment form or legacy plain tags). Missing delimiters → legacy `## Agent Memory` case in step 5, or skip and report. Docs map (`references/docs-map.md`) is **outside** the block.
 - File contents: `vendor/memory/`. How to migrate: `vendor/UPDATE.md`. Leftover mirrors: `update-graph.md` (step 4, including when versions already match).

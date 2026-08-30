@@ -1,6 +1,6 @@
 # `/agent-memory update` — graph reshape
 
-Loaded from `update.md` **Graph reshape**. Fold leftover mirrors into the index map; type decisions and log; drop dead paths. Unique facts stay.
+Loaded from `update.md` **Graph reshape**. Delete leftover mirrors; type decisions and log; drop dead paths. Unique facts stay. **Do not** merge project-docs links into `index.md` Canonical sources (`AGENTS.md` is that map — `references/docs-map.md`).
 
 **Sensitive:** one unified diff per file (or one delete batch). Confirm; skip/abort that item and continue. **Do not** invent learnings, ADRs, or `when editing:` globs (this step has no path-evidence gate).
 
@@ -26,12 +26,12 @@ Glob under `.agents/memory/` (not `instructions.md`):
 For each mirror file (inventory order: files, then empty dirs):
 
 1. Collect outbound markdown links whose target is outside `.agents/memory/` (`../../` / `../../../`).
-2. Merge each unique target into `index.md` **Canonical project sources** if missing. Line shape: `- [label](path) — one-line delta.` Deduplicate by resolved path. If the section would exceed **8** bullets, keep the existing user list; add only targets not already listed until 8; report overflow paths as “live in Git, not on the map.”
-3. If the file has product prose: add at most **one** Canonical project sources bullet (≤20 words, unique fact → README/AGENTS/docs). Report leftover unique facts as **consolidate** candidates. Then delete the file.
+2. **Do not** merge those targets into `index.md` Canonical project sources. If `AGENTS.md` already links the path, discard. If the path is a project-docs index (`references/docs-map.md`) and AGENTS omits it, report as an **AGENTS docs-map** candidate — leave it off memory. Other unique facts (not docs/ADR) that pass the index rule (AGENTS does not link it **and** a cold session needs it before choosing a recall file): at most **one** Canonical bullet (≤20 words) **or** report as a consolidate candidate.
+3. If the file has product prose: report leftover unique facts as **consolidate** candidates (this step invents no learnings).
 4. Delete the mirror file.
 5. After all files in a graph dir are gone, remove the empty directory.
 
-**Done when:** no inventory mirror path remains on disk; Canonical sources ≤8 or overflow is reported.
+**Done when:** no inventory mirror path remains on disk; Canonical sources were not filled from mirror docs links.
 
 ## Rewrite `index.md` Recall files
 
@@ -42,7 +42,7 @@ Keep **only** lines whose target file still exists, from this set:
 - `./learnings.md`
 - `./learnings-*.md` (keep `when editing:` text on those lines)
 
-Drop mirror names from Recall files (vision, architecture, patterns, domains, features, “Older installs…”). Add `learnings.md` only when that file exists. Keep Canonical project sources except Collapse merges.
+Drop mirror names from Recall files (vision, architecture, patterns, domains, features, “Older installs…”). Add `learnings.md` only when that file exists. **Do not** keep Canonical bullets that `AGENTS.md` already links or that point at missing `docs/` / ADR trees — drop them (confirm).
 
 **Done when:** every Recall files link resolves; no recall line names a deleted path.
 
@@ -53,8 +53,9 @@ Grep `.agents/memory/**/*.md` (skip `instructions.md`) for:
 - `](./vision.md`, `](./architecture.md`, `](./patterns.md`, `](./project.md`
 - `domains/`, `features/`, `active-work/TEMPLATE`
 - `mistakes.md`, `known-issues.md` as memory-relative links
+- unlinked prose `vision.md` / `memory domain files` / `domains/*.md` in `decisions.md` / `log.md`
 
-Rewrite each hit to the folded canonical path from Collapse, or delete the sentence if it only pointed at the mirror. In `decisions.md` / `log.md`, replace “memory `domains/*.md`” with “canonical specs under `docs/`” (or the folded path).
+Rewrite each hit to the folded canonical path, or delete the sentence if it only pointed at the mirror. In `decisions.md` / `log.md`, replace “memory `domains/*.md`” / “memory domain files” with “canonical specs under `docs/`” **only when that tree exists**; otherwise drop the phrase. Same for bare `vision.md` mentions.
 
 **Done when:** Grep for those tokens under `.agents/memory/` (except `instructions.md` method text) is empty, or each leftover is a false positive in a quoted path that still exists in the repo **outside** memory.
 
@@ -86,4 +87,4 @@ Rolling-window prune of old dates is consolidate.
 
 ## Report
 
-List: deleted mirrors, index bullets added/dropped, dead links rewritten, decisions `Status: live` count, log headings merged, active-work deletes, skipped items, consolidate leftovers (unique facts not folded).
+List: deleted mirrors, Canonical bullets **dropped** (not added from docs), dead links rewritten, decisions `Status: live` count, log types rewritten / headings merged, active-work deletes, skipped items, AGENTS docs-map candidates, consolidate leftovers (unique facts not folded).

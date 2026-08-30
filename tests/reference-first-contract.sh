@@ -111,8 +111,9 @@ awk '
 assert_absent "$aw_template" '## Touched files' \
   "Touched files must be removed from template"
 assert_contains "$instructions" 'semantic bullets' "log documents semantic-only"
-assert_contains "$instructions" 'Status, Source, Relevance' "decisions pointer fields"
-assert_contains "$instructions" 'Supersedes / Superseded by' "decisions supersession"
+assert_contains "$instructions" '`Status: superseded`:** keep heading + Status + `Superseded by:`' \
+  "decisions superseded entries collapse"
+assert_contains "$instructions" '`Superseded by:`' "decisions supersession"
 assert_contains "$instructions" 'Rejected alternatives' \
   "decisions format lists Rejected alternatives"
 assert_contains "$instructions" 'references/active-work-template.md' \
@@ -366,6 +367,10 @@ assert_contains "$update_graph" 'Same calendar day **and** same `[type]`' \
   "graph reshape merges same-day same-type log"
 assert_contains "$update_graph" 'no remaining link under `.agents/memory/` points at a deleted path' \
   "graph reshape forbids dead refs"
+assert_contains "$update_graph" '**Do not** merge those targets into `index.md`' \
+  "graph reshape does not merge docs into Canonical sources"
+assert_contains "$update_graph" 'unlinked prose `vision.md`' \
+  "graph reshape rewrites dead vision/domain prose"
 assert_contains "$update" 'optional sections' \
   "update documents optional active-work sections"
 assert_contains "$update" 'delete leftover `active-work/TEMPLATE.md`' \
@@ -398,6 +403,29 @@ assert_contains "$bootstrap" 'Do **not** open a second `[ingest]`' \
   "bootstrap avoids same-day ingest duplicate heading"
 assert_contains "$bootstrap" 'Leave `active-work/` empty' \
   "bootstrap does not plant TEMPLATE in project memory"
+assert_contains "$bootstrap" 'references/docs-map.md' \
+  "bootstrap sends the docs map to AGENTS.md"
+assert_contains "$bootstrap" 'Do **not** invent a `decisions.md` “see ADRs” pointer' \
+  "bootstrap does not register missing ADR trees"
+docs_map="$repo_root/skills/agent-memory/references/docs-map.md"
+assert_contains "$docs_map" '`AGENTS.md` is SoT' \
+  "docs-map names AGENTS as SoT"
+assert_contains "$docs_map" 'empty dir = absent' \
+  "docs-map does not invent missing trees"
+assert_contains "$init" 'references/docs-map.md' \
+  "init patches AGENTS.md docs map"
+assert_contains "$update" 'references/docs-map.md' \
+  "update patches AGENTS.md docs map"
+assert_contains "$consolidate" '`AGENTS.md` docs map only' \
+  "consolidate may patch AGENTS docs map"
+assert_contains "$consolidate" '**Superseded bodies**' \
+  "consolidate collapses superseded decision bodies"
+assert_contains "$consolidate" '**Incident-shaped decisions**' \
+  "consolidate promotes incident decisions to learnings"
+assert_contains "$sync" '**Do not** add Canonical project source links' \
+  "sync does not reindex docs onto the memory index"
+assert_contains "$skeleton/index.md" 'Project docs live on `AGENTS.md`' \
+  "index skeleton defers docs to AGENTS.md"
 
 # --- Lint ---
 assert_contains "$lint" 'Legacy mirrors' "lint identifies mirrors"
@@ -420,6 +448,20 @@ assert_contains "$lint" 'same-day-dup-log:' \
   "lint flags duplicate same-day same-type log headings"
 assert_contains "$lint" 'index-catalog:' \
   "lint flags oversized canonical source maps"
+assert_contains "$lint" 'index-dup-agents:' \
+  "lint flags Canonical bullets already on AGENTS.md"
+assert_contains "$lint" 'log-unknown-type:' \
+  "lint flags closed-list [type] misses"
+assert_contains "$lint" 'decision-body-bloat:' \
+  "lint flags superseded decision bodies"
+assert_contains "$lint" 'memory-ghost-docs:' \
+  "lint flags memory links to missing docs/ADR"
+assert_contains "$lint" 'agents-docs-gap:' \
+  "lint flags docs on disk omitted from AGENTS.md"
+assert_contains "$lint" 're-run `/agent-memory consolidate` until that band is empty' \
+  "lint tells the user to re-run consolidate"
+assert_contains "$lint_structural" 'if (n > 3)' \
+  "index-catalog cap is 3"
 assert_contains "$lint" 'empty-log:' "lint warns when log has no session headings"
 assert_contains "$lint" 'empty-log-after-scaffold:' \
   "lint warns when scaffold recall exists but log is empty"
@@ -649,8 +691,8 @@ assert_absent "$skill" 'Edit(.agents/memory/learnings.md)' \
   "skill allowed-tools must not pre-approve learnings.md"
 assert_absent "$skill" 'Edit(.agents/memory/learnings-*.md)' \
   "skill allowed-tools must not pre-approve learnings-*.md"
-assert_absent "$skill" 'Edit(AGENTS.md)' \
-  "skill allowed-tools must not pre-approve AGENTS.md"
+assert_contains "$skill" 'Edit(AGENTS.md)' \
+  "skill allows AGENTS.md for docs-map patches only"
 assert_absent "$skill" 'Edit(.cursor/rules/agent-memory.mdc)' \
   "skill allowed-tools must not pre-approve cursor mdc"
 assert_absent "$skill" 'Bash(git branch:*)' \
@@ -685,7 +727,8 @@ assert_contains "$instructions" 'gitignore-style' \
   "when-editing glob dialect pinned"
 assert_contains "$instructions" 'Match rule: load the file when any task path' \
   "when-editing match rule pinned"
-assert_contains "$learn" '**Duplicate rule**' "duplicate rule in learn SoT"
+assert_contains "$instructions" '`AGENTS.md` is SoT for project docs' \
+  "method names AGENTS as docs map SoT"
 assert_contains "$learn" '**Legacy one-liner**' "legacy one-liner documented in learn SoT"
 assert_contains "$sync" 'never remove or reformat `when editing:` hints' \
   "sync preserves existing hints"

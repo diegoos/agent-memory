@@ -4,8 +4,8 @@ Guided, conservative promotion and pruning of memory. Turns closed-session noise
 
 ## Boundary
 
-- **May edit** (with per-diff confirmation): paths in `SKILL.md` `allowed-tools`, plus `decisions.md` / `learnings.md` / `learnings-*.md` when a promotion needs them — those three are **not** pre-approved (expect a host permission prompt). **Not** `instructions.md` (that is `/agent-memory update` only).
-- **Must not** edit README, docs, specs, ADRs, issues, or harness agent files.
+- **May edit** (with per-diff confirmation): paths in `SKILL.md` `allowed-tools`, plus `decisions.md` / `learnings.md` / `learnings-*.md` when a promotion needs them — those three are **not** pre-approved (expect a host permission prompt). **`AGENTS.md` docs map only** (bullets outside the agent-memory block — `references/docs-map.md`). **Not** `instructions.md` (that is `/agent-memory update` only).
+- **Must not** edit README, docs, specs, or ADR **bodies**, or harness agent files **except** that `AGENTS.md` map. Never edit inside `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`.
 - When an external promotion is needed, report the suggested path and keep the fact as `pending-doc` until the user updates the external source.
 - Never prune the **current session** heading(s) in `log.md` (definition below).
 - Never prune the **current branch's** active-work file.
@@ -53,14 +53,20 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    - **Orphan Relates** (`relates-missing`) — typed edge whose target file is gone, or whose `#fragment` is missing from the target. Propose drop the Relates line, retarget, or Defer. After an approved log Discard/Trim, Grep Relates / aliases for that heading or path and offer the same.
    - Learnings/pitfalls that now have a canonical source.
    - Entries marked `pending-doc` — including those whose `Invalidate when` is already satisfied or whose Insight now appears in the named canonical doc (`pending-doc-met` from lint): propose **remove** the `pending-doc` bullet and either keep the learning as-is, convert to a pointer, or discard if fully superseded by the doc.
-   - Legacy mirror files (`vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*`) **only if they survived `/agent-memory update`** (user skipped graph reshape). Prefer pointer then delete.
+   - Legacy mirror files (`vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*`) **only if they survived `/agent-memory update`** (user skipped graph reshape). Prefer pointer then delete. Do **not** fold their docs links into `index.md` — AGENTS map (`references/docs-map.md`).
+   - **Docs now canonical** — a local decision body or Canonical bullet that duplicates an ADR/spec/`AGENTS.md` link: **Reference** (pointer or drop); patch `AGENTS.md` if the index exists and AGENTS omits it; then strip the memory copy.
+   - **Superseded bodies** — `Status: superseded` still has Context / Decision / Why: collapse to heading + Status + `Superseded by:` (+ Relates).
+   - **Incident-shaped decisions** — rollback/workaround with 1–3 paths: promote **Learning** (H2 + `when editing:`); leave at most `- Relates: see` on the decision if the live approach still matters.
+   - **`live-dup-identity`** — keep one live successor; mark the rest superseded **and** collapse those bodies.
+   - **Ghost docs** — memory links `docs/` or an ADR path that does not exist: drop the link (do not invent the tree).
+   - **AGENTS docs gap** — a project-docs index exists and `AGENTS.md` does not link it: patch AGENTS (`references/docs-map.md`), then drop the duplicate from memory.
    - Legacy `## Touched files` sections in active-work (pre-0.1.0).
    - **Hold** bullets on stale `active-work` (branch gone) or on a file about to be deleted on merge: promote through the retention gate (`/agent-memory learn`) or Discard with the file. Do not copy Hold into `learnings.md` without the gate. Cap remains 3 on the live branch file (`hold-overflow`).
    - **Mixed-type log bullets** — under a closed or current heading, bullets that belong to a different `[type]` / concern than the heading summary: propose **moving** them to a correctly typed heading (or trimming noise). Do **not** Discard the whole current-session heading to “fix” mixed types.
 
 4. **Classify each candidate.** Propose one action per item:
-   - **Reference** — replace body with a pointer to a canonical source; update `index.md` if needed.
-   - **Decision** — add/replace pointer in `decisions.md` (or local fallback if no ADR system); **supersede** older live entries on the same identity instead of appending a second `Status: live`. User-constraint Hold / Rejected approaches on **closed** work: promote to a live decision only if they pass the write-floor User constraint gate.
+   - **Reference** — replace body with a pointer to a canonical source **or drop it when `AGENTS.md` already maps that source**; update `index.md` only for recall files, not a second docs catalog.
+   - **Decision** — add/replace only a live fallback with no ADR; **supersede** older live entries on the same identity instead of appending a second `Status: live`, then **collapse** superseded bodies. Do not add an ADR-index pointer when no ADR tree exists. User-constraint Hold / Rejected approaches on **closed** work: promote to a live decision only if they pass the write-floor User constraint gate.
    - **Learning / pitfall** — promote to `learnings.md` or an existing `learnings-<topic>.md` using the H2 format in `references/learn.md` (evidence + use when + verified + invalidate when). Prefer an existing topic split when the theme matches; otherwise `learnings.md`. Apply the **Duplicate rule** from `references/learn.md` — skip when the insight already exists in the target file (H2 or legacy one-liner). Path-scoped entries must get an `index.md` `when editing:` hint in the same promotion.
    - **Split** — when `learnings.md` is large or thematically clustered, propose moving entries into `learnings-<topic>.md` and updating `index.md` (path-scoped lines need `when editing:` hints). Convert moved entries to the H2 form as part of the move (do not move raw one-liners unless the user declines conversion). Confirm; never auto-split.
    - **Merge** — when a topic split is tiny or redundant with another, propose merging back into `learnings.md` or a sibling split; same H2 conversion and duplicate rule (confirm).
@@ -74,11 +80,11 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
 5. **Show the classification plan** to the user (table or grouped list). Do not write yet. For any log Discard AskQuestion on a borderline same-day heading, recommend **Manter** by default. In the plan table, mark current-session log rows as **Retained** (reason: current session / founding day) — do not list them as Discard candidates.
 
 6. **Apply in safe order** — confirm each diff (approve / skip / abort):
-   1. Additions/promotions first: `decisions.md`, `learnings.md` / `learnings-*.md`, `current.md` (shared blockers only if still active), `index.md` (including new/updated learnings links and `when editing:` hints).
+   1. Additions/promotions first: `decisions.md`, `learnings.md` / `learnings-*.md`, `current.md` (shared blockers only if still active), `index.md` (recall links and `when editing:` hints — not a docs catalog), `AGENTS.md` docs-map bullets when a project-docs index exists and AGENTS omits it.
    2. Only after a promotion is **approved**, and only for **closed** session origins, propose Trim or removal of promoted bullets / empty closed headings from `log.md` or a legacy file body. If promotion is declined, **keep** the origin. Apply approved split/merge moves only after the destination write is confirmed. **Never** remove a heading that would leave zero session entries. After an approved log Discard/Trim, propose Relates retarget/drop for lines that pointed at the removed heading.
    3. Propose removal of legacy path-only bullets, empty closed-session headings, and legacy _Touched files_ sections (Git available; evidence reconstructible).
    4. Propose deleting stale `active-work/<branch>.md` one-by-one, or with an explicit "delete all stale" approval. If `active-work/TEMPLATE.md` is still present, delete it (scaffold SoT is this skill's `references/active-work-template.md`).
-   5. For leftover mirrors (user skipped `update` graph reshape): fold unique facts then delete; deleting a legacy file is sensitive and must be confirmed. Skip if the file is already gone.
+   5. For leftover mirrors (user skipped `update` graph reshape): fold unique **non-docs** facts then delete; deleting a legacy file is sensitive and must be confirmed. Skip if the file is already gone. Do not dump docs links into `index.md`.
    6. **Progress follow-up** — only if a **closed**-session log Discard/Trim was approved: offer to refresh active-work Progress so it does not point at removed log headings. Do not open this AskQuestion when no closed-session log removal was approved.
 
 7. **Report.** Summarize separately:

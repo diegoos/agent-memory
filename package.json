@@ -8,7 +8,7 @@
   "scripts": {
     "build": "bun build ./install.ts --outfile bin/cli.js --target node --format cjs --banner '#!/usr/bin/env node'",
     "typecheck": "bunx tsc -p tsconfig.json --noEmit",
-    "lint:md": "bunx markdownlint '**/*.md' --ignore node_modules --ignore bin",
+    "lint:md": "bunx markdownlint '**/*.md' --ignore node_modules --ignore bin --ignore QA",
     "build:check": "bash scripts/build-check.sh",
     "test": "bash tests/test-runner.sh",
     "check": "bun audit && bun run typecheck && bun run lint:md && bun run build:check && bun run test && bun run build",
