@@ -18,6 +18,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 ### Fixed
 
 - Session Status, lint, and the git pre-commit reminder treated a matching Checkpoint as behind HEAD on Git 2.55 because `git rev-parse --end-of-options <sha>` printed the flag as a revision line. Hex SHAs now resolve with `git rev-parse --verify`. Lint sanitizes the current branch with `printf` so the newline from `git branch` does not become a trailing `-`.
+- `tests/version-parity.sh` accepts npm prerelease versions (`0.2.1-rc.0`). CHANGELOG/UPDATE headings and GitHub pins stay on the last released tag until the RC is published. CLI `compareSemver` orders prerelease below the same core (so `0.2.1-rc.0` is not treated as equal to `0.2.1`).
 
 ### Changed
 

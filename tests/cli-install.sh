@@ -58,7 +58,7 @@ node -e '
 const fs = require("fs");
 const p = process.argv[1];
 let t = fs.readFileSync(p, "utf8");
-t = t.replace(/(version:\s*["'\'']?)\d+\.\d+\.\d+/, "$19.9.9");
+t = t.replace(/(version:\s*["'\'']?)\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/, "$19.9.9");
 fs.writeFileSync(p, t);
 ' "$skill_md"
 down_out=$(AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" update --yes 2>&1 || true)

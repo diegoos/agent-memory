@@ -17,7 +17,7 @@ fi
 if [[ -z "${VERSION:-}" && -n "${AGENT_MEMORY_VERSION:-}" ]]; then
   VERSION="$AGENT_MEMORY_VERSION"
 fi
-VERSION="${VERSION:-0.2.0}"
+VERSION="${VERSION:-0.2.1-rc.0}"
 
 # No weak cd/pwd fallback: it skips symlink resolution, so a logical path
 # could pass the under-project check while escaping it (parity with hooks).

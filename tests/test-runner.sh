@@ -19,4 +19,4 @@ bash tests/cli-install.sh
 bash tests/lockfile-only.sh
 bash tests/migration-smoke.sh
 bash tests/npm-pack-parity.sh
-bun test tests/opencode-safe-script.test.ts tests/env-allowlist-parity.test.ts
+bun test tests/opencode-safe-script.test.ts tests/env-allowlist-parity.test.ts tests/semver.test.ts
