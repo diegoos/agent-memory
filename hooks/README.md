@@ -2,7 +2,7 @@
 
 Optional hooks that keep ephemeral evidence current during real work. They run a deterministic git checkpoint into `.agents/memory/.hook-sync-state` (gitignored). No LLM call, no Markdown writes, no `followup_message` loops.
 
-The agent still owns Markdown. In the turn, write at most one file per event: resume goes to active-work, a closed session to `log.md`, a shared blocker to `current.md`, otherwise skip. Hooks never write Markdown. Catch up with `/agent-memory sync` when Status shows a stale Checkpoint or pending paths and there is meaning, or follow `references/sync.md` without the skill. After meaning is written, consume pending paths with `agent-memory-consume-evidence.sh`. Full contract: `instructions.md` → _Harness parity (memory contract)_. Consolidation is `/agent-memory consolidate` only. `sessionStart` injects a short status (branch, Checkpoint freshness, pending path count, Action). It does not write Markdown.
+The agent still owns Markdown. In the turn, write at most one file per event: rotten resume → active-work; user constraint → `decisions.md`; reusable lesson → learnings plus an index hint; closed why missing from the commit → `log.md`; shared blocker → `current.md`; otherwise skip. Hooks never write Markdown. Catch up with `/agent-memory sync` when Status shows a stale Checkpoint or pending paths and there is meaning, or follow `references/sync.md` without the skill. After meaning is written, consume pending paths with `agent-memory-consume-evidence.sh`. Full contract: `instructions.md` → _Harness parity (memory contract)_. Consolidation is `/agent-memory consolidate` only. `sessionStart` injects a short status (branch, Checkpoint freshness, pending path count, Action). It does not write Markdown.
 
 ## TL;DR
 

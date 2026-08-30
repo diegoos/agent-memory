@@ -26,6 +26,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - The always-on harness block only carries triggers: write floor including User constraint and Reusable lesson, Status `load:` / Next / Checkpoint, _Recall hop_ pointer, live decision vs code for approach; load learnings only via hint. Hop algorithm, catch-up, and consume stay in `instructions.md` / Status / `references/sync.md`. Agents follow session Status before reading `index.md` and `current.md`, read `instructions.md` before writing memory, and read _Recall hop_ on durable why with no path hit. `/agent-memory update` still refreshes the harness block on 0.2.0 (step 5).
 - Installed `.agents/memory/` no longer ships `active-work/TEMPLATE.md` or format/template prose in `log.md`, `decisions.md`, `index.md`, or `current.md`. The copy scaffold is the skill file `references/active-work-template.md`. `/agent-memory update` deletes leftover `TEMPLATE.md` even when versions already match.
 - Always-load `index.md` stays a short map of entry points, not a bibliography. `log.md` is a rolling window of recent closed outcomes (Git is the archive). Same calendar day and same `[type]`: update today's heading when the new outcome supersedes it. Lint warns `index-catalog` and `same-day-dup-log`. Consolidate may merge a false same-day heading with confirmation.
+- Root, vendor, and hooks READMEs match the write floor (five destinations including `decisions.md` and fail-closed reusable lesson), four shared hook scripts, and `/learn` as explicit capture.
 
 ## [0.2.0] - 2026-08-04
 

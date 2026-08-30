@@ -17,14 +17,14 @@ Supported harnesses: Cursor, Claude Code, Codex, OpenCode, Copilot, Gemini CLI.
 
 Memory lives at `.agents/memory/` and separates **canonical project sources** from **operational recall** and **durable recall**:
 
-| File                      | Role                                                                 |
-| ------------------------- | -------------------------------------------------------------------- |
-| `instructions.md`         | Method: how agents read and maintain the memory (load when writing). |
-| `index.md`                | Short map of entry points + recall files (not a catalog).            |
-| `current.md`              | Shared **active** state (in progress / blockers / handoff).          |
-| `active-work/<branch>.md` | Per-branch resume scratchpad (next step, validation, optional Hold). |
-| `decisions.md`            | Decision **pointers** (or local fallback when no ADR system).        |
-| `log.md`                  | Rolling **semantic** deltas (Git is the archive).                    |
+| File                      | Role                                                                                            |
+| ------------------------- | ----------------------------------------------------------------------------------------------- |
+| `instructions.md`         | Method: how agents read and maintain the memory (load when writing).                            |
+| `index.md`                | Short map of entry points + recall files (not a catalog).                                       |
+| `current.md`              | Shared **active** state (in progress / blockers / handoff).                                     |
+| `active-work/<branch>.md` | Per-branch resume scratchpad (next step, validation, optional Hold).                            |
+| `decisions.md`            | Decision **pointers** (or local fallback); live user constraints (one live entry per identity). |
+| `log.md`                  | Rolling **semantic** deltas (Git is the archive).                                               |
 
 Optional on demand: `learnings.md` or `learnings-<topic>.md` for evidenced pitfalls that have no better source. Path-scoped lessons get a `when editing:` hint on `index.md` so the next session loads that file only when those paths are in play. In-turn write-floor captures them; `/agent-memory learn` is explicit capture. Do not create parallel vision, architecture, patterns, or domains copies; link the project's own docs instead.
 
@@ -62,7 +62,7 @@ flowchart LR
   D --> E[".agents/memory/ skeleton"]
   D --> F["block in .mdc / AGENTS.md / CLAUDE.md / …"]
   D --> G["print: install hooks"]
-  C --> H["agent-memory-session.sh + agent-memory-sync.sh + consume-evidence.sh"]
+  C --> H["common + session + sync + consume-evidence"]
   E --> I["optional /agent-memory bootstrap<br/>pointers in index.md"]
 ```
 
@@ -82,14 +82,16 @@ flowchart TB
   Stop -->|all no| Skip["Write nothing"]
   Stop -->|any yes| Method["Read instructions.md"]
   Method --> Dest{"One write target"}
-  Dest -->|resume this branch| AW["1 file: active-work"]
+  Dest -->|resume rotten| AW["1 file: active-work"]
+  Dest -->|user constraint| Dec["1 file: decisions.md"]
   Dest -->|shared blocker / handoff| Cur["1 file: current.md"]
-  Dest -->|session closed| Log["1 file: log.md<br/>delete active-work on merge"]
-  Dest -->|reusable fact missing from docs| Learn["1 file: learnings or index pointer"]
+  Dest -->|closed why missing from commit| Log["1 file: log.md<br/>delete active-work on merge"]
+  Dest -->|reusable lesson (incident + paths)| Learn["1 file: learnings + index hint"]
   Work --> Idle["End of turn / compact"]
   Idle --> SyncHook["sync hook: git checkpoint<br/>merge paths into state"]
   Skip --> SyncHook
   AW --> Consume{"Meaning covers pending paths<br/>and Checkpoint matches HEAD?"}
+  Dec --> Consume
   Cur --> Consume
   Log --> Consume
   Learn --> Consume
@@ -180,17 +182,17 @@ Use `init <harness>` when you already know the agent.
 
 [`/agent-memory`](./skills/agent-memory) is **manual-only** (never auto-triggers):
 
-| Command                       | Does                                                                                           |
-| ----------------------------- | ---------------------------------------------------------------------------------------------- |
-| `/agent-memory help`          | List commands.                                                                                 |
-| `/agent-memory init`          | Create `.agents/memory/`; wire native instruction file(s).                                     |
-| `/agent-memory install hooks` | Print how to install/refresh hooks (user-run installer).                                       |
-| `/agent-memory update`        | Migrate scaffolding; never overwrites your content blindly.                                    |
-| `/agent-memory bootstrap`     | Inventory canonical sources and gaps; populate pointers.                                       |
-| `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md`.                                    |
-| `/agent-memory lint`          | Consistency, dead paths, typos, instruction contradictions, cold-session quality, hook wiring. |
-| `/agent-memory learn`         | Capture one gated learning/pitfall (`learn [>topic] <clue>`).                                  |
-| `/agent-memory consolidate`   | Promote useful facts; prune closed-session noise (guided).                                     |
+| Command                       | Does                                                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `/agent-memory help`          | List commands.                                                                                               |
+| `/agent-memory init`          | Create `.agents/memory/`; wire native instruction file(s).                                                   |
+| `/agent-memory install hooks` | Print how to install/refresh hooks (user-run installer).                                                     |
+| `/agent-memory update`        | Migrate scaffolding; never overwrites your content blindly.                                                  |
+| `/agent-memory bootstrap`     | Inventory canonical sources and gaps; populate pointers.                                                     |
+| `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md`.                                                  |
+| `/agent-memory lint`          | Consistency, dead paths, typos, instruction contradictions, cold-session quality, hook wiring.               |
+| `/agent-memory learn`         | Explicit capture of one gated learning (`learn [>topic] <clue>`). Daily path is write-floor Reusable lesson. |
+| `/agent-memory consolidate`   | Promote useful facts; prune closed-session noise (guided).                                                   |
 
 ## Hooks
 
