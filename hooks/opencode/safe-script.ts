@@ -15,11 +15,21 @@ export function isValidBindingId(id: string): boolean {
  */
 export function firstBindingId(candidates: unknown[]): string | undefined {
   for (const candidate of candidates) {
-    if (typeof candidate === 'string' && candidate.length > 0) {
-      if (isValidBindingId(candidate)) return candidate;
+    if (
+      typeof candidate === 'string' &&
+      candidate.length > 0 &&
+      isValidBindingId(candidate)
+    ) {
+      return candidate;
     }
   }
   return undefined;
+}
+
+/** True when `inner` is `outer` or a path under it (resolved, no `..` tricks). */
+function isResolvedUnder(inner: string, outer: string): boolean {
+  const prefix = outer.endsWith(path.sep) ? outer : outer + path.sep;
+  return inner === outer || inner.startsWith(prefix);
 }
 
 /**
@@ -52,17 +62,7 @@ export function assertSafeHookScript(
     return null;
   }
 
-  const cwdPrefix = cwdReal.endsWith(path.sep) ? cwdReal : cwdReal + path.sep;
-  if (hooksReal !== cwdReal && !hooksReal.startsWith(cwdPrefix)) {
-    return null;
-  }
-
-  const hooksPrefix = hooksReal.endsWith(path.sep)
-    ? hooksReal
-    : hooksReal + path.sep;
-  if (scriptReal !== hooksReal && !scriptReal.startsWith(hooksPrefix)) {
-    return null;
-  }
-
+  if (!isResolvedUnder(hooksReal, cwdReal)) return null;
+  if (!isResolvedUnder(scriptReal, hooksReal)) return null;
   return scriptReal;
 }

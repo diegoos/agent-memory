@@ -30,6 +30,7 @@ cp -R "$skeleton" .agents/memory
 printf '0.0.14\n' >.agents/memory/.version
 
 # Plant legacy 0.0.14-style active-work noise
+mkdir -p .agents/memory/active-work
 cat >.agents/memory/active-work/legacy-branch.md <<'EOF'
 # Active work — legacy-branch
 
@@ -46,17 +47,14 @@ Migrate fixture
 None
 EOF
 
-# Apply safe scaffolding refresh the way update would for templates
-cp "$skeleton/active-work/TEMPLATE.md" .agents/memory/active-work/TEMPLATE.md
+# Copy scaffold lives in the skill, not in project memory
+aw_template="$repo_root/skills/agent-memory/references/active-work-template.md"
+grep -q 'Next step' "$aw_template" || fail "skill template missing Next step"
+grep -q 'Validation' "$aw_template" || fail "skill template missing Validation"
+! grep -q 'Touched files' "$aw_template" || fail "skill template still has Touched files"
+[[ ! -e .agents/memory/active-work/TEMPLATE.md ]] ||
+  fail "init skeleton must not install active-work/TEMPLATE.md"
 printf '0.1.0\n' >.agents/memory/.version
-
-# New template contract
-grep -q 'Next step' .agents/memory/active-work/TEMPLATE.md ||
-  fail "0.1.0 template missing Next step"
-grep -q 'Validation' .agents/memory/active-work/TEMPLATE.md ||
-  fail "0.1.0 template missing Validation"
-! grep -q 'Touched files' .agents/memory/active-work/TEMPLATE.md ||
-  fail "0.1.0 template still has Touched files"
 
 # Consumer semantic content preserved until confirmed prune
 grep -q 'Touched files' .agents/memory/active-work/legacy-branch.md ||

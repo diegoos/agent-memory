@@ -79,4 +79,4 @@ For `update`, for **each** installed harness print the refresh commands from ste
 
 Hooks run a **deterministic ephemeral checkpoint** — session binding and session-cumulative touched paths in `.hook-sync-state` only. Semantic log text, active-work resume fields, decision pointers / fallbacks, learnings, and consolidation stay agent-owned (or `/agent-memory sync` / `/agent-memory consolidate`). Hooks never write Markdown and never copy project docs. See the [hooks README](https://github.com/diegoos/agent-memory/blob/0.2.0/hooks/README.md).
 
-Optional git `pre-commit` is **not** installed by this command — see the same [hooks README](https://github.com/diegoos/agent-memory/blob/0.2.0/hooks/README.md).
+Optional git `pre-commit` and `post-commit` are **not** installed by this command — see the same [hooks README](https://github.com/diegoos/agent-memory/blob/0.2.0/hooks/README.md).

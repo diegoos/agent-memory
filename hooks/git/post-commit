@@ -1,0 +1,39 @@
+#!/bin/bash
+# agent-memory git post-commit hook (host-agnostic).
+#
+# Stamps last_processed_head to the new HEAD and drops session_touched_files
+# entries that are in that commit and no longer dirty. Never writes Markdown.
+# Never blocks the commit. Fails open.
+#
+# Install (with pre-commit):
+#   cp hooks/git/pre-commit hooks/git/post-commit .git/hooks/
+#   cp hooks/agent-memory-hooks/agent-memory-*.sh .git/hooks/
+#   chmod +x .git/hooks/pre-commit .git/hooks/post-commit .git/hooks/agent-memory-*.sh
+
+# GIT_PREFIX is the subdirectory where the user ran `git commit`, not the repo
+# root — never use it as PROJECT_DIR.
+cwd=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+[ -d "$cwd/.agents/memory" ] || exit 0
+
+hook_dir=$(dirname "$0")
+_common_sh="$hook_dir/agent-memory-common.sh"
+if [ ! -f "$_common_sh" ]; then
+  printf 'agent-memory: missing agent-memory-common.sh beside post-commit; copy hooks/agent-memory-hooks/*.sh into .git/hooks/ (see hooks/README.md)\n' >&2
+  exit 0
+fi
+
+# Post-commit has no harness stdin session id — drop inherited binding env and
+# host label so a stale shell cannot rebind or apply OpenCode day-rollover rules.
+unset AGENT_MEMORY_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID AGENT_MEMORY_HOST
+export AGENT_MEMORY_HOST=git
+export AGENT_MEMORY_PROJECT_DIR="$cwd"
+export AGENT_MEMORY_EVENT=postcommit
+
+script_dir=$(CDPATH= cd -- "$hook_dir" && pwd)
+# shellcheck source=../agent-memory-hooks/agent-memory-common.sh
+. "$_common_sh"
+
+agent_memory_init_context || exit 0
+[ -d "${memory:-}" ] || exit 0
+apply_post_commit_ephemeral_state
+exit 0

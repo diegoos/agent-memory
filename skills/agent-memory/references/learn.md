@@ -1,6 +1,6 @@
 # `/agent-memory learn`
 
-Capture one gated learning or pitfall into Workspace Memory. Applies the retention gate in `instructions.md`, writes the canonical H2 entry, and links the file from `index.md` when needed. Confirm before writing. Does **not** accept `--auto`.
+Capture one gated learning or pitfall into Workspace Memory. Applies the retention gate in `instructions.md`, writes the canonical H2 entry, and links the file from `index.md` when needed. Confirm before writing. Does **not** accept `--auto`. Daily capture is write-floor **Reusable lesson** in-turn (no this command). This command is explicit capture when the user asks now.
 
 ## Syntax
 
@@ -29,11 +29,12 @@ Examples:
 
 2. **Parse input.** Extract optional `>topic` and the lesson clue. If the clue is empty, stop and show usage. Sanitize `>topic` to the slug form above and use it for the filename.
 
-3. **Apply the retention gate** (`instructions.md` → _Retention gate and lifecycle_). Walk the gate explicitly. If any step fails (not reusable, already in a canonical source, task-only state, decision not learning, unevidenced, secrets), **stop**: report which step failed and what to do instead (e.g. active-work, `decisions.md`, pointer-only, or skip). Do not write a learning that failed the gate.
+3. **Apply the retention gate** (`instructions.md` → _Retention gate and lifecycle_). Walk the gate explicitly. **Reusable lesson** is a write-floor row: require an **incident** + Git/docs omit the why + **1–3 concrete paths** (fail closed otherwise). If any step fails (not reusable, already in a canonical source, task-only state, **user constraint / product approach** → `decisions.md` write floor, no incident, no hintable paths, unevidenced, secrets), **stop**: report which step failed and what to do instead (e.g. active-work, write-floor `decisions.md` + supersede, skip). Do not write a learning that failed the gate. Already in README/spec/ADR → skip with an explicit report (pointer-only at most).
 
 4. **Choose the target file.**
    - With `>topic`: the sanitized `learnings-<topic>.md` (create if missing).
-   - Without topic: default `learnings.md`. If the clue explicitly names an existing split's slug, or exactly one existing split unambiguously owns the theme, propose that file in the confirmation diff. If more than one split could own it, **stop** and ask the user for `>topic` — do not guess.
+   - Without topic, **path-scoped** (Evidence / clue names 1–3 repo-relative paths): if exactly one existing split owns the theme, use it. Else create `learnings-<topic>.md` from a **literal path segment** in those paths (e.g. `auth` from `src/auth/callback.ts`). If two splits could own it, or no literal segment is usable, use `learnings.md` with **file-literal** hints — do not guess; never an overbroad glob.
+   - Without topic and **cross-cutting** (no path-scoped Evidence): default `learnings.md`. If the clue explicitly names an existing split's slug, or exactly one existing split unambiguously owns the theme, propose that file in the confirmation diff. If more than one split could own it, **stop** and ask the user for `>topic` — do not guess.
    - Never write under `domains/*` or `features/*`.
 
 5. **Dedupe.** Read the target file first. Skip and report the existing entry — without writing — when the **Duplicate rule** (step 6) matches: same normalized topic + equivalent Insight in an H2 entry, or a legacy one-liner covering the same insight. When a legacy one-liner duplicates the lesson, offer to convert it to H2 in the same confirmed diff instead of appending. **On any skip** (dedupe or gate failure): print a clear report naming the rule/step, the matching existing heading or reason, and what to do instead — do **not** silently no-op. Optionally add one Progress bullet in the branch `active-work` (host may prompt — outside learn Boundary) such as `learn skipped: dup of "[topic]"` so the hot path records the attempt.
@@ -48,17 +49,20 @@ Examples:
    - Use when: trigger
    - Verified: YYYY-MM-DD
    - Invalidate when: condition
+   - Relates: caused_by [target](path)
    ```
 
    Use today's date for the heading and `Verified`. Choose `learning` or `pitfall`. When the fact belongs in official docs, add **both** `- pending-doc` and `- Invalidate when: <concrete condition naming the canonical doc/section>` (not `pending-doc` alone). Code/config inferences need evidence + date.
+
+   **`Relates:`** — canonical `- Relates: <verb> [target](path)`. **Write it** when Evidence is already a recall file under `.agents/memory/` (`decisions.md`, `log.md`, `learnings.md` / `learnings-*.md`). Otherwise omit unless a typed link would change the next cold read. Closed verbs only: `supersedes`, `superseded_by`, `caused_by`, `contradicts`, `see` (`instructions.md` → _How to write_). One verb per line. Never `relates_to` or component `depends_on`. Do not add YAML frontmatter. Aliases (`Caused by:`, `- caused_by:`) stay valid on decisions/log; new learnings use `- Relates:` only. Lint flags `learning-missing-relates` when Evidence names a recall file and the H2 entry has no `- Relates:` line.
 
    **Legacy one-liner** (pre-H2 installs): `- [YYYY-MM-DD] [learning|pitfall] [topic] insight — evidence: …; use when: …; verified: …` — still valid; migrate to H2 only when editing that entry or when consolidate moves it.
 
    **Duplicate rule** — never record the same lesson twice across formats: skip a new entry when an existing H2 has the same normalized topic and equivalent Insight, or when a legacy one-liner covers the same insight (same evidence/use-when, minor wording aside). Applies to in-turn writes, `/agent-memory learn`, and consolidate promotions.
 
-   **Topic splits** — use `learnings.md` for cross-cutting lessons. When a theme has several entries (or lint warns `learnings.md` > 200 lines), split into `learnings-<topic>.md` where `<topic>` is a lowercase slug `[a-z0-9]+(-[a-z0-9]+)*`. Do not create `domains/*` or `features/*`. Link every learnings file from `index.md`; any learnings link may carry a `when editing:` hint (`instructions.md` → _Always load_). Consolidate may propose split or merge (convert moved entries to H2); never auto-split without confirmation.
+   **Topic splits** — use `learnings.md` for cross-cutting lessons. Path-scoped write-floor capture may create `learnings-<topic>.md` on the first lesson (literal path segment; `references/learn.md` step 4). When a theme later has several entries (or lint warns `learnings.md` > 200 lines), consolidate may split; never auto-split a large file without confirmation. Do not create `domains/*` or `features/*`. Link every learnings file from `index.md`; path-scoped links **must** carry a `when editing:` hint (`instructions.md` → _Always load_).
 
-7. **Draft the `index.md` line.** When the file is new or unlisted, add the link. When the file is already listed **without** a `when editing:` hint and Evidence lists **1–3 concrete repo-relative paths** (files or narrow globs with a literal segment — never denylist/overbroad forms), **propose** updating that line in place with `when editing: <globs>; <short description>` (never a second entry; never invent globs). Path-specific topic splits should usually get a hint; cross-cutting `learnings.md` may still get one when Evidence is path-obvious. Hints follow `instructions.md` → _Always load_.
+7. **Draft the `index.md` line.** When the file is new or unlisted, add the link. **Path-scoped** (write-floor Reusable lesson, or Evidence lists 1–3 concrete repo-relative paths): the line **must** include `when editing: <globs>; <short description>` in this same event (never a second index entry; never invent globs; never denylist/overbroad forms). Without a usable hint, **stop** — do not write a hidden lesson. When the file is already listed **without** a `when editing:` hint and Evidence lists 1–3 concrete paths (files or narrow globs with a literal segment), **propose** updating that line in place. Path-specific topic splits should get a hint; cross-cutting `learnings.md` may omit one. Hints follow `instructions.md` → _Always load_.
 
 8. **Show the proposal** (entry + `index.md` change if any) as a diff. Confirm: approve / skip / abort. On skip or abort, write nothing — still print the skip report from step 5 if dedupe/gate applied earlier.
 
@@ -68,6 +72,6 @@ Examples:
 
 ## Notes
 
-- Align with writing guidance in `instructions.md` → _How to write_: generalize; prefer correct patterns over “don’t” lists. Canonical H2 / legacy / duplicate / topic-split rules live in this file (step 6).
-- Primary write in-turn may still append learnings without this command; `learn` is the explicit capture path when the user wants a gated write now.
+- Align with writing guidance in `instructions.md` → _How to write_: generalize; prefer correct patterns over “don’t” lists. Canonical H2 / legacy / duplicate / topic-split / `Relates:` (required when Evidence is a recall file) rules live in this file (step 6). Lint flags `learning-missing-relates` for that gap.
+- Primary write in-turn is write-floor **Reusable lesson** (incident + paths + index hint) without this command; `learn` is the explicit capture path when the user wants a gated write now. Creating or updating a path-scoped learning **must** also update the matching `index.md` `when editing:` hint in the same event (`instructions.md` one-file exception; same contract as step 7). That is not dual-write of active-work+log.
 - `/agent-memory consolidate` remains the path for promoting closed-session log noise into learnings and for proposing topic splits/merges.

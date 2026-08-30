@@ -32,12 +32,16 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
 
    # Recall / legacy files present but not linked from index.md
    for f in decisions.md log.md learnings.md \
-            vision.md architecture.md patterns.md mistakes.md known-issues.md; do
+            vision.md architecture.md patterns.md mistakes.md known-issues.md project.md; do
      [ -f "$f" ] || continue
      grep -q "$(basename "$f")" index.md || echo "orphan: $f"
    done
    find . -maxdepth 1 -name 'learnings-*.md' 2>/dev/null | while read -r f; do
      grep -q "$(basename "$f")" index.md || echo "orphan: $f"
+   done
+   for d in architecture domains components features episodes changes timeline; do
+     [ -d "$d" ] || continue
+     echo "graph-tree: $d/ — do not scaffold graph folders; pointer in index.md instead"
    done
    for d in domains features; do
      [ -d "$d" ] || continue
@@ -48,13 +52,37 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
 
    # Required headings for resume (agent-owned) — core only
    grep -q '^## In progress' current.md || echo "missing-heading: current.md ## In progress"
+   # In progress cites a missing active-work file (do not require listing every local active-work)
+   awk '
+     /^## In progress/ { in_ip=1; next }
+     /^## / { in_ip=0 }
+     in_ip && /^- / && $0 !~ /^- _none_$/ { print }
+   ' current.md | while IFS= read -r bullet; do
+     printf '%s\n' "$bullet" | grep -oE 'active-work/[A-Za-z0-9._-]+(\.md)?' | while IFS= read -r p; do
+       name=$(basename "$p" .md)
+       [ "$name" = "TEMPLATE" ] && continue
+       test -e "active-work/${name}.md" || echo "current-stale-branch: current.md In progress -> active-work/${name}.md"
+     done
+   done
+   for h in '## Blockers / attention' '## Handoff'; do
+     grep -q "^${h}" current.md || continue
+     awk -v heading="$h" '
+       $0 == heading { in_sec=1; next }
+       /^## / { in_sec=0 }
+       in_sec && /^- / && $0 !~ /^- _none_$/ { has=1 }
+       END {
+         if (!has) print "empty-optional-section: current.md " heading " — omit empty optional sections (add only with content)"
+       }
+     ' current.md
+   done
+   [ -f active-work/TEMPLATE.md ] && echo "template-in-memory: active-work/TEMPLATE.md — delete; copy scaffold is the skill references/active-work-template.md"
    find active-work -name '*.md' ! -name 'TEMPLATE.md' 2>/dev/null | while read -r f; do
-     for h in '## Task' '## Progress' '## Next step' '## Validation'; do
+     for h in '## Task' '## Next step' '## Validation'; do
        grep -q "^${h}" "$f" || echo "missing-heading: $f $h"
      done
      # Optional sections: validate shape when present; empty (_none_ only) → suggest strip
-     for h in '## Assumptions / open questions' '## Blockers' \
-              '## Rejected approaches' '## References'; do
+     for h in '## Progress' '## Assumptions / open questions' '## Blockers' \
+              '## Rejected approaches' '## References' '## Hold'; do
        grep -q "^${h}" "$f" || continue
        awk -v heading="$h" '
          $0 == heading { in_sec=1; next }
@@ -83,6 +111,15 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
        }
      ' "$f"
      grep -q '^## Touched files' "$f" && echo "legacy-touched-files: $f"
+     awk '
+       /^## Hold$/ { in_h=1; next }
+       /^## / { in_h=0 }
+       in_h && /^- / && $0 !~ /^- _none_$/ { n++ }
+       END {
+         if (n > 3)
+           print "hold-overflow: '"$f"' — Hold max 3 bullets (branch scratch; not learnings)"
+       }
+     ' "$f"
    done
 
    # Session headings in log.md (ignore fenced examples, title, and Format docs)
@@ -96,6 +133,137 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
        print "bad-log-heading: " $0
      }
    ' log.md
+
+   # Same calendar day + same [type] more than once (stale inventory left behind)
+   awk '
+     /^```/ { fence = !fence; next }
+     fence { next }
+     /^## \[[0-9]{4}-[0-9]{2}-[0-9]{2}\]/ {
+       date = substr($0, 5, 10)
+       type = "unknown"
+       if ($0 ~ /\[feat\]/) type = "feat"
+       else if ($0 ~ /\[fix\]/) type = "fix"
+       else if ($0 ~ /\[chore\]/) type = "chore"
+       else if ($0 ~ /\[review\]/) type = "review"
+       else if ($0 ~ /\[docs\]/) type = "docs"
+       else if ($0 ~ /\[refactor\]/) type = "refactor"
+       else if ($0 ~ /\[test\]/) type = "test"
+       else if ($0 ~ /\[perf\]/) type = "perf"
+       else if ($0 ~ /\[security\]/) type = "security"
+       else if ($0 ~ /\[release\]/) type = "release"
+       else if ($0 ~ /\[ingest\]/) type = "ingest"
+       else if ($0 ~ /\[improve\]/) type = "improve"
+       key = date " " type
+       n[key]++
+     }
+     END {
+       for (k in n) if (n[k] > 1)
+         print "same-day-dup-log: " k " has " n[k] " headings — update today'\''s heading in place when the new outcome supersedes"
+     }
+   ' log.md
+
+   # Canonical source catalog (index is a short map, not a bibliography)
+   awk '
+     /^## Canonical project sources/ { in_src = 1; next }
+     /^## / { in_src = 0 }
+     in_src && /^- / && $0 !~ /_None yet/ { n++ }
+     END {
+       if (n > 8)
+         print "index-catalog: " n " canonical source bullets — keep a short map; extra docs stay in Git or when editing:"
+     }
+   ' index.md
+
+   # Typed Relates: verbs (closed list — unknown-relates-verb) + dead targets (relates-missing)
+   grep -rnE --include='*.md' \
+     '[[:space:]]*- Relates:|[[:space:]]*- caused_by:|^Caused by:|^Contradicts:|^See:|^Supersedes:|^Superseded by:' . 2>/dev/null |
+   while IFS= read -r line; do
+     case "$line" in
+       ./instructions.md:*) continue ;;
+     esac
+     path=$(printf '%s\n' "$line" | cut -d: -f1)
+     body=$(printf '%s\n' "$line" | cut -d: -f3-)
+     case "$path" in
+       ./decisions.md) ;;
+       *)
+         printf '%s' "$body" | grep -qE '[[:space:]]*- Relates:|[[:space:]]*- caused_by:' || continue
+         ;;
+     esac
+     verb=""
+     if printf '%s' "$body" | grep -qE '[[:space:]]*- Relates:'; then
+       verb=$(printf '%s\n' "$body" | sed -E 's/.*- Relates:[[:space:]]*//; s/[[:space:]].*$//; s/\[.*//; s/:.*//')
+     elif printf '%s' "$body" | grep -qE '[[:space:]]*- caused_by:'; then
+       verb=caused_by
+     elif printf '%s' "$body" | grep -qE '^Caused by:'; then
+       verb=caused_by
+     elif printf '%s' "$body" | grep -qE '^Contradicts:'; then
+       verb=contradicts
+     elif printf '%s' "$body" | grep -qE '^See:'; then
+       verb=see
+     elif printf '%s' "$body" | grep -qE '^Supersedes:'; then
+       verb=supersedes
+     elif printf '%s' "$body" | grep -qE '^Superseded by:'; then
+       verb=superseded_by
+     fi
+     printf '%s' "$verb" | grep -q '<' && continue
+     [ -n "$verb" ] || continue
+     printf '%s' "$verb" | grep -qE '^(supersedes|superseded_by|caused_by|contradicts|see)$' \
+       || echo "unknown-relates-verb: $line"
+     printf '%s' "$body" | grep -oE '\[[^]]+\]\([^)]+\)' | while IFS= read -r md; do
+       url=$(printf '%s' "$md" | sed -E 's/^[^]]*\]\(//; s/\)$//')
+       case "$url" in
+         http*|https*|'#'*) continue ;;
+       esac
+       file_part=$(printf '%s' "$url" | sed 's/#.*//')
+       [ -n "$file_part" ] || continue
+       printf '%s' "$file_part" | grep -q '<' && continue
+       target="$(dirname "$path")/$file_part"
+       if [ ! -e "$target" ]; then
+         echo "relates-missing: $line -> $file_part"
+         continue
+       fi
+       # If the markdown link has #fragment, require it in the target (heading or fragment string)
+       case "$url" in
+         *'#'*) ;;
+         *) continue ;;
+       esac
+       frag=$(printf '%s' "$url" | sed 's/^[^#]*#//')
+       [ -n "$frag" ] || continue
+       printf '%s' "$frag" | grep -q '<' && continue
+       grep -qF "$frag" "$target" && continue
+       slug_words=$(printf '%s' "$frag" | tr '-' ' ')
+       grep -qiF "$slug_words" "$target" || echo "relates-missing: $line -> ${file_part}#${frag}"
+     done
+   done
+
+   # H2 learning/pitfall: Evidence names a recall file but no Relates (learning-missing-relates)
+   find . -maxdepth 1 \( -name 'learnings.md' -o -name 'learnings-*.md' \) 2>/dev/null | while read -r f; do
+     awk -v file="$f" '
+       /^```/ { fence = !fence; next }
+       fence { next }
+       /^## \[[0-9]{4}-[0-9]{2}-[0-9]{2}\] \[(learning|pitfall)\]/ {
+         flush()
+         heading = $0
+         in_h2 = 1
+         evidence_recall = 0
+         has_relates = 0
+         next
+       }
+       /^## / {
+         flush()
+         in_h2 = 0
+         next
+       }
+       in_h2 && /^- Evidence:/ && /(^|[^A-Za-z0-9_-])(decisions\.md|log\.md|learnings\.md|learnings-[A-Za-z0-9._-]+\.md)/ {
+         evidence_recall = 1
+       }
+       in_h2 && /^- Relates:/ { has_relates = 1 }
+       END { flush() }
+       function flush() {
+         if (in_h2 && evidence_recall && !has_relates)
+           print "learning-missing-relates: " file " " heading
+       }
+     ' "$f"
+   done
 
    # Empty closed-session headings (no bullets under heading)
    awk '
@@ -139,7 +307,8 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
    **Stale resume / evidence ahead of memory (warnings).** From the **project root**:
 
    ```bash
-   branch=$(git branch --show-current 2>/dev/null | tr -c 'A-Za-z0-9._-' '-')
+   branch=$(git branch --show-current 2>/dev/null || true)
+   branch=$(printf '%s' "$branch" | tr -c 'A-Za-z0-9._-' '-')
    [ -n "$branch" ] || branch=local
    aw=".agents/memory/active-work/${branch}.md"
    head_full=$(git rev-parse HEAD 2>/dev/null || true)
@@ -153,7 +322,7 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
        echo "stale-resume: $aw Checkpoint missing, placeholder, or non-hex (HEAD $head_short)"
        ck_sha=""
      else
-       ck_full=$(git rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)
+       ck_full=$(git rev-parse --verify "${ck_sha}^{commit}" 2>/dev/null || true)
        if [ -z "$ck_full" ] || [ "$ck_full" != "$head_full" ]; then
          echo "stale-resume: $aw Checkpoint@$ck_sha != HEAD@$head_short — suggest /agent-memory sync"
        fi
@@ -170,7 +339,7 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
          dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
          ck_fresh=false
          if [ -n "$ck_sha" ] && [ -n "$head_full" ]; then
-           ck_full=$(git rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)
+           ck_full=$(git rev-parse --verify "${ck_sha}^{commit}" 2>/dev/null || true)
            [ -n "$ck_full" ] && [ "$ck_full" = "$head_full" ] && ck_fresh=true
          fi
          if $ck_fresh && [ "${dirty:-1}" -eq 0 ]; then
@@ -254,36 +423,45 @@ Do **not** invent warnings for healthy bootstrap output (open `pending-doc` whos
    - `decisions.md` or any `learnings.md` / `learnings-*.md` > 200 → suggest topic splits or consolidate merge (do not auto-split).
 
 4. **Semantic checks (judgment — report as warnings to review).** These need reading, not grepping; surface them for the user to confirm rather than auto-fixing:
-   - **Stale `current.md`** — does _In progress_ still match open active-work?
-   - **Missing resume quality** — active-work without a concrete _Next step_ or _Validation_ when _Task_ is non-placeholder. Optional sections (`Assumptions / open questions`, `Blockers`, `Rejected approaches`, `References`) are not required; when evidence exists and the section is missing, suggest adding it (do not invent content).
+   - **Stale `current.md`** — does _In progress_ still match open active-work? Deterministic `current-stale-branch:` when an In progress bullet links or names `active-work/FOO.md` (or `active-work/FOO`) and that file is missing. Do not warn merely because a local active-work file is unlisted (do not mirror this branch's Task).
+   - **Missing resume quality** — active-work without a concrete _Next step_ or _Validation_ when _Task_ is non-placeholder. Optional sections (`Assumptions / open questions`, `Blockers`, `Rejected approaches`, `References`, `Hold`) are not required; when evidence exists and the section is missing, suggest adding it (do not invent content).
+   - **Hold overflow (`hold-overflow`)** — more than three content bullets under `## Hold` (deterministic awk above). Trim to three, or promote a durable fact with `/agent-memory learn` / consolidate. Hold is branch scratch, not `learnings.md`.
    - **Stale Next step (`stale-next-step`)** — an action bullet under _Next step_ cites `/agent-memory …` (especially the command just run); replace with a product action and suggest sync. Deterministic check matches `-` bullets only (TEMPLATE/section blurbs that mention the ban do not count). Confirm in judgment when the command already completed this session.
    - **Duplicated Progress (`dup-progress-log`)** — Progress bullets that merely replay the current `log.md` session (bootstrap/init copy); prefer a one-line pointer to log/learnings.
    - **Hypothesis as fact** — assumptions phrased as certainties outside _Assumptions / open questions_.
    - **Duplication** — paraphrased facts also in AGENTS/README/docs/ADR (exact long-line overlap is handled deterministically above; ignore instructions↔vendor dogfood mirrors).
    - **Local decision with ADR** — local fallback body that should be a pointer.
    - **Superseded without link** — `Status: superseded` without `Superseded by:`, or a newer decision that should mark an older one superseded.
-   - **Learning/pitfall without evidence / use trigger / verified** — missing fields on H2 entries or legacy one-liners.
+   - **Unknown Relates verb (`unknown-relates-verb`)** — `- Relates:` / `- caused_by:` / decisions aliases (`Caused by:`, `Contradicts:`, `See:`, `Supersedes:`, `Superseded by:`) use a verb outside `supersedes` / `superseded_by` / `caused_by` / `contradicts` / `see` (deterministic grep above). Suggest replacing the verb; do not invent a new type.
+   - **Relates missing target (`relates-missing`)** — typed-edge markdown link whose file does not exist, or whose `#fragment` is missing from the target (deterministic grep above; skip placeholders with `<`, http(s), empty `#`). Suggest retarget, drop the line, or consolidate — not `lint --fix`.
+   - **Learning missing Relates (`learning-missing-relates`)** — H2 learning/pitfall whose Evidence names a recall file (`decisions.md`, `log.md`, `learnings.md`, `learnings-*.md`) and the entry has no `- Relates:` line (deterministic awk above). Suggest adding one `- Relates:` (confirm). Prefer that confirm edit over consolidate.
+   - **Learning missing evidence (`learning-missing-evidence`)** — H2 learning/pitfall without an Evidence bullet (or legacy one-liner missing evidence). Suggest `/agent-memory learn` rewrite or consolidate Discard/pointer — not `lint --fix`.
+   - **Learning/pitfall without use trigger / verified** — missing Use when or Verified on H2 entries or legacy one-liners.
+   - **Contradicts unlinked (`contradicts-unlinked`)** — two Insights (or a decision pair) that conflict with no `contradicts` / `Contradicts:` edge. Suggest a typed line or consolidate Contradiction — do not auto-merge.
+   - **Supersede cycle (`supersede-cycle`)** — A supersedes B and B supersedes A. Break the cycle; keep the live successor.
    - **Legacy learning one-liner** — `- [YYYY-MM-DD] [learning|pitfall] …` without an H2 heading; suggest migrating to the H2 form when editing (do not auto-rewrite).
    - **Invalid or stale `when editing:`** — per the contract in `instructions.md` → _Always load_: glob that matches no repo path, non-repo-root-relative glob, or a topic split with no hint when evidence paths are obvious. Cross-cutting `learnings.md` without a hint is fine.
    - **Overbroad `when editing:`** — reject **any** near-always-on glob in the hint list (companions do not redeem it). Normalize first: run **to fixpoint** — repeat until stable: strip a leading `./`, strip a leading `/`, and collapse `//` empty segments (so `/./hooks/**`, `/.//hooks/**`, `.//./hooks/**`, `././hooks/**`, `./hooks/**`, `.//hooks/**`, and `/hooks/**` all become `hooks/**`); reject any glob that still starts with `/` after normalize; then iteratively collapse `**/**` → `**`. Then reject (1) **structural** — two or more slash-separated segments that are each only `*`, `?*`, or `**` (e.g. `*/*`, `*/*/*`, `*/*/*/*`, `?*/*`, `?*/*/*`, `*/*/**`); also any glob with **no literal path segment** whose parts are only pure wildcards and/or `*.*` / `*.<ext>` at any depth (e.g. `*/*.*`, `*/*.<ext>`, `*/*/*.ts`, `*/*/*/*.json`, `?*/*/*.sh`, `*/*/*.*`); (2) **any** `**/*.<ext>` or `**/*.*`; (3) **any** `<top-level-dir>/**` and near-equivalents (`dir/**/*`, `dir/*/**`, `**/dir/**`) including `hooks/**`, `tests/**`, `docs/**`, `.agents/**`; (4) **explicit denylist** — including `**`, `**/*`, `**/**`, `**/**/*`, `*/**`, `*/*`, `?*/*`, `*/*/*`, `*/*/**`, `**/*/**`, `**/*/*`, `*`, `*.*`, `*.md`, `**/*.md`, `**/*.*`, `*/*.*`, `**/*.ts`, `**/*.tsx`, `**/*.js`, `**/*.jsx`, `**/*.py`, `**/**/*.ts`, `**/*/*.ts`, `*/**/*.ts`, `src/**`, `src/**/*`, `src/**/**`, `lib/**`, `app/**`, or `packages/**`. Prefer path-scoped globs with evidence.
    - **Stale `pending-doc` learnings (`pending-doc-met` only)** — `Invalidate when` already true, or canonical doc now covers the Insight; consolidate should promote/remove. **Never** warn on open valid `pending-doc` (bootstrap/learn backlog waiting on external docs).
    - **`evidence-dirty-requeue` escalate** — when step 2 emitted `evidence-dirty-requeue` and Task / Progress / current-session `log.md` do **not** cover the pending paths, re-report as **warning** `evidence-pending` (need sync meaning). When they do cover, leave it as **info** only — no Fix offer.
-   - **Contradictions** — memory vs canonical source or code.
+   - **Contradictions** — memory vs canonical source or code (distinct from `contradicts-unlinked` inside recall).
    - **Legacy path-only bullets / empty headings / Touched files** — candidates for consolidate.
-   - **Legacy mirrors** — `vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*` with bodies that should be pointers in `index.md` / `decisions.md` / `learnings.md`.
+   - **Legacy mirrors** — `vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*`, plus graph-tree folders (`architecture/`, `components/`, `episodes/`, `changes/`, `timeline/`, `project.md`) with bodies that should be pointers in `index.md` / `decisions.md` / `learnings.md`.
    - **Mixed log heading** — bullets under a `[type]` / outcome that clearly belong to another concern (e.g. consolidate notes under `[docs] bootstrap`); suggest split heading on next sync.
    - **Malformed log heading shape** — session line uses `type | title` pipes or unbracketed type instead of `## [YYYY-MM-DD] [session-id?] [type] outcome`; suggest sync rewrite.
    - **Empty log after scaffold (`empty-log` / `empty-log-after-scaffold`)** — zero `## [date]` headings while learnings/index show bootstrap recall; suggest restoring a short founding session heading (consolidate must not empty current session).
    - **Stale log placeholder (`log-placeholder-stale`)** — `_No entries yet._` still present after a real session heading exists (deterministic grep above).
+   - **Same-day duplicate log (`same-day-dup-log`)** — two-plus headings share a date and `[type]`; rewrite today's heading when the new outcome supersedes (deterministic awk above).
+   - **Index catalog (`index-catalog`)** — more than eight `_Canonical project sources_` bullets; trim to entry points a cold session needs (deterministic awk above).
    - **Hooks/state blocker contradiction (`blocker-hooks-contradiction`)** — memory claims hooks or `.hook-sync-state` absent while state/carrier exists (deterministic above); suggest sync.
    - **Bloat** — always-loaded files grown long or verbose entries.
    - **Quality smoke (optional checklist)** — with only memory open, can you answer: (1) next concrete step, (2) what must not break, (3) where to edit, (4) how to prove it worked?
 
 5. **Report.** Group findings as **errors**, **warnings**, and **info** (see Severity above). For each, name the file and the problem. Omit empty bands. Do not promote info into warnings. Do not list open valid `pending-doc` anywhere in the report.
 
-6. **Fix offer.** Offer fixes **only** for errors and warnings — never for info. Safe issues (e.g. remove a dead link, add an orphan recall file to `index.md`) may be applied with confirmation when they edit user content. For stale `current.md` / active-work / `log.md` / `stale-next-step` / uncovered `evidence-pending`, suggest `/agent-memory sync` (or a direct Next-step edit) rather than inventing product work. For `empty-log` / `empty-log-after-scaffold`, offer to restore one short founding session heading (do not re-run consolidate Discard). For `evidence-stale-uncleared` only, offer to run `agent-memory-consume-evidence.sh`. Do **not** offer consume or sync solely for `evidence-dirty-requeue` info. For `pending-doc-met` / promotion/pruning / legacy mirrors / path-only bullets / learnings split-merge, suggest `/agent-memory consolidate` — **do not** do that work in `lint --fix`. For capturing a new gated learning now, suggest `/agent-memory learn`.
+6. **Fix offer.** Offer fixes **only** for errors and warnings — never for info. Safe issues (e.g. remove a dead link, add an orphan recall file to `index.md`) may be applied with confirmation when they edit user content. For stale `current.md` / `current-stale-branch` / active-work / `log.md` / `stale-next-step` / uncovered `evidence-pending`, suggest `/agent-memory sync` or drop the stale In progress bullet rather than inventing product work. For `hold-overflow`, offer to keep at most 3 Hold bullets and promote or drop the rest (confirm; not `lint --fix` silent rewrite). For `same-day-dup-log`, offer to merge into one heading (rewrite the live outcome; drop false earlier bullets). For `index-catalog`, offer to drop sources a cold session can skip (keep agent file + README + docs/ADR index). For `empty-log` / `empty-log-after-scaffold`, offer to restore one short founding session heading (do not re-run consolidate Discard). For `evidence-stale-uncleared` only, offer to run `agent-memory-consume-evidence.sh`. Do **not** offer consume or sync solely for `evidence-dirty-requeue` info. For `unknown-relates-verb`, offer to replace the verb with the closed list (confirm). For `learning-missing-relates`, offer to add one `- Relates:` line (confirm); prefer that confirm edit over consolidate — do not invent this in `lint --fix` as a silent rewrite. For `relates-missing` / `learning-missing-evidence` / `contradicts-unlinked` / `supersede-cycle` / `pending-doc-met` / promotion/pruning / legacy mirrors / path-only bullets / learnings split-merge / rolling closed log, suggest `/agent-memory consolidate` — **do not** do that work in `lint --fix`. For capturing a new gated learning now, suggest `/agent-memory learn`.
 
-   `--fix` — with this flag, also offer to **delete stale per-branch `active-work/<branch>.md` files** (files whose branch no longer exists) and, for **delegation-canary** findings (step 2), offer to remove the redundant block from `CLAUDE.md`/`GEMINI.md` that delegate via `@AGENTS.md` (each removal sensitive — show diff, confirm). Each deletion is still confirmed one by one (it removes a file, so it is sensitive) unless combined with an explicit "delete all stale" approval. `--fix` never deletes anything other than stale `active-work` files, never touches `TEMPLATE.md`, never deletes legacy mirror files. Delegation-canary block removal edits only the agent-memory delimiters in `CLAUDE.md`/`GEMINI.md` (with confirmation).
+   `--fix` — with this flag, also offer to **delete stale per-branch `active-work/<branch>.md` files** (files whose branch no longer exists), **delete leftover `active-work/TEMPLATE.md`** (`template-in-memory`; scaffold SoT is this skill's `references/active-work-template.md`), and, for **delegation-canary** findings (step 2), offer to remove the redundant block from `CLAUDE.md`/`GEMINI.md` that delegate via `@AGENTS.md` (each stale-branch and delegation removal sensitive — show diff, confirm). `TEMPLATE.md` deletion is safe. `--fix` never deletes anything other than those stale `active-work` files, leftover `TEMPLATE.md`, and approved delegation-canary blocks. Delegation-canary block removal edits only the agent-memory delimiters in `CLAUDE.md`/`GEMINI.md` (with confirmation).
 
 ## Notes
 

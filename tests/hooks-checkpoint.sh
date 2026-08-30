@@ -25,6 +25,7 @@ git config user.name test
 
 mkdir -p .agents
 cp -R "$skeleton" .agents/memory
+mkdir -p .agents/memory/active-work
 cp "$hook_dir"/agent-memory-*.sh .
 chmod +x agent-memory-*.sh
 
@@ -529,6 +530,9 @@ Checkpoint: 2026-07-01 @ ${old_sha}
 
 ## Task
 - status test
+
+## Next step
+- ship write floor
 EOF
 md_snap=$(md_checksum)
 {
@@ -552,8 +556,80 @@ grep -q 'Action:' "$TMP/session-status.json" ||
   fail "session Status should include Action guidance"
 grep -qE 'primary-write|Checkpoint stale' "$TMP/session-status.json" ||
   fail "session Action should mention primary-write or Checkpoint stale"
+grep -q 'Next=ship write floor' "$TMP/session-status.json" ||
+  fail "session Status should surface active-work Next step"
 grep -qE 'bash [^;]*agent-memory-consume-evidence\.sh' "$TMP/session-status.json" ||
   fail "session Action should cite bash path to consume-evidence when paths pending"
+
+# Status load: from index when-editing vs pending path (hooks still do not write Markdown)
+printf '# Learnings\n' >.agents/memory/learnings.md
+printf '\n- [learnings.md](./learnings.md) — when editing: later.txt; spawn path.\n' \
+  >>.agents/memory/index.md
+md_load=$(md_checksum)
+printf '{"session_id":"s-status","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  ./agent-memory-session.sh >"$TMP/session-load.json"
+grep -q 'load:learnings.md' "$TMP/session-load.json" ||
+  fail "session Status should name load:learnings.md when a hint glob matches a pending path"
+grep -q 'Read load:learnings.md' "$TMP/session-load.json" ||
+  fail "session Action should tell the agent to Read load files"
+[[ "$(md_checksum)" == "$md_load" ]] ||
+  fail "hint matching must not alter Markdown"
+
+# Status load: decisions.md when the index hint matches the same pending path
+perl -i -pe 's{^- \[decisions\.md\]\(\./decisions\.md\)$}{- [decisions.md](./decisions.md) — when editing: later.txt; approach.}' \
+  .agents/memory/index.md
+md_dec=$(md_checksum)
+printf '{"session_id":"s-status","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  ./agent-memory-session.sh >"$TMP/session-load-decisions.json"
+grep -q 'load:decisions.md' "$TMP/session-load-decisions.json" ||
+  fail "session Status should name load:decisions.md when a hint glob matches a pending path"
+grep -qE 'load:[^;]*learnings.md' "$TMP/session-load-decisions.json" ||
+  fail "decisions hint must not drop the matching learnings load"
+[[ "$(md_checksum)" == "$md_dec" ]] ||
+  fail "decisions hint matching must not alter Markdown"
+
+# Status load: path-scoped learnings split when the index hint matches
+printf '# Auth learnings\n' >.agents/memory/learnings-auth.md
+printf '\n- [learnings-auth.md](./learnings-auth.md) — when editing: later.txt; auth rollback.\n' \
+  >>.agents/memory/index.md
+md_auth=$(md_checksum)
+printf '{"session_id":"s-status","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  ./agent-memory-session.sh >"$TMP/session-load-auth.json"
+grep -qE 'load:[^;]*learnings-auth.md' "$TMP/session-load-auth.json" ||
+  fail "session Status should name load:learnings-auth.md when a topic-split hint matches a pending path"
+grep -qE 'load:[^;]*learnings.md' "$TMP/session-load-auth.json" ||
+  fail "auth split hint must not drop the matching learnings.md load"
+[[ "$(md_checksum)" == "$md_auth" ]] ||
+  fail "auth split hint matching must not alter Markdown"
+
+# Matching short SHA must report fresh (Git 2.55 must not treat --end-of-options as a rev)
+fresh_sha=$(git rev-parse --short HEAD)
+cat >.agents/memory/active-work/feat-status.md <<EOF
+# Active Work — Branch: \`feat-status\`
+
+Checkpoint: 2026-08-24 @ ${fresh_sha}
+
+## Task
+- status test
+EOF
+printf '{"session_id":"s-status","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  ./agent-memory-session.sh >"$TMP/session-fresh.json"
+grep -q '(fresh)' "$TMP/session-fresh.json" ||
+  fail "session Status should report Checkpoint fresh when SHA matches HEAD"
+! grep -q 'behind HEAD' "$TMP/session-fresh.json" ||
+  fail "matching Checkpoint must not report behind HEAD"
+cat >.agents/memory/active-work/feat-status.md <<EOF
+# Active Work — Branch: \`feat-status\`
+
+Checkpoint: 2026-07-01 @ ${old_sha}
+
+## Task
+- status test
+EOF
 
 # --- consume-evidence clears session_touched_files only ---
 printf '%s\n' \
@@ -1027,7 +1103,8 @@ md_snap=$(md_checksum)
 
 # --- pre-commit reminder when Checkpoint behind HEAD ---
 cp "$repo_root/hooks/git/pre-commit" .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+cp "$repo_root/hooks/git/post-commit" .git/hooks/post-commit
+chmod +x .git/hooks/pre-commit .git/hooks/post-commit
 cp ./agent-memory-*.sh .git/hooks/
 printf 'remind\n' >remind.txt
 git add remind.txt
@@ -1092,6 +1169,62 @@ out2=$(git commit -q -m remind2 2>&1 || true)
 # Session + pre-commit must not alter Markdown (active-work was written by the test)
 md_after=$(md_checksum)
 [[ "$md_snap" == "$md_after" ]] || fail "session/pre-commit must not modify Markdown"
+
+# --- post-commit: stamp HEAD; drop committed-and-clean; keep dirty ---
+today=$(date +%Y-%m-%d)
+printf 'drop-me\n' >pc-drop.txt
+printf 'keep-me\n' >pc-keep.txt
+git add pc-drop.txt
+printf '%s\n' \
+  'session_binding=s-postcommit' \
+  'session_binding_host=cursor' \
+  "session_binding_day=$today" \
+  "session_touched_files=pc-drop.txt"$'\x1e'"pc-keep.txt" \
+  'last_processed_head=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+  >.agents/memory/.hook-sync-state
+md_pc=$(md_checksum)
+git commit -q -m 'post-commit drop' >/dev/null 2>&1 || true
+pc_head=$(git rev-parse HEAD)
+grep -q "last_processed_head=$pc_head" .agents/memory/.hook-sync-state ||
+  fail "post-commit must stamp last_processed_head to new HEAD"
+grep -q 'pc-keep.txt' .agents/memory/.hook-sync-state ||
+  fail "post-commit must keep pending paths still dirty"
+! grep -q 'pc-drop.txt' .agents/memory/.hook-sync-state ||
+  fail "post-commit must drop committed paths that are no longer dirty"
+grep -q 'session_binding=s-postcommit' .agents/memory/.hook-sync-state ||
+  fail "post-commit must not rebind session"
+[[ "$(md_checksum)" == "$md_pc" ]] ||
+  fail "post-commit must not modify Markdown"
+
+# --- post-commit: file in commit but still dirty stays pending ---
+printf 'staged\n' >pc-partial.txt
+git add pc-partial.txt
+printf 'unstaged\n' >>pc-partial.txt
+printf '%s\n' \
+  'session_binding=s-postcommit-partial' \
+  "session_touched_files=pc-partial.txt" \
+  >.agents/memory/.hook-sync-state
+git commit -q -m 'post-commit partial' >/dev/null 2>&1 || true
+grep -q 'pc-partial.txt' .agents/memory/.hook-sync-state ||
+  fail "post-commit must keep a committed path that is still dirty"
+
+# --- security: post-commit unsets stale session env (no rebind) ---
+printf '%s\n' \
+  'session_binding=s-postcommit-env' \
+  'session_binding_host=cursor' \
+  "session_binding_day=$today" \
+  'session_touched_files=postcommit-env-keep.txt' \
+  >.agents/memory/.hook-sync-state
+printf 'pce\n' >pce.txt
+git add pce.txt
+AGENT_MEMORY_SESSION_ID=stale-post-session \
+  CURSOR_SESSION_ID=stale-post-cursor \
+  GEMINI_SESSION_ID=stale-post-gemini \
+  git commit -q -m 'pce' >/dev/null 2>&1 || true
+grep -q 'session_binding=s-postcommit-env' .agents/memory/.hook-sync-state ||
+  fail "post-commit must not rebind from stale session env"
+grep -q 'postcommit-env-keep.txt' .agents/memory/.hook-sync-state ||
+  fail "post-commit must not clear unrelated paths via stale session env"
 
 # --- security: memory dir symlink outside project refused ---
 ESCAPE=$(mktemp -d)

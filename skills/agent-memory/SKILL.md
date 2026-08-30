@@ -59,7 +59,7 @@ Edit **only** under the memory content paths in `allowed-tools`. Read the rest o
 
 User-authored recall (`current.md`, `active-work/*`, `decisions.md`, `log.md`, `learnings.md`, `learnings-*.md`, legacy `domains/*` / `features/*`) is confirm-before-edit unless the loaded command says otherwise.
 
-**Exception:** primary write in-turn and `bootstrap` follow `instructions.md` directly (gated learnings/decisions when discovered, without this skill's per-entry confirmation). Per-diff confirmation applies to `/agent-memory learn`, `consolidate`, and `lint --fix`.
+**Exception:** primary write in-turn and `bootstrap` follow `instructions.md` directly (gated learnings/decisions when discovered, without this skill's per-entry confirmation). Write-floor **User constraint** supersedes a live `decisions.md` entry in place. Write-floor **Reusable lesson** appends a new H2 (Duplicate rule skip writes nothing). Per-diff confirmation applies to `/agent-memory learn`, `consolidate`, and `lint --fix`.
 
 Durable recall (`decisions.md` / `learnings.md` / `learnings-*.md`) stays on learn / consolidate / gated in-turn — including when following `references/sync.md` without the skill.
 
@@ -72,6 +72,7 @@ When the host ignores `allowed-tools` granularity, keep the same Boundary: vendo
 `init` and `update` resolve the skeleton relative to this skill directory:
 
 - Skeleton: `vendor/memory/`
+- Active-work copy scaffold: `references/active-work-template.md` (not installed into project memory)
 - Migrations: `vendor/UPDATE.md`
 
 Upstream SoT in this repo: `skills/agent-memory/vendor/`.
@@ -124,11 +125,11 @@ For `/agent-memory help` (and for any empty or unknown invocation), output the f
 
 **Getting started**
 
-- New project? Run `init` (or `init <harness>` — e.g. `init cursor` if you use Cursor and already have a `.cursor/` directory), then optionally `bootstrap` to index sources (not copy docs). Install hooks with the printed `npx` or shell command, then **re-run `sync`** so blockers/evidence catch up.
-- Memory exists but hooks missing or stale? Run `install hooks <harness>` for instructions, or re-run the installer from the release tag, then `/agent-memory sync`. OpenCode: files must be under `.opencode/plugins/` (with `safe-script.ts`); restart OpenCode; state appears on `session.idle` / native `/compact` — not from DCP-only commands (`/dcp-compact`).
-- Keeping the memory current? Write resume fields + semantic `log.md` in the turn (primary); run `sync` at checkpoints for catch-up (or follow `references/sync.md` without invoking the skill). Use `sync --auto` for low-friction routine flushes — sync **must consume** pending hook paths when meaning covers them (dirty tree does not skip consume).
+- New project? Run `init` (or `init <harness>` — e.g. `init cursor` if you use Cursor and already have a `.cursor/` directory), then optionally `bootstrap` to index sources (not copy docs). Install hooks with the printed `npx` or shell command. Then run **one** `sync` so Status and shared blockers catch up. After that, skip is the default when the write floor is all no.
+- Memory exists but hooks missing or stale? Run `install hooks <harness>` for instructions, or re-run the installer from the release tag. Run `/agent-memory sync` once if Status is stale **and** there is meaning. OpenCode: files must be under `.opencode/plugins/` (with `safe-script.ts`); restart OpenCode; state appears on `session.idle` / native `/compact` — not from DCP-only commands (`/dcp-compact`).
+- Keeping the memory current? Follow session Status (`load:` / Next / Checkpoint). Skip when the write floor is all no. Write **one** file when a floor row is yes (rotten resume → active-work; user constraint → `decisions.md` and supersede the old live entry; reusable lesson → learnings + index `when editing:` when there is an incident and 1–3 paths; closed why missing from the commit → `log.md`; shared blocker → `current.md`). Optional `## Hold` on active-work (max 3 bullets) is still that file. Run `sync` only when hook Status is stale **and** there is meaning (or follow `references/sync.md` without invoking the skill). Use `sync --auto` for low-friction flushes — sync **must consume** pending hook paths when meaning covers them (dirty tree does not skip consume).
 - Pruning noise? Run `consolidate` for **closed** sessions (guided; never automatic). Same-day after bootstrap is report-only — do not expect Discard of founding log headings.
-- Capture a lesson now? Run `learn [>topic] <clue>` (retention gate; confirm).
+- Capture a lesson now? In-turn write-floor **Reusable lesson** (incident + 1–3 paths + index hint) is the daily path. Run `learn [>topic] <clue>` only for explicit capture (retention gate; confirm).
 - Already set up? Use `lint` to check health (`lint --fix` also removes stale per-branch files), `update` to upgrade memory scaffolding, then refresh hooks with the user-run installer if needed.
 
 Method & conventions: `.agents/memory/instructions.md`

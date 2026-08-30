@@ -31,7 +31,7 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
 1. **Guard.** If `.agents/memory/` already exists, stop and tell the user the project is already initialized — suggest `/agent-memory update` or `/agent-memory install hooks <harness>` to refresh hooks. Do not overwrite anything.
 
-2. **Copy the skeleton.** Read this skill's `vendor/memory/` (see `SKILL.md` → Vendor source) and copy that directory into the project as `.agents/memory/` (the entire directory, including `active-work/TEMPLATE.md` and the hook-state ignore template). Do not clone or fetch remotely.
+2. **Copy the skeleton.** Read this skill's `vendor/memory/` (see `SKILL.md` → Vendor source) and copy that directory into the project as `.agents/memory/` (the entire directory, including the hook-state ignore template). Do **not** copy `references/active-work-template.md` into project memory — that file stays in the skill. Do not clone or fetch remotely. Copy the skeleton as-is — **zero invented content**.
 
    **Dotfiles (required):** hosts often hide dotfiles from `Glob`, and npm omits files named `.gitignore` from published packs. After the copy, **explicitly** Read `vendor/memory/gitignore` (pack-safe name; same rules as a local `.gitignore` sibling when present) and Write it to `.agents/memory/.gitignore` (create/overwrite to match vendor). Contents must ignore `.hook-sync-state`, `.hook-sync-state.lock`, and `.hook-sync-state.*`. Then verify `.agents/memory/.gitignore` exists before continuing.
 
@@ -119,5 +119,5 @@ When `CLAUDE.md` is standalone (no `@AGENTS.md`), claude and opencode have disti
 ## Notes
 
 - Do not populate the memory here — `init` only scaffolds. To index canonical sources and gaps, the user runs `/agent-memory bootstrap` (pointers, not doc copies). Bootstrap does not invent product vision when docs are missing — it reports the gap.
-- Optional git `pre-commit` hook is **not** wired by `init` — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.2.0/hooks/README.md).
+- Optional git `pre-commit` / `post-commit` hooks are **not** wired by `init` — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.2.0/hooks/README.md).
 - **Context vs checkpoint:** native instruction files (`.mdc`, agent `*.md`, `.instructions.md`) inject the agent-memory workflow into the model context. Lifecycle hooks (see `install-hooks.md`) run deterministic git checkpoints — they do not replace context injection.
