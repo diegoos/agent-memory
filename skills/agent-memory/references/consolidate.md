@@ -16,7 +16,7 @@ Guided, conservative promotion and pruning of memory. Turns closed-session noise
 
 Treat a `log.md` heading as **current session** (not a prune/Discard candidate) when **any** of:
 
-1. Its `[session-id]` matches the resolved current session ID (env / stdin / `.hook-sync-state`), when that id is valid.
+1. Its `[session-id]` matches the resolved current session ID (env / stdin / print-evidence `current_session_id`), when that id is valid.
 2. **Same calendar day** as today (`YYYY-MM-DD` in the heading = today) **and** no distinct closed-session marker exists (e.g. user has not said the prior work stream is done) — especially headings typed `[docs] bootstrap`, `[ingest]`, or summarizing init/bootstrap/sync on a fresh memory.
 3. It is the **only** remaining session heading in `log.md` (last entry — never Discard the sole heading).
 
@@ -32,7 +32,7 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
 
 2. **Resolve context.**
    - Branch: `git branch --show-current` (sanitize as in `sync.md`); fall back to `local`.
-   - Current session ID: `AGENT_MEMORY_SESSION_ID`, harness stdin, or `current_session_id` from `.hook-sync-state`.
+   - Current session ID: `AGENT_MEMORY_SESSION_ID`, harness stdin, or `current_session_id` from `agent-memory-print-evidence.sh` (do **not** Read `.hook-sync-state`).
    - Today's date and the set of `log.md` headings matching **Current session** above.
    - If any target memory file has unresolved merge conflict markers, **stop**.
    - If memory has uncommitted changes, warn and require confirmation before proposing diffs — never silently overwrite pre-existing edits.

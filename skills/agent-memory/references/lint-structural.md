@@ -338,6 +338,7 @@ state=".agents/memory/.hook-sync-state"
 if [ ! -f "$state" ]; then
   echo "hook-state-absent: .agents/memory/.hook-sync-state missing — hooks unused or not installed (info; not the same as evidence cleared)"
 else
+# Count pending paths only — never echo path values (W011).
   paths=$(grep '^session_touched_files=' "$state" | cut -d= -f2- || true)
   if [ -n "$paths" ]; then
     n=$(printf '%s' "$paths" | tr '\036' '\n' | grep -c . || true)
@@ -430,8 +431,8 @@ for carrier in AGENTS.md CLAUDE.md GEMINI.md \
   fi
 done
 
-# Four shared scripts travel together when any one is present
-need="agent-memory-common.sh agent-memory-sync.sh agent-memory-session.sh agent-memory-consume-evidence.sh"
+# Five shared scripts travel together when any one is present
+need="agent-memory-common.sh agent-memory-sync.sh agent-memory-session.sh agent-memory-consume-evidence.sh agent-memory-print-evidence.sh"
 for dir in .cursor/hooks .claude/hooks .codex/hooks .opencode/hooks .github/hooks .gemini/hooks .git/hooks; do
   [ -d "$dir" ] || continue
   found=false

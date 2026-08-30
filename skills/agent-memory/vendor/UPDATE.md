@@ -240,3 +240,10 @@ Format:
 - safe: sessionStart Status — `Next=` from active-work; `load:` from `index.md` `when editing:` vs pending/dirty paths (overbroad globs ignored); Action cites write floor walk (reusable lesson needs incident+paths) and Read load files. **User must re-run the hooks installer** (`agent-memory-common.sh`).
 - safe: `learn` / `lint` / `consolidate` — `Relates:` required when Evidence is a recall file (`learning-missing-relates`); `relates-missing` also checks `#fragment`; `current-stale-branch`; findings `unknown-relates-verb`, `relates-missing`, `learning-missing-evidence`, `contradicts-unlinked`, `supersede-cycle`; consolidate Contradiction / No evidence / Orphan Relates.
 - safe: `lint` — six-pass recipe (consistency, dead paths, typos, instruction contradictions, cold-session quality, hook consistency); structural scripts disclosed in `references/lint-structural.md`; findings `typo-heading` / `typo-token` / `method-stale` / `carrier-stale` / `hook-incomplete` / `opencode-legacy-plugin` / `learning-hidden` / `quality-unanswerable` / `live-dup-identity`.
+
+## 0.2.1
+
+- safe: `agent-memory-print-evidence.sh` — allowlisted hook-state stdout for agents (`pending_count` / hex HEAD / validated session id / sanitized branch). Never prints path lists. **User must re-run the hooks installer** (five shared scripts).
+- safe: `SKILL.md` `allowed-tools` — exact `Bash(…print-evidence.sh)` paths beside consume-evidence.
+- safe: `sync` / `consolidate` / `lint` — do not Read `.hook-sync-state`; sync gathers hook fields from print-evidence; lint `hook-incomplete` expects the fifth script; missing helper is absent evidence, not a Read fallback.
+- sensitive: `instructions.md` — catch-up and harness parity: print-evidence / consume-evidence; do not Read `.hook-sync-state`. Show diff and confirm. Preserve project-specific notes.

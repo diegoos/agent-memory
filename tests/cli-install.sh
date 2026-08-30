@@ -31,6 +31,8 @@ AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" install skill >/dev/null
 # --- install hooks cursor ---
 AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" install hooks cursor >/dev/null
 [[ -x "$TMP/.cursor/hooks/agent-memory-sync.sh" ]] || fail "cursor sync missing"
+[[ -x "$TMP/.cursor/hooks/agent-memory-print-evidence.sh" ]] ||
+  fail "cursor print-evidence missing"
 [[ -f "$TMP/.cursor/hooks.json" ]] || fail "cursor hooks.json missing"
 [[ -f "$TMP/.cursor/hooks/.version" ]] || fail "hooks version stamp missing"
 ! grep -q postToolUse "$TMP/.cursor/hooks.json" || fail "installed cursor config has postToolUse"

@@ -1,4 +1,4 @@
-# agent-memory shared helpers — source from session/sync/consume/post-commit hooks only.
+# agent-memory shared helpers — source from session/sync/consume/print-evidence/post-commit only.
 # Ephemeral evidence in .hook-sync-state only; never edit Markdown under .agents/memory/.
 # See instructions.md → Harness parity — memory contract.
 #
@@ -11,7 +11,7 @@
 #   4. Session binding / rebind
 #   5. State lock + read/write
 #   6. Worktree paths + ephemeral checkpoint
-#   7. Consume evidence + post-commit stamp + sessionStart Status
+#   7. Consume evidence + print-evidence + post-commit stamp + sessionStart Status
 
 # ---------------------------------------------------------------------------
 # 1. Stdin / JSON parse
@@ -291,7 +291,8 @@ _hooks_env_entrypoint_diverges_from_running() {
   [ -n "$running_real" ] || return 1
   base=$(basename -- "${0:-}")
   case "$base" in
-    agent-memory-sync.sh | agent-memory-session.sh | agent-memory-consume-evidence.sh) ;;
+    agent-memory-sync.sh | agent-memory-session.sh | agent-memory-consume-evidence.sh | \
+      agent-memory-print-evidence.sh) ;;
     *) return 1 ;;
   esac
   for rel in .cursor/hooks .claude/hooks .codex/hooks .gemini/hooks \
@@ -1033,8 +1034,49 @@ _apply_ephemeral_checkpoint_unlocked() {
 }
 
 # ---------------------------------------------------------------------------
-# 7. Consume evidence + post-commit stamp + sessionStart Status
+# 7. Consume evidence + print-evidence + post-commit stamp + sessionStart Status
 # ---------------------------------------------------------------------------
+
+# Allowlisted key=value for agents. Never print session_touched_files or other
+# raw state keys (those paths can carry outsider-authored names into the model).
+_print_sanitized_hook_evidence_absent() {
+  printf '%s\n' \
+    'state=absent' \
+    'pending_count=0' \
+    'last_processed_head=' \
+    'current_session_id=' \
+    'branch='
+}
+
+print_sanitized_hook_evidence() {
+  local bits n=0 head sid branch
+  if [ -z "${state_file:-}" ] || [ ! -f "$state_file" ] || [ -L "$state_file" ]; then
+    _print_sanitized_hook_evidence_absent
+    return 0
+  fi
+  bits=$(read_state session_touched_files "")
+  if [ -n "$bits" ]; then
+    n=$(printf '%s' "$bits" | tr $'\x1e' '\n' | grep -c . || true)
+  fi
+  case "$n" in
+    '' | *[!0-9]*) n=0 ;;
+  esac
+  head=$(read_state last_processed_head "")
+  head=$(printf '%s' "$head" | tr -d '\n\r')
+  if ! printf '%s' "$head" | grep -Eq '^[0-9a-fA-F]{4,40}$'; then
+    head=""
+  fi
+  sid=$(read_state current_session_id "")
+  sid=$(printf '%s' "$sid" | tr -d '\n\r')
+  is_valid_external_binding_id "$sid" || sid=""
+  branch=$(sanitize_branch "$(read_state branch "")")
+  printf '%s\n' \
+    'state=present' \
+    "pending_count=${n}" \
+    "last_processed_head=${head}" \
+    "current_session_id=${sid}" \
+    "branch=${branch}"
+}
 
 # Clear session_touched_files after the agent recorded semantic outcomes (sync).
 # Preserves binding, branch, last_processed_head.

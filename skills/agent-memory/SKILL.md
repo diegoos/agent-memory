@@ -25,6 +25,13 @@ allowed-tools: >-
   Bash(.github/hooks/agent-memory-consume-evidence.sh)
   Bash(.gemini/hooks/agent-memory-consume-evidence.sh)
   Bash(hooks/agent-memory-hooks/agent-memory-consume-evidence.sh)
+  Bash(.cursor/hooks/agent-memory-print-evidence.sh)
+  Bash(.claude/hooks/agent-memory-print-evidence.sh)
+  Bash(.codex/hooks/agent-memory-print-evidence.sh)
+  Bash(.opencode/hooks/agent-memory-print-evidence.sh)
+  Bash(.github/hooks/agent-memory-print-evidence.sh)
+  Bash(.gemini/hooks/agent-memory-print-evidence.sh)
+  Bash(hooks/agent-memory-hooks/agent-memory-print-evidence.sh)
 disable-model-invocation: true
 ---
 
@@ -45,6 +52,7 @@ Pre-approved tools live in the `allowed-tools` frontmatter ([spec](https://agent
 | `Edit`, `Write` (scoped)     | Hot path only (`current` / `index` / `log` / `active-work/**` / `.version` / `.gitignore`). Host prompts for decisions/learnings/instructions/carriers/hooks. |
 | `Bash(git …)`                | Read-only `branch --show-current` / `status` / `status -sb`. Host prompts for `git diff` / `git log`. Mutative git stays off.                                 |
 | `Bash(…consume-evidence.sh)` | After sync meaning covers pending paths: clear `session_touched_files` only.                                                                                  |
+| `Bash(…print-evidence.sh)`   | Sync/consolidate: allowlisted hook-state fields only. Do **not** Read `.hook-sync-state`.                                                                    |
 
 ### Write scope
 

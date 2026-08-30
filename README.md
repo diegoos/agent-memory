@@ -34,7 +34,7 @@ Full method: [`skills/agent-memory/vendor/README.md`](./skills/agent-memory/vend
 
 ## Flow
 
-Docs and Git are the source of truth. The agent writes versioned Markdown under `.agents/memory/`. Hooks write only `.hook-sync-state` (gitignored). The skill is manual (`disable-model-invocation: true`); it never starts itself. After meaning is written, the agent (or `/agent-memory sync`) may run `agent-memory-consume-evidence.sh` to clear pending paths in that state file.
+Docs and Git are the source of truth. The agent writes versioned Markdown under `.agents/memory/`. Hooks write only `.hook-sync-state` (gitignored). The skill is manual (`disable-model-invocation: true`); it never starts itself. Sync reads hook evidence through `agent-memory-print-evidence.sh` (count, SHA, session id, branch — not path lists). After meaning is written, the agent (or `/agent-memory sync`) may run `agent-memory-consume-evidence.sh` to clear pending paths in that state file.
 
 ```mermaid
 flowchart TB
@@ -46,7 +46,7 @@ flowchart TB
   end
   Docs -->|"authority"| Agent
   Hooks -->|"checkpoint"| State
-  State -->|"untrusted hints"| Agent
+  State -->|"print-evidence"| Agent
   Agent -->|"consume-evidence"| State
 ```
 
@@ -62,7 +62,7 @@ flowchart LR
   D --> E[".agents/memory/ skeleton"]
   D --> F["block in .mdc / AGENTS.md / CLAUDE.md / …"]
   D --> G["print: install hooks"]
-  C --> H["common + session + sync + consume-evidence"]
+  C --> H["common + session + sync + consume + print-evidence"]
   E --> I["optional /agent-memory bootstrap<br/>pointers in index.md"]
 ```
 

@@ -46,7 +46,7 @@ Per-tool events are not used. Path evidence comes from git at full checkpoints. 
 hooks/
 ├── install-hooks.sh
 ├── lib/merge-hooks.mjs
-├── agent-memory-hooks/   # common + sync + session + consume-evidence (install all four)
+├── agent-memory-hooks/   # common + sync + session + consume + print-evidence (install all five)
 ├── <harness>/            # cursor, claude-code, codex, …
 └── git/                  # optional: pre-commit + post-commit (copy yourself)
 ```
@@ -59,7 +59,7 @@ hooks/
 
 ## Install notes
 
-Copy all four files from `hooks/agent-memory-hooks/`. Do not install sync and session alone. Re-run the installer when hook scripts change. SessionStart **Status** reports Checkpoint, an optional Next line from active-work, `load:` files whose `index.md` `when editing:` globs match pending or dirty paths, and an Action (write floor walk / consume). Hooks still never write Markdown. After `/agent-memory sync` writes meaning that covers pending paths, run `agent-memory-consume-evidence.sh` (or let sync do it) to clear `session_touched_files`. Optional git hooks (not copied by `install-hooks.sh`): `cp hooks/git/pre-commit hooks/git/post-commit .git/hooks/` and copy the four shared scripts beside them. `post-commit` stamps `last_processed_head` and drops pending paths that are in the new commit and no longer dirty.
+Copy all five files from `hooks/agent-memory-hooks/`. Do not install sync and session alone. Re-run the installer when hook scripts change. SessionStart **Status** reports Checkpoint, an optional Next line from active-work, `load:` files whose `index.md` `when editing:` globs match pending or dirty paths, and an Action (write floor walk / consume). Hooks still never write Markdown. `/agent-memory sync` runs `agent-memory-print-evidence.sh` for allowlisted fields (it does not Read `.hook-sync-state`). After meaning covers pending paths, run `agent-memory-consume-evidence.sh` (or let sync do it) to clear `session_touched_files`. Optional git hooks (not copied by `install-hooks.sh`): `cp hooks/git/pre-commit hooks/git/post-commit .git/hooks/` and copy the five shared scripts beside them. `post-commit` stamps `last_processed_head` and drops pending paths that are in the new commit and no longer dirty.
 
 Trust boundary: hooks run scripts from your project directory, same as git hooks. Only install when you trust the project and the `@dosx/agent-memory` package version you install. See [SECURITY.md](../SECURITY.md).
 

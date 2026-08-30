@@ -38,6 +38,7 @@ The hooks installer (`install-hooks.sh`) fails closed the same way when neither 
 - No `shell: true` on child processes.
 - No Markdown writes from hooks (semantic memory is agent-owned only).
 - No trusting harness stdin `cwd` alone to select the project root (env or install-site anchor first).
+- No feeding `.hook-sync-state` path lists into the model. `/agent-memory sync` and consolidate run `agent-memory-print-evidence.sh` (allowlisted `pending_count` / hex HEAD / validated session id / sanitized branch). They do not Read the state file.
 
 ## Environment forwarding
 
@@ -46,7 +47,7 @@ The hooks installer (`install-hooks.sh`) fails closed the same way when neither 
 - Git `pre-commit` and `post-commit` also inherit the parent environment, except they unset `AGENT_MEMORY_SESSION_ID`, `CURSOR_SESSION_ID`, and `GEMINI_SESSION_ID` and set `AGENT_MEMORY_HOST=git`. That drops inherited host labels such as stale `opencode`. Those git hooks have no harness stdin session id; stale shell state must not rebind `.hook-sync-state`. `post-commit` only stamps `last_processed_head` and subtracts committed-and-clean paths from `session_touched_files`.
 - `PATH` and `GIT_CONFIG*` on the filtered path are intentional so git/locale tooling works under a restricted env. Treat a compromised parent env as already inside the project trust boundary.
 
-`.hook-sync-state` is gitignored ephemeral evidence. Hooks write it mode `0600` (including a heal on no-op writes) so path lists are not world-readable on multi-user machines. Treat `chmod` failure as best-effort, and still treat forged state as untrusted. Agents with Write access to `.agents/memory/` can still edit it on disk. Validate hex SHAs before passing them to git (hooks and `/agent-memory sync`).
+`.hook-sync-state` is gitignored ephemeral evidence. Hooks write it mode `0600` (including a heal on no-op writes) so path lists are not world-readable on multi-user machines. Treat `chmod` failure as best-effort, and still treat forged state as untrusted. Agents with Write access to `.agents/memory/` can still edit it on disk. The print-evidence helper is the agent-facing surface: it omits `session_touched_files` and drops non-hex SHAs and invalid session ids. Validate hex SHAs before passing them to git (hooks already do; sync uses the helper output).
 
 ## Publish
 

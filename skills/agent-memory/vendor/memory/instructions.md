@@ -83,11 +83,11 @@ If the question is **durable why** and there is no path hit, follow **Recall hop
 
 ## When catching up
 
-**Catch-up (`/agent-memory sync`):** only with hook evidence **and** meaning. Follow `references/sync.md` (**Must consume** pending path evidence when eligible). You may follow those steps without invoking the skill command. No meaning → no-op; do not write `log.md`. Reusable lesson is in-turn write-floor, not sync. `/agent-memory learn` on explicit request.
+**Catch-up (`/agent-memory sync`):** only with hook evidence **and** meaning. Follow `references/sync.md` (**Must consume** pending path evidence when eligible). Gather hook fields with `agent-memory-print-evidence.sh` — do **not** Read `.hook-sync-state`. You may follow those steps without invoking the skill command. No meaning → no-op; do not write `log.md`. Reusable lesson is in-turn write-floor, not sync. `/agent-memory learn` on explicit request.
 
 ### Harness parity — memory contract
 
-Same shape on every harness. Context = read/maintain; checkpoint = **ephemeral evidence only** in `.hook-sync-state` — [hooks README](https://github.com/diegoos/agent-memory/blob/0.2.0/hooks/README.md). **Hooks own ephemeral evidence only:** binding, branch, touched paths, `last_processed_head` — they never create or edit Markdown under `.agents/memory/`. Git `post-commit` (when installed) stamps HEAD and drops pending paths that are in that commit and no longer dirty; it does not write `log.md`. **Agent owns all versioned Markdown:** active-work, `current.md`, semantic `log.md`, `index.md`, decisions, gated learnings. Meaning in-turn; sync is catch-up.
+Same shape on every harness. Context = read/maintain; checkpoint = **ephemeral evidence only** in `.hook-sync-state` — [hooks README](https://github.com/diegoos/agent-memory/blob/0.2.0/hooks/README.md). **Hooks own ephemeral evidence only:** binding, branch, touched paths, `last_processed_head` — they never create or edit Markdown under `.agents/memory/`. Agents consume that state through `agent-memory-print-evidence.sh` (allowlisted count/SHA/id/branch only) and `agent-memory-consume-evidence.sh`. They do not Read `.hook-sync-state`. Git `post-commit` (when installed) stamps HEAD and drops pending paths that are in that commit and no longer dirty; it does not write `log.md`. **Agent owns all versioned Markdown:** active-work, `current.md`, semantic `log.md`, `index.md`, decisions, gated learnings. Meaning in-turn; sync is catch-up.
 
 ## Memory lint boundaries
 

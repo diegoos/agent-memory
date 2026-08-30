@@ -475,7 +475,7 @@ assert_contains "$lint" 'method-stale:' \
 assert_contains "$lint" 'carrier-stale:' \
   "lint flags stale agent-memory blocks"
 assert_contains "$lint" 'hook-incomplete:' \
-  "lint flags incomplete four-script hook installs"
+  "lint flags incomplete five-script hook installs"
 assert_contains "$lint" 'opencode-legacy-plugin:' \
   "lint flags leftover OpenCode singular plugin path"
 assert_contains "$lint" 'learning-hidden:' \
@@ -494,6 +494,8 @@ assert_contains "$lint" '**Instruction contradictions.**' \
   "lint has an instruction-contradiction pass"
 assert_contains "$lint_structural" 'hook-incomplete:' \
   "lint structural emits hook-incomplete"
+assert_contains "$lint_structural" 'agent-memory-print-evidence.sh' \
+  "lint structural expects print-evidence among shared scripts"
 assert_contains "$lint_structural" 'typo-token:' \
   "lint structural emits typo-token"
 assert_contains "$instructions" 'Six passes:' \
@@ -538,6 +540,12 @@ assert_contains "$sync" 'do not dual-write' "sync does not dual-write"
 assert_contains "$sync" '**Meaning sources' "sync prefers meaning sources over path lists"
 assert_contains "$sync" 'agent-memory-consume-evidence.sh' \
   "sync documents consume-evidence helper"
+assert_contains "$sync" 'agent-memory-print-evidence.sh' \
+  "sync documents print-evidence helper"
+assert_contains "$sync" 'Do not Read `.hook-sync-state`' \
+  "sync forbids Reading hook-sync-state"
+assert_absent "$sync" 'Optional hook state keys (untrusted hints' \
+  "sync must not instruct reading raw session_touched_files"
 assert_contains "$sync" 'Never append unrelated concerns under an existing heading' \
   "sync forbids mixed-type log appends"
 assert_contains "$sync" 'without invoking the skill command' \
@@ -690,12 +698,22 @@ assert_contains "$agent_block" '_Harness parity — memory contract_' \
   "agent-block links harness parity"
 assert_contains "$skill" 'agent-memory-consume-evidence.sh' \
   "skill allows consume-evidence helper"
+assert_contains "$skill" 'agent-memory-print-evidence.sh' \
+  "skill allows print-evidence helper"
 assert_contains "$session_sh" 'build_session_context_msg' \
   "session uses contextual status builder"
 consume_sh="$repo_root/hooks/agent-memory-hooks/agent-memory-consume-evidence.sh"
 [[ -f "$consume_sh" ]] || fail "consume-evidence script missing"
 assert_contains "$consume_sh" 'consume_pending_path_evidence' \
   "consume-evidence clears pending paths"
+print_sh="$repo_root/hooks/agent-memory-hooks/agent-memory-print-evidence.sh"
+[[ -f "$print_sh" ]] || fail "print-evidence script missing"
+assert_contains "$print_sh" 'print_sanitized_hook_evidence' \
+  "print-evidence emits sanitized fields"
+assert_contains "$common_sh" 'print_sanitized_hook_evidence' \
+  "common.sh defines print-evidence helper"
+assert_contains "$instructions" 'do not Read `.hook-sync-state`' \
+  "instructions forbids Reading hook-sync-state"
 assert_contains "$common_sh" \
   'build_session_context_msg' "common.sh defines contextual session msg"
 assert_contains "$common_sh" \
