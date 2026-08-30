@@ -72,9 +72,7 @@ function printHeader(action: string): void {
   );
   console.log(c.dim(`project  ${path.resolve(projectDir())}`));
   console.log(
-    c.dim(
-      `source   ${ROOT}${isSourceCheckout() ? " (local checkout)" : ""}`,
-    ),
+    c.dim(`source   ${ROOT}${isSourceCheckout() ? " (local checkout)" : ""}`),
   );
 }
 
@@ -279,7 +277,10 @@ function printUpdateSummary(opts: {
   printAgentNextSteps(memoryExists() ? "update" : "init");
 }
 
-async function cmdUpdate(flags: { yes: boolean; force: boolean }): Promise<void> {
+async function cmdUpdate(flags: {
+  yes: boolean;
+  force: boolean;
+}): Promise<void> {
   const installedSkill = readInstalledSkillVersion();
   const skillMissing = !installedSkill;
   // Source checkouts fold unreleased work into the current SemVer — refresh
@@ -293,7 +294,9 @@ async function cmdUpdate(flags: { yes: boolean; force: boolean }): Promise<void>
   if (skillMissing) {
     printDetail("skill", c.dim("not installed"));
     printStep(
-      c.yellow(`skill missing — hooks-only update; install with: ${cli} install skill`),
+      c.yellow(
+        `skill missing — hooks-only update; install with: ${cli} install skill`,
+      ),
     );
   } else {
     printDetail(
@@ -326,7 +329,9 @@ async function cmdUpdate(flags: { yes: boolean; force: boolean }): Promise<void>
       );
     } else if (refreshSameVersion) {
       needSkill = true;
-      printStep(`skill refresh ${VERSION} ${c.dim("(same version → package tree)")}`);
+      printStep(
+        `skill refresh ${VERSION} ${c.dim("(same version → package tree)")}`,
+      );
     } else {
       printStep(`skill already at ${VERSION}`);
     }
@@ -346,7 +351,9 @@ async function cmdUpdate(flags: { yes: boolean; force: boolean }): Promise<void>
         printStep(`hooks ${h}: ${c.yellow(`${stamp ?? "none"} → ${VERSION}`)}`);
       } else if (refreshSameVersion) {
         hooksToRefresh.push(h);
-        printStep(`hooks ${h}: refresh ${stamp} ${c.dim("(same version → package tree)")}`);
+        printStep(
+          `hooks ${h}: refresh ${stamp} ${c.dim("(same version → package tree)")}`,
+        );
       } else {
         hooksSkipped.push(h);
         printStep(`hooks ${h}: ${stamp} ${c.dim("(current)")}`);
@@ -436,9 +443,7 @@ function parseUpdateFlags(args: string[]): { yes: boolean; force: boolean } {
       force = true;
       continue;
     }
-    console.error(`${c.red("error:")} unexpected argument: ${a}`);
-    printHelp();
-    process.exit(1);
+    fatalUsage(`unexpected argument: ${a}`);
   }
   return { yes, force };
 }
@@ -585,10 +590,7 @@ async function main(argv: string[]): Promise<void> {
 
   if (rest[0] === "skill") {
     if (rest.length > 1) {
-      console.error(
-        `${c.red("error:")} install skill does not accept arguments`,
-      );
-      process.exit(1);
+      fatal("install skill does not accept arguments");
     }
     printHeader("install · skill");
     printSummary({ skillPath: installSkill(), hooks: [] });
@@ -602,8 +604,7 @@ async function main(argv: string[]): Promise<void> {
     }
     const raw = rest[1];
     if (rest.length > 2) {
-      console.error(`${c.red("error:")} unexpected argument: ${rest[2]}`);
-      process.exit(1);
+      fatal(`unexpected argument: ${rest[2]}`);
     }
     const harness = normalizeHarness(raw);
     if (!harness) {
@@ -618,8 +619,7 @@ async function main(argv: string[]): Promise<void> {
   const harness = normalizeHarness(rest[0]);
   if (harness) {
     if (rest.length > 1) {
-      console.error(`${c.red("error:")} unexpected argument: ${rest[1]}`);
-      process.exit(1);
+      fatal(`unexpected argument: ${rest[1]}`);
     }
     await promptInstallChoice(harness);
     return;

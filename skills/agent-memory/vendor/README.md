@@ -1,8 +1,8 @@
 # Agent Memory
 
-A local Workspace Memory method for AI coding agents (Claude Code, Cursor, Codex, OpenCode, Gemini, and others).
+A local workspace memory method for AI coding agents (Claude Code, Cursor, Codex, OpenCode, Gemini, and others).
 
-The Memory is a small set of versioned Markdown files in `.agents/memory/`: a recall layer that points at the project's canonical sources and keeps operational state plus evidenced learnings that have no better home. It is not a second copy of project documentation.
+The memory is a small set of versioned Markdown files in `.agents/memory/`: a recall layer that points at the project's canonical sources and keeps operational state plus evidenced learnings that have no better home. It is not a second copy of project documentation.
 
 The method borrows the discipline of the [llm-wiki pattern][llm-wiki] (index, log, lint, small cross-referenced files). It is built for project memory. It does not ingest external sources.
 
@@ -16,7 +16,7 @@ Use it on a project where AI agents do meaningful work across sessions, and wher
 
 Agents read and write the memory. Full workflow and multi-developer rules: [`memory/instructions.md`](./memory/instructions.md) (canonical method file; load it before writing memory).
 
-Before a task, follow session Status (`load:` / Next / Checkpoint). Read `index.md` and `current.md`. Open branch `active-work` only if it exists. Status `load:` is one Read, not a hop — including `decisions.md` or a learnings file when a hint matches. Honor live user decisions for **approach** and loaded Insights before repeating a failed path. Path hit stays on hints and code. Durable why with no path hit follows _Recall hop_ in `instructions.md`. Skip writing when the write floor is all no. A commit in Git does not skip the floor. Keep `index.md` a short map. In the turn, write one file per event. Catch up with `/agent-memory sync` only when there is meaning. Hooks write only `.hook-sync-state`. They never write Markdown.
+Before a task, follow session Status (`load:` / Next / Checkpoint). Read `index.md` and `current.md`. Open branch `active-work` only if it exists. Status `load:` is one Read, not a hop, including `decisions.md` or a learnings file when a hint matches. Honor live user decisions for **approach** and loaded Insights before repeating a failed path. Path hit stays on hints and code. Durable why with no path hit follows _Recall hop_ in `instructions.md`. Skip writing when the write floor is all no. A commit in Git does not skip the floor. Keep `index.md` a short map. In the turn, write one file per event. Catch up with `/agent-memory sync` only when there is meaning. Hooks write only `.hook-sync-state`. They never write Markdown.
 
 ## What's inside (`.agents/memory/`)
 

@@ -38,13 +38,13 @@ Manual-only orchestrator for the local **agent-memory** method. Skeleton and mig
 
 Pre-approved tools live in the `allowed-tools` frontmatter ([spec](https://agentskills.io/specification#allowed-tools-field); host-specific / experimental — unsupported hosts ignore it). Names follow Agent Skills / Claude Code; adapt if the host differs.
 
-| Tool                         | Used for                                                                                                                                                                 |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Read`, `Grep`, `Glob`       | Read-only analysis, lint, migration diffs, `references/*`, `vendor/`.                                                                                                    |
-| `Task`                       | Parallel read-only subagents in `bootstrap` (optional; sequential fallback).                                                                                             |
-| `Edit`, `Write` (scoped)     | Hot path only (`current` / `index` / `log` / `active-work/**` / `.version` / `.gitignore`). Host prompts for decisions/learnings/instructions/carriers/hooks.           |
-| `Bash(git …)`                | Read-only `branch --show-current` / `status` / `status -sb`. Host prompts for `git diff` / `git log`. Mutative git stays off.                                            |
-| `Bash(…consume-evidence.sh)` | After sync meaning covers pending paths: clear `session_touched_files` only.                                                                                             |
+| Tool                         | Used for                                                                                                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Read`, `Grep`, `Glob`       | Read-only analysis, lint, migration diffs, `references/*`, `vendor/`.                                                                                         |
+| `Task`                       | Parallel read-only subagents in `bootstrap` (optional; sequential fallback).                                                                                  |
+| `Edit`, `Write` (scoped)     | Hot path only (`current` / `index` / `log` / `active-work/**` / `.version` / `.gitignore`). Host prompts for decisions/learnings/instructions/carriers/hooks. |
+| `Bash(git …)`                | Read-only `branch --show-current` / `status` / `status -sb`. Host prompts for `git diff` / `git log`. Mutative git stays off.                                 |
+| `Bash(…consume-evidence.sh)` | After sync meaning covers pending paths: clear `session_touched_files` only.                                                                                  |
 
 ### Write scope
 
@@ -83,17 +83,17 @@ Project paths are relative to the target project root unless stated otherwise; v
 
 Read the subcommand from the invocation, load **only** the matching reference, and follow it exactly:
 
-| Command         | Does                                                   | Reference                     |
-| --------------- | ------------------------------------------------------ | ----------------------------- |
-| `init`          | Scaffold memory; wire carrier; print-only hooks        | `references/init.md`          |
-| `install hooks` | Print-only hook installer instructions                 | `references/install-hooks.md` |
-| `update`        | Migrate memory; refresh block; print-only hook refresh | `references/update.md`        |
-| `bootstrap`     | Inventory sources; pointers, not copies                | `references/bootstrap.md`     |
-| `sync`          | Catch-up for current / active-work / log / index       | `references/sync.md`          |
-| `lint`          | Structural and consistency checks                      | `references/lint.md`          |
-| `consolidate`   | Guided prune/promote (confirm; no `--auto`)            | `references/consolidate.md`   |
-| `learn`         | One gated learning (confirm; no `--auto`)              | `references/learn.md`         |
-| `help`          | Print the guide below                                  | _Help_ section below          |
+| Command         | Does                                                                                          | Reference                     |
+| --------------- | --------------------------------------------------------------------------------------------- | ----------------------------- |
+| `init`          | Scaffold memory; wire carrier; print-only hooks                                               | `references/init.md`          |
+| `install hooks` | Print-only hook installer instructions                                                        | `references/install-hooks.md` |
+| `update`        | Migrate memory; refresh block; print-only hook refresh                                        | `references/update.md`        |
+| `bootstrap`     | Inventory sources; pointers, not copies                                                       | `references/bootstrap.md`     |
+| `sync`          | Catch-up for current / active-work / log / index                                              | `references/sync.md`          |
+| `lint`          | Six-pass health (consistency, dead paths, typos, contradictions, cold-session quality, hooks) | `references/lint.md`          |
+| `consolidate`   | Guided prune/promote (confirm; no `--auto`)                                                   | `references/consolidate.md`   |
+| `learn`         | One gated learning (confirm; no `--auto`)                                                     | `references/learn.md`         |
+| `help`          | Print the guide below                                                                         | _Help_ section below          |
 
 If no subcommand is given, or it is not one of those above, run `help` (below) and stop.
 
@@ -111,17 +111,17 @@ For `/agent-memory help` (and for any empty or unknown invocation), output the f
 
 **Commands**
 
-| Command                       | Does                                                                                                                                                              |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/agent-memory help`          | Show this guide.                                                                                                                                                  |
-| `/agent-memory init`          | Create `.agents/memory/`; auto-detect harnesses and write the native instruction file (`.mdc`, `.instructions.md`, or agent `*.md`), or `init <harness>` for one. |
-| `/agent-memory install hooks` | Print how to install or refresh hooks for one harness — `cursor`, `claude`, `codex`, `opencode`, `copilot`, `gemini` (memory must exist).                         |
-| `/agent-memory bootstrap`     | Inventory canonical sources and gaps (up to 3 subagents); populate pointers — not doc copies.                                                                     |
-| `/agent-memory update`        | Migrate memory; refresh agent-memory block in harness instruction files; instruct hook refresh.                                                                   |
-| `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. `--auto` applies all diffs without per-file prompts.                                  |
-| `/agent-memory lint`          | Check for broken links, orphans, duplication, stale branches, and consistency. `--fix` also deletes stale per-branch `active-work` files.                         |
-| `/agent-memory consolidate`   | Promote useful facts and prune closed-session noise (guided; confirm each diff; no `--auto`).                                                                     |
-| `/agent-memory learn`         | Capture one gated learning/pitfall (`learn [>topic] <clue>`). Confirm before write; no `--auto`.                                                                  |
+| Command                       | Does                                                                                                                                                                |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/agent-memory help`          | Show this guide.                                                                                                                                                    |
+| `/agent-memory init`          | Create `.agents/memory/`; auto-detect harnesses and write the native instruction file (`.mdc`, `.instructions.md`, or agent `*.md`), or `init <harness>` for one.   |
+| `/agent-memory install hooks` | Print how to install or refresh hooks for one harness — `cursor`, `claude`, `codex`, `opencode`, `copilot`, `gemini` (memory must exist).                           |
+| `/agent-memory bootstrap`     | Inventory canonical sources and gaps (up to 3 subagents); populate pointers — not doc copies.                                                                       |
+| `/agent-memory update`        | Migrate memory; refresh agent-memory block in harness instruction files; instruct hook refresh.                                                                     |
+| `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. `--auto` applies all diffs without per-file prompts.                                    |
+| `/agent-memory lint`          | Check consistency, dead paths, typos, instruction contradictions, cold-session quality, and hook wiring. `--fix` also deletes stale per-branch `active-work` files. |
+| `/agent-memory consolidate`   | Promote useful facts and prune closed-session noise (guided; confirm each diff; no `--auto`).                                                                       |
+| `/agent-memory learn`         | Capture one gated learning/pitfall (`learn [>topic] <clue>`). Confirm before write; no `--auto`.                                                                    |
 
 **Getting started**
 

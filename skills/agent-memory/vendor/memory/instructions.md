@@ -91,4 +91,4 @@ Same shape on every harness. Context = read/maintain; checkpoint = **ephemeral e
 
 ## Memory lint boundaries
 
-Run `/agent-memory lint` on request. Report **errors** / **warnings** / **info**; Fix offer for errors and warnings only. Budgets, glob denylist, finding IDs: `references/lint.md`. Promotion/pruning: consolidate — not `lint --fix`.
+Run `/agent-memory lint` on request. Six passes: consistency, dead paths, typos, instruction contradictions, cold-session quality, hook consistency. Report **errors** / **warnings** / **info**; Fix offer for errors and warnings only. Structural scripts: `references/lint-structural.md`. Budgets, glob denylist, finding IDs: `references/lint.md`. Promotion/pruning: consolidate — not `lint --fix`.

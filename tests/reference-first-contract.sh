@@ -7,6 +7,7 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 instructions="$repo_root/skills/agent-memory/vendor/memory/instructions.md"
 bootstrap="$repo_root/skills/agent-memory/references/bootstrap.md"
 lint="$repo_root/skills/agent-memory/references/lint.md"
+lint_structural="$repo_root/skills/agent-memory/references/lint-structural.md"
 sync="$repo_root/skills/agent-memory/references/sync.md"
 consolidate="$repo_root/skills/agent-memory/references/consolidate.md"
 learn="$repo_root/skills/agent-memory/references/learn.md"
@@ -203,7 +204,7 @@ assert_absent "$aw_template" '## Hold' \
   "TEMPLATE does not pre-create Hold"
 assert_contains "$lint" 'hold-overflow:' \
   "lint flags Hold over 3 bullets"
-assert_contains "$lint" "'## Hold'" \
+assert_contains "$lint_structural" "'## Hold'" \
   "lint treats Hold as optional empty-section heading"
 assert_contains "$agent_block" '_Recall hop_' \
   "always-on block points at Recall hop for durable why"
@@ -410,27 +411,29 @@ assert_contains "$lint" 'Soft budgets (warnings only)' "soft budgets live in lin
 assert_contains "$lint" 'stale-resume:' "lint checks checkpoint freshness vs HEAD"
 assert_contains "$lint" 'template-in-memory:' \
   "lint flags leftover TEMPLATE.md in project memory"
-assert_contains "$lint" 'branch=$(printf '\''%s'\'' "$branch" | tr -c' \
+assert_contains "$lint_structural" 'branch=$(printf '\''%s'\'' "$branch" | tr -c' \
   "lint sanitizes branch without piping git newline into tr"
-assert_contains "$lint" 'rev-parse --verify' \
+assert_contains "$lint_structural" 'rev-parse --verify' \
   "lint resolves Checkpoint SHA with rev-parse --verify"
 assert_absent "$lint" 'rev-parse --end-of-options' \
   "lint must not use rev-parse --end-of-options (Git 2.55)"
+assert_absent "$lint_structural" 'rev-parse --end-of-options' \
+  "lint structural must not use rev-parse --end-of-options (Git 2.55)"
 assert_contains "$lint" 'checkpoint-backticks:' \
   "lint warns on backtick Checkpoint form"
 assert_contains "$lint" 'checkpoint-prose:' \
   "lint warns on Checkpoint trailing TEMPLATE prose"
 assert_contains "$lint" 'stale-next-step:' \
   "lint warns when Next step cites /agent-memory"
-assert_contains "$lint" 'in_ns && /^-/ && /\/agent-memory' \
+assert_contains "$lint_structural" 'in_ns && /^-/ && /\/agent-memory' \
   "lint stale-next-step matches action bullets only"
 assert_contains "$lint" 'dup-progress-log' \
   "lint warns when Progress replays log"
 assert_contains "$lint" 'skills/agent-memory/vendor/memory/' \
   "lint skips dogfood instructions↔vendor dup-exact"
-assert_contains "$lint" 'file) continue' \
+assert_contains "$lint_structural" 'file) continue' \
   "lint skips when-editing placeholder ./file link"
-assert_contains "$lint" "grep -q '<'" \
+assert_contains "$lint_structural" "grep -q '<'" \
   "lint skips shape placeholders with angle brackets (learnings-<topic>.md)"
 assert_contains "$lint" 'evidence-stale-uncleared:' \
   "lint distinguishes uncleared evidence after fresh Checkpoint"
@@ -461,6 +464,40 @@ assert_contains "$lint" 'contradicts-unlinked' \
   "lint names unlinked contradictory insights"
 assert_contains "$lint" 'supersede-cycle' \
   "lint names supersede cycles"
+assert_contains "$lint" 'references/lint-structural.md' \
+  "lint discloses structural scripts"
+assert_contains "$lint" 'typo-heading:' \
+  "lint flags required-heading misspellings"
+assert_contains "$lint" 'typo-token:' \
+  "lint flags method-token misspellings"
+assert_contains "$lint" 'method-stale:' \
+  "lint flags installed instructions missing write floor / hop"
+assert_contains "$lint" 'carrier-stale:' \
+  "lint flags stale agent-memory blocks"
+assert_contains "$lint" 'hook-incomplete:' \
+  "lint flags incomplete four-script hook installs"
+assert_contains "$lint" 'opencode-legacy-plugin:' \
+  "lint flags leftover OpenCode singular plugin path"
+assert_contains "$lint" 'learning-hidden:' \
+  "lint flags path-scoped learnings without when editing"
+assert_contains "$lint" 'quality-unanswerable:' \
+  "lint names cold-session quality gaps"
+assert_contains "$lint" 'live-dup-identity:' \
+  "lint flags two live decisions on the same identity"
+assert_contains "$lint" '**Agent quality (cold session).**' \
+  "lint has a cold-session quality pass"
+assert_contains "$lint" '**Hook consistency.**' \
+  "lint has a hook-consistency pass"
+assert_contains "$lint" '**Typos.**' \
+  "lint has a typo pass"
+assert_contains "$lint" '**Instruction contradictions.**' \
+  "lint has an instruction-contradiction pass"
+assert_contains "$lint_structural" 'hook-incomplete:' \
+  "lint structural emits hook-incomplete"
+assert_contains "$lint_structural" 'typo-token:' \
+  "lint structural emits typo-token"
+assert_contains "$instructions" 'Six passes:' \
+  "lint boundaries name the six passes"
 
 # --- Sync ---
 assert_contains "$sync" 'Sync writes only to:' "sync four-file boundary"

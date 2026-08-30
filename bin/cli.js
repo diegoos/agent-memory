@@ -991,9 +991,7 @@ function parseUpdateFlags(args) {
       force = true;
       continue;
     }
-    console.error(`${c.red("error:")} unexpected argument: ${a}`);
-    printHelp();
-    process.exit(1);
+    fatalUsage(`unexpected argument: ${a}`);
   }
   return { yes, force };
 }
@@ -1101,8 +1099,7 @@ async function main(argv) {
   }
   if (rest[0] === "skill") {
     if (rest.length > 1) {
-      console.error(`${c.red("error:")} install skill does not accept arguments`);
-      process.exit(1);
+      fatal("install skill does not accept arguments");
     }
     printHeader("install · skill");
     printSummary({ skillPath: installSkill(), hooks: [] });
@@ -1115,8 +1112,7 @@ async function main(argv) {
     }
     const raw = rest[1];
     if (rest.length > 2) {
-      console.error(`${c.red("error:")} unexpected argument: ${rest[2]}`);
-      process.exit(1);
+      fatal(`unexpected argument: ${rest[2]}`);
     }
     const harness2 = normalizeHarness(raw);
     if (!harness2) {
@@ -1130,8 +1126,7 @@ async function main(argv) {
   const harness = normalizeHarness(rest[0]);
   if (harness) {
     if (rest.length > 1) {
-      console.error(`${c.red("error:")} unexpected argument: ${rest[1]}`);
-      process.exit(1);
+      fatal(`unexpected argument: ${rest[1]}`);
     }
     await promptInstallChoice(harness);
     return;
