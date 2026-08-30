@@ -53,7 +53,7 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    - **Orphan Relates** (`relates-missing`) — typed edge whose target file is gone, or whose `#fragment` is missing from the target. Propose drop the Relates line, retarget, or Defer. After an approved log Discard/Trim, Grep Relates / aliases for that heading or path and offer the same.
    - Learnings/pitfalls that now have a canonical source.
    - Entries marked `pending-doc` — including those whose `Invalidate when` is already satisfied or whose Insight now appears in the named canonical doc (`pending-doc-met` from lint): propose **remove** the `pending-doc` bullet and either keep the learning as-is, convert to a pointer, or discard if fully superseded by the doc.
-   - Legacy mirror files (`vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*`) whose useful content can become a source pointer or learning.
+   - Legacy mirror files (`vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*`) **only if they survived `/agent-memory update`** (user skipped graph reshape). Prefer pointer then delete.
    - Legacy `## Touched files` sections in active-work (pre-0.1.0).
    - **Hold** bullets on stale `active-work` (branch gone) or on a file about to be deleted on merge: promote through the retention gate (`/agent-memory learn`) or Discard with the file. Do not copy Hold into `learnings.md` without the gate. Cap remains 3 on the live branch file (`hold-overflow`).
    - **Mixed-type log bullets** — under a closed or current heading, bullets that belong to a different `[type]` / concern than the heading summary: propose **moving** them to a correctly typed heading (or trimming noise). Do **not** Discard the whole current-session heading to “fix” mixed types.
@@ -78,7 +78,7 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    2. Only after a promotion is **approved**, and only for **closed** session origins, propose Trim or removal of promoted bullets / empty closed headings from `log.md` or a legacy file body. If promotion is declined, **keep** the origin. Apply approved split/merge moves only after the destination write is confirmed. **Never** remove a heading that would leave zero session entries. After an approved log Discard/Trim, propose Relates retarget/drop for lines that pointed at the removed heading.
    3. Propose removal of legacy path-only bullets, empty closed-session headings, and legacy _Touched files_ sections (Git available; evidence reconstructible).
    4. Propose deleting stale `active-work/<branch>.md` one-by-one, or with an explicit "delete all stale" approval. If `active-work/TEMPLATE.md` is still present, delete it (scaffold SoT is this skill's `references/active-work-template.md`).
-   5. For legacy mirrors: prefer converting to pointers / learnings over delete; deleting a legacy file is sensitive and must be confirmed.
+   5. For leftover mirrors (user skipped `update` graph reshape): fold unique facts then delete; deleting a legacy file is sensitive and must be confirmed. Skip if the file is already gone.
    6. **Progress follow-up** — only if a **closed**-session log Discard/Trim was approved: offer to refresh active-work Progress so it does not point at removed log headings. Do not open this AskQuestion when no closed-session log removal was approved.
 
 7. **Report.** Summarize separately:

@@ -349,8 +349,23 @@ assert_contains "$update" '.hook-sync-state.lock' \
   "update merge requires lock sibling ignore"
 assert_contains "$update" '.hook-sync-state.*' \
   "update merge requires temp sibling ignore"
-assert_contains "$update" '`when editing:` scope hints' \
+assert_contains "$update" '`when editing:` hints' \
   "update preserves when-editing hints on index merge"
+assert_contains "$update" 'references/update-graph.md' \
+  "update loads graph reshape"
+assert_contains "$update" '**Graph reshape.**' \
+  "update runs graph reshape when versions already match"
+update_graph="$repo_root/skills/agent-memory/references/update-graph.md"
+assert_contains "$update_graph" 'Pointer-only file' \
+  "graph reshape defines pointer-only"
+assert_contains "$update_graph" '**Do not** invent learnings' \
+  "graph reshape does not invent learnings"
+assert_contains "$update_graph" '**Status:** live' \
+  "graph reshape inserts Status live"
+assert_contains "$update_graph" 'Same calendar day **and** same `[type]`' \
+  "graph reshape merges same-day same-type log"
+assert_contains "$update_graph" 'no remaining link under `.agents/memory/` points at a deleted path' \
+  "graph reshape forbids dead refs"
 assert_contains "$update" 'optional sections' \
   "update documents optional active-work sections"
 assert_contains "$update" 'delete leftover `active-work/TEMPLATE.md`' \
@@ -386,6 +401,8 @@ assert_contains "$bootstrap" 'Leave `active-work/` empty' \
 
 # --- Lint ---
 assert_contains "$lint" 'Legacy mirrors' "lint identifies mirrors"
+assert_contains "$lint" 'references/update-graph.md' \
+  "lint Fix map sends leftover mirrors to update"
 assert_contains "$lint" 'never deletes' "lint does not delete user files"
 assert_contains "$lint" 'graph-tree:' \
   "lint flags graph-tree folders"
@@ -626,8 +643,8 @@ assert_absent "$skill" 'Edit(.agents/memory/**)' \
   "skill allowed-tools must not pre-approve all memory paths"
 assert_absent "$skill" 'Edit(.agents/memory/instructions.md)' \
   "skill allowed-tools must not pre-approve instructions.md"
-assert_absent "$skill" 'Edit(.agents/memory/decisions.md)' \
-  "skill allowed-tools must not pre-approve decisions.md"
+assert_contains "$skill" 'Edit(.agents/memory/decisions.md)' \
+  "skill allows decisions.md for update graph Status: live"
 assert_absent "$skill" 'Edit(.agents/memory/learnings.md)' \
   "skill allowed-tools must not pre-approve learnings.md"
 assert_absent "$skill" 'Edit(.agents/memory/learnings-*.md)' \
@@ -650,8 +667,8 @@ assert_contains "$sync" 'Boundary targets' \
   "sync scopes writes to Boundary targets only"
 assert_contains "$sync" 'Do **not** write `decisions.md`' \
   "sync must not write decisions/learnings"
-assert_contains "$sync" 'outside skill `allowed-tools` pre-approval' \
-  "sync notes decisions/learnings are outside pre-approval"
+assert_contains "$sync" '`update` graph reshape' \
+  "sync leaves Status: live inserts to update"
 assert_contains "$sync" 'adds or widens' \
   "sync --auto still confirms when-editing hint adds"
 assert_absent "$sync" 'scoped to `.agents/memory/**`' \

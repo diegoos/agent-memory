@@ -30,7 +30,7 @@ Before a task, follow session Status (`load:` / Next / Checkpoint). Read `index.
 | `log.md`          | Rolling semantic deltas (Git is the archive).                                                                                                             |
 | `.gitignore`      | Ignores hook-local state.                                                                                                                                 |
 
-Optional on demand: `learnings.md` / `learnings-<topic>.md`. Path-scoped files need `when editing:` on `index.md`. In-turn write-floor captures a reusable lesson; `/agent-memory learn` is explicit capture. Do not create parallel vision or architecture copies; link project docs instead.
+Optional on demand: `learnings.md` / `learnings-<topic>.md`. Path-scoped files need `when editing:` on `index.md`. In-turn write-floor captures a reusable lesson; `/agent-memory learn` is explicit capture. Do not create parallel vision or architecture copies; `/agent-memory update` deletes leftover mirrors and points `index.md` at project docs.
 
 ## Install
 

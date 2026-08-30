@@ -14,6 +14,9 @@ fail() {
 }
 
 grep -q '## 0.1.0' "$update_md" || fail "UPDATE.md missing 0.1.0"
+grep -q 'graph reshape' "$update_md" || fail "UPDATE.md missing graph reshape"
+grep -q 'update-graph.md' "$update_md" || fail "UPDATE.md missing update-graph.md"
+grep -q 'Supersedes 0.0.14' "$update_md" || fail "UPDATE.md 0.2.1 must supersede 0.0.14 keep-mirrors"
 grep -q 'safe:' "$update_md" || fail "UPDATE.md 0.1.0 missing safe items"
 grep -q 'sensitive:' "$update_md" || fail "UPDATE.md 0.1.0 missing sensitive items"
 

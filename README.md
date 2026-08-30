@@ -187,7 +187,7 @@ Use `init <harness>` when you already know the agent.
 | `/agent-memory help`          | List commands.                                                                                               |
 | `/agent-memory init`          | Create `.agents/memory/`; wire native instruction file(s).                                                   |
 | `/agent-memory install hooks` | Print how to install/refresh hooks (user-run installer).                                                     |
-| `/agent-memory update`        | Migrate scaffolding; never overwrites your content blindly.                                                  |
+| `/agent-memory update`        | Migrate scaffolding; collapse leftover mirrors into the index graph (confirm). Never invents learnings.      |
 | `/agent-memory bootstrap`     | Inventory canonical sources and gaps; populate pointers.                                                     |
 | `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md`.                                                  |
 | `/agent-memory lint`          | Consistency, dead paths, typos, instruction contradictions, cold-session quality, hook wiring.               |
