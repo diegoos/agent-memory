@@ -47,7 +47,7 @@ disable-model-invocation: true
 
 Manual-only orchestrator for Workspace Memory. Skeleton and migrations are **vendor-only** (`vendor/memory/`, `vendor/UPDATE.md` beside this file). Installed copy: `.agents/memory/` (`.version` = newest `vendor/UPDATE.md` heading).
 
-**Print-only hooks:** `init`, `update`, and `install hooks` print installer commands (`references/install-hooks.md`). Run the loaded command in this agent.
+**Print-only hooks:** `init` and `install hooks` print installer commands (`references/install-hooks.md`). `update` reads each harness `$hooksDir/.version` against this skill's `metadata.version` and prints those commands only when the stamp is stale or scripts are incomplete. Run the loaded command in this agent.
 
 ## Boundary
 
@@ -99,17 +99,17 @@ Project paths are relative to the target project root unless stated otherwise; v
 
 Read the subcommand from the invocation, load **only** the matching reference, and follow it exactly:
 
-| Command         | Does                                                                                                  | Reference                     |
-| --------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `init`          | Scaffold memory; wire carrier; patch AGENTS docs map; print-only hooks                                | `references/init.md`          |
-| `install hooks` | Print-only hook installer instructions                                                                | `references/install-hooks.md` |
-| `update`        | Migrate scaffolding; delete leftover mirrors; refresh block; AGENTS docs map; print-only hook refresh | `references/update.md`        |
-| `bootstrap`     | Inventory sources; pointers, not copies                                                               | `references/bootstrap.md`     |
-| `sync`          | Catch-up for current / active-work / log / index                                                      | `references/sync.md`          |
-| `lint`          | Six-pass health (consistency, dead paths, typos, contradictions, cold-session quality, hooks)         | `references/lint.md`          |
-| `consolidate`   | Guided prune/promote (confirm; no `--auto`)                                                           | `references/consolidate.md`   |
-| `learn`         | One gated learning (confirm; no `--auto`)                                                             | `references/learn.md`         |
-| `help`          | Print the guide below                                                                                 | _Help_ section below          |
+| Command         | Does                                                                                           | Reference                     |
+| --------------- | ---------------------------------------------------------------------------------------------- | ----------------------------- |
+| `init`          | Scaffold memory; wire carrier; patch AGENTS docs map; print-only hooks                         | `references/init.md`          |
+| `install hooks` | Print-only hook installer instructions                                                         | `references/install-hooks.md` |
+| `update`        | Migrate scaffolding; delete leftover mirrors; refresh block; AGENTS docs map; hook stamp check | `references/update.md`        |
+| `bootstrap`     | Inventory sources; pointers, not copies                                                        | `references/bootstrap.md`     |
+| `sync`          | Catch-up for current / active-work / log / index                                               | `references/sync.md`          |
+| `lint`          | Six-pass health (consistency, dead paths, typos, contradictions, cold-session quality, hooks)  | `references/lint.md`          |
+| `consolidate`   | Guided prune/promote (confirm; no `--auto`)                                                    | `references/consolidate.md`   |
+| `learn`         | One gated learning (confirm; no `--auto`)                                                      | `references/learn.md`         |
+| `help`          | Print the guide below                                                                          | _Help_ section below          |
 
 If no subcommand is given, or it is not one of those above, run `help` (below) and stop.
 
@@ -133,7 +133,7 @@ For `/agent-memory help` (and for any empty or unknown invocation), output the f
 | `/agent-memory init`          | Create `.agents/memory/`; auto-detect harnesses and write the native instruction file (`.mdc`, `.instructions.md`, or agent `*.md`), or `init <harness>` for one.   |
 | `/agent-memory install hooks` | Print how to install or refresh hooks for one harness — `cursor`, `claude`, `codex`, `opencode`, `copilot`, `gemini` (memory must exist).                           |
 | `/agent-memory bootstrap`     | Inventory canonical sources and gaps (up to 3 subagents); populate pointers — not doc copies.                                                                       |
-| `/agent-memory update`        | Migrate scaffolding; delete leftover mirrors; refresh the harness block; patch the AGENTS.md docs map; instruct hook refresh.                                       |
+| `/agent-memory update`        | Migrate scaffolding; delete leftover mirrors; refresh the harness block; patch the AGENTS.md docs map; print hook installer commands only when stamps are stale.    |
 | `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. `--auto` applies all diffs without per-file prompts.                                    |
 | `/agent-memory lint`          | Check consistency, dead paths, typos, instruction contradictions, cold-session quality, and hook wiring. `--fix` also deletes stale per-branch `active-work` files. |
 | `/agent-memory consolidate`   | Promote useful facts and prune closed-session noise (guided; confirm each diff; no `--auto`).                                                                       |
@@ -146,6 +146,6 @@ For `/agent-memory help` (and for any empty or unknown invocation), output the f
 - Keeping the memory current? Follow session Status (`load:` / Next / Checkpoint). Skip when the write floor is all no. Write **one** file when a floor row is yes (rotten resume → active-work; user constraint → `decisions.md` and supersede the old live entry; reusable lesson → learnings + index `when editing:` when there is an incident and 1–3 paths; closed why missing from the commit → `log.md`; shared blocker → `current.md`). Optional `## Hold` on active-work (max 3 bullets) is still that file. Run `sync` only when hook Status is stale **and** there is meaning (or follow `references/sync.md` without invoking the skill). Use `sync --auto` for low-friction flushes — sync **must consume** pending hook paths when meaning covers them (dirty tree does not skip consume).
 - Pruning noise? Run `consolidate` for **closed** sessions (guided; never automatic). Same-day after bootstrap is report-only — do not expect Discard of founding log headings.
 - Capture a lesson now? In-turn write-floor **Reusable lesson** (incident + 1–3 paths + index hint) is the daily path. Run `learn [>topic] <clue>` only for explicit capture (retention gate; confirm).
-- Already set up? Use `lint` to check health (`lint --fix` also removes stale per-branch files), `update` to upgrade scaffolding **and** delete leftover `vision.md` / `domains/*` mirrors (docs stay on `AGENTS.md`), then refresh hooks with the user-run installer if needed.
+- Already set up? Use `lint` to check health (`lint --fix` also removes stale per-branch files), `update` to upgrade scaffolding **and** delete leftover `vision.md` / `domains/*` mirrors (docs stay on `AGENTS.md`). Hook installer commands print only when `$hooksDir/.version` is missing, differs from this skill, or scripts are incomplete.
 
 Method & conventions: `.agents/memory/instructions.md`

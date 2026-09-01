@@ -1,6 +1,6 @@
 # `/agent-memory update`
 
-Migrate `.agents/memory/` from this skill's `vendor/`. Refresh the harness **block** only between `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` (migrate legacy plain tags to comments). Hook refresh is print-only. **Graph reshape** is [`references/update-graph.md`](./update-graph.md) — load it in step 4 even when `.version` already matches.
+Migrate `.agents/memory/` from this skill's `vendor/`. Refresh the harness **block** only between `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` (migrate legacy plain tags to comments). Hook installer commands only when a harness stamp is **stale**. **Graph reshape** is [`references/update-graph.md`](./update-graph.md) — load it in step 4 even when `.version` already matches.
 
 ## Boundary (read before doing anything)
 
@@ -54,11 +54,12 @@ The exact block `init` writes and `update` refreshes is defined in [`references/
 
    **Docs map.** Follow [`references/docs-map.md`](./docs-map.md): patch `AGENTS.md` **outside** the block when project-docs indices exist and AGENTS omits them. Confirm. Do not add those links to `index.md`. Skip when no such indices exist.
 
-6. **Instruct hook refresh.** Follow [`references/install-hooks.md`](./install-hooks.md) → **Detecting installed harnesses** and for each installed harness print the user-run refresh commands (step 4 of that reference). **Do not** copy scripts or merge configs. Run even when the installed version already equals the latest (hook scripts may have changed without a memory migration). Report which harnesses need a user refresh and which were skipped.
+6. **Hook status.** Follow [`references/install-hooks.md`](./install-hooks.md) → **Detecting installed harnesses** and **Stamp vs skill**. Print step 4 installer commands only for **stale** harnesses. **current** harnesses: the one-line skip (CLI already refreshed scripts, or stamps already match). **Do not** copy scripts or merge configs.
+   **Done when:** every installed harness is classified current or stale, and installer commands appear only for stale.
 
 7. **Finalize.** Update `.agents/memory/.version` to the latest. Append one `log.md` heading `## [YYYY-MM-DD] [chore] agent-memory update to <version>` (merge into today's existing `[chore]` heading when Graph reshape already coalesced same-day `[chore]`).
 
-8. **Report.** Summarize what was applied automatically, what was confirmed, and what was skipped — including graph-reshape deletions and rewrites (`update-graph.md` Report), **docs-map** patches or skips, which instruction files had their block refreshed, which had a legacy section migrated, delegation-canary removals offered/applied, which files were left untouched, and which harness hook refresh commands were printed.
+8. **Report.** Summarize what was applied automatically, what was confirmed, and what was skipped — including graph-reshape deletions and rewrites (`update-graph.md` Report), **docs-map** patches or skips, which instruction files had their block refreshed, which had a legacy section migrated, delegation-canary removals offered/applied, which files were left untouched, and hook status (current vs stale vs none found). List printed installer commands only under stale. End with: the user may run `/agent-memory lint` to check the memory after this update (optional; not a required next command).
 
    For Cursor, note that `.cursor/rules/agent-memory.mdc` is the **context layer** (always-on rules) and hooks are the **checkpoint layer** — both are recommended after `init cursor`. If `.cursor/hooks/agent-memory-sync.sh` exists but `.cursor/rules/agent-memory.mdc` is missing, suggest `/agent-memory init cursor` to add the context layer (likewise for Copilot: if `.github/hooks/` is wired but `.github/instructions/agent-memory.instructions.md` is missing).
 

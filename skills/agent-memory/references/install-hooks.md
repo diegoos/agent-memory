@@ -15,14 +15,14 @@ Also used by `init` (step 7) and `update` (refresh already-installed harnesses) 
 
 Accepted `<harness>` values (aliases in parentheses):
 
-| Harness    | Aliases       | Dir (created by installer if missing) | Installer writes into                    |
-| ---------- | ------------- | ------------------------------------- | ---------------------------------------- |
-| `cursor`   | —             | `.cursor/`                            | `.cursor/hooks/` + merge `hooks.json`    |
-| `claude`   | `claude-code` | `.claude/`                            | `.claude/hooks/` + merge `settings.json` |
-| `codex`    | —             | `.codex/`                             | `.codex/hooks/` + merge `hooks.json`     |
+| Harness    | Aliases       | Dir (created by installer if missing) | Installer writes into                         |
+| ---------- | ------------- | ------------------------------------- | --------------------------------------------- |
+| `cursor`   | —             | `.cursor/`                            | `.cursor/hooks/` + merge `hooks.json`         |
+| `claude`   | `claude-code` | `.claude/`                            | `.claude/hooks/` + merge `settings.json`      |
+| `codex`    | —             | `.codex/`                             | `.codex/hooks/` + merge `hooks.json`          |
 | `opencode` | —             | `.opencode/`                          | `.opencode/hooks/` + `.opencode/plugins/*.ts` |
-| `copilot`  | `github`      | `.github/`                            | `.github/hooks/` + `agent-memory.json`   |
-| `gemini`   | —             | `.gemini/`                            | `.gemini/hooks/` + merge `settings.json` |
+| `copilot`  | `github`      | `.github/`                            | `.github/hooks/` + `agent-memory.json`        |
+| `gemini`   | —             | `.gemini/`                            | `.gemini/hooks/` + merge `settings.json`      |
 
 Canonical hook sources live under `hooks/` in the [agent-memory](https://github.com/diegoos/agent-memory) repository (tag matching this skill's `metadata.version`).
 
@@ -64,16 +64,28 @@ Canonical hook sources live under `hooks/` in the [agent-memory](https://github.
 
 A harness counts as **already installed** when its prerequisite dir exists **and** any of these markers is present:
 
-| Harness    | Marker (any one)                                                                        |
-| ---------- | --------------------------------------------------------------------------------------- |
-| `cursor`   | `.cursor/hooks/agent-memory-sync.sh` or agent-memory in `.cursor/hooks.json`            |
-| `claude`   | `.claude/hooks/agent-memory-sync.sh`                                                    |
-| `codex`    | `.codex/hooks/agent-memory-sync.sh`                                                     |
+| Harness    | Marker (any one)                                                                                   |
+| ---------- | -------------------------------------------------------------------------------------------------- |
+| `cursor`   | `.cursor/hooks/agent-memory-sync.sh` or agent-memory in `.cursor/hooks.json`                       |
+| `claude`   | `.claude/hooks/agent-memory-sync.sh`                                                               |
+| `codex`    | `.codex/hooks/agent-memory-sync.sh`                                                                |
 | `opencode` | `.opencode/plugins/agent-memory.ts` (+ `safe-script.ts`) or `.opencode/hooks/agent-memory-sync.sh` |
-| `copilot`  | `.github/hooks/agent-memory.json` or `.github/hooks/agent-memory-sync.sh`               |
-| `gemini`   | `.gemini/settings.json` containing agent-memory or `.gemini/hooks/agent-memory-sync.sh` |
+| `copilot`  | `.github/hooks/agent-memory.json` or `.github/hooks/agent-memory-sync.sh`                          |
+| `gemini`   | `.gemini/settings.json` containing agent-memory or `.gemini/hooks/agent-memory-sync.sh`            |
 
-For `update`, for **each** installed harness print the refresh commands from step 4 (no agent copy/merge). Skip harnesses with no marker even if the prerequisite dir exists.
+Skip harnesses with no marker even if the prerequisite dir exists.
+
+### Stamp vs skill (`update` only)
+
+Target = this skill's `metadata.version` (Read `SKILL.md` frontmatter). For each installed harness:
+
+1. Read `$hooksDir/.version` (first line, trim). Stamp path is the installer dir: `.cursor/hooks/.version`, `.opencode/hooks/.version`, and so on.
+2. **Complete** when all five scripts exist in that dir (`agent-memory-common.sh`, `agent-memory-sync.sh`, `agent-memory-session.sh`, `agent-memory-consume-evidence.sh`, `agent-memory-print-evidence.sh`). OpenCode also needs `.opencode/plugins/agent-memory.ts` and `safe-script.ts`.
+3. **current:** stamp equals target **and** Complete. Report one line: `hooks <harness> current (<stamp>) — installer skip`. Do **not** print step 4 commands.
+4. **stale:** missing stamp, stamp ≠ target, or not Complete. Print step 4 commands for that harness (no agent copy/merge).
+5. No installed harness: report none found. Do **not** print step 4.
+
+`/agent-memory install hooks <harness>` and `init` step 7 always print step 4 (user asked to install). This stamp check is **`update` only**.
 
 ## Behavior
 

@@ -356,6 +356,19 @@ assert_contains "$update" 'references/update-graph.md' \
   "update loads graph reshape"
 assert_contains "$update" '**Graph reshape.**' \
   "update runs graph reshape when versions already match"
+assert_contains "$update" '**Hook status.**' \
+  "update classifies hook stamps before printing installer"
+assert_contains "$update" '/agent-memory lint' \
+  "update report offers lint after memory migration"
+install_hooks="$repo_root/skills/agent-memory/references/install-hooks.md"
+assert_contains "$install_hooks" 'Stamp vs skill' \
+  "install-hooks documents stamp check for update"
+assert_contains "$install_hooks" 'installer skip' \
+  "update skip line when hook stamp matches skill"
+assert_contains "$install_hooks" 'hooks <harness> current' \
+  "install-hooks current report line"
+assert_contains "$install_hooks" '`update` only' \
+  "stamp check is update-only not init"
 update_graph="$repo_root/skills/agent-memory/references/update-graph.md"
 assert_contains "$update_graph" 'Pointer-only file' \
   "graph reshape defines pointer-only"
