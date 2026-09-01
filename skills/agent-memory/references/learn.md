@@ -72,6 +72,4 @@ Examples:
 
 ## Notes
 
-- Align with writing guidance in `instructions.md` → _How to write_: generalize; prefer correct patterns over “don’t” lists. Canonical H2 / legacy / duplicate / topic-split / `Relates:` (required when Evidence is a recall file) rules live in this file (step 6). Lint flags `learning-missing-relates` for that gap.
-- Primary write in-turn is write-floor **Reusable lesson** (incident + paths + index hint) without this command; `learn` is the explicit capture path when the user wants a gated write now. Creating or updating a path-scoped learning **must** also update the matching `index.md` `when editing:` hint in the same event (`instructions.md` one-file exception; same contract as step 7). That is not dual-write of active-work+log.
-- `/agent-memory consolidate` remains the path for promoting closed-session log noise into learnings and for proposing topic splits/merges.
+- H2 / Duplicate / Relates / index hint: steps 6–7. `/agent-memory consolidate` Pass A may promote **incident-shaped decisions** already on disk (max 3 learnings; Duplicate rule). Pass B trims or discards **closed** log headings — it does not scrape the log diary into Insights. Topic splits/merges are consolidate (confirm).

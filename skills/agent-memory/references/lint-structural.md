@@ -158,7 +158,7 @@ awk '
   }
 ' log.md
 
-# Superseded decision still carrying Context/Decision body
+# Superseded body; live+Source wiki; live text still says superseded
 awk '
   /^```/ { fence = !fence; next }
   fence { next }
@@ -167,7 +167,11 @@ awk '
     heading = $0
     in_e = 1
     super = 0
+    live = 0
     body = 0
+    has_src = 0
+    stale_txt = 0
+    if (tolower($0) ~ /superseded by/) stale_txt = 1
     next
   }
   /^## / {
@@ -176,13 +180,61 @@ awk '
     next
   }
   in_e && /\*\*Status:\*\*[[:space:]]*superseded/ { super = 1 }
+  in_e && /\*\*Status:\*\*[[:space:]]*live/ { live = 1 }
   in_e && /\*\*(Context|Decision):\*\*/ { body = 1 }
+  in_e && /\*\*Source:\*\*/ && /(docs\/|[Aa][Dd][Rr]-)/ { has_src = 1 }
+  in_e && tolower($0) ~ /superseded by/ { stale_txt = 1 }
   END { flush() }
   function flush() {
     if (in_e && super && body)
       print "decision-body-bloat: " heading " — collapse superseded to heading + Status + Superseded by:"
+    if (in_e && live && has_src && body)
+      print "decision-canonical-dup: " heading " — live Source to docs/ADR still has Context/Decision; collapse to pointer"
+    if (in_e && live && stale_txt)
+      print "decision-stale-live: " heading " — Status live but heading/Source says superseded"
   }
 ' decisions.md
+
+# Incident-shaped decision with no learnings H2
+has_learn_h2=false
+for _lf in learnings.md learnings-*.md; do
+  [ -f "$_lf" ] || continue
+  grep -qE '^## ' "$_lf" && has_learn_h2=true
+done
+if [ "$has_learn_h2" != true ]; then
+  awk '
+    /^```/ { fence = !fence; next }
+    fence { next }
+    /^## \[[0-9]{4}-[0-9]{2}-[0-9]{2}\]/ {
+      flush()
+      heading = $0
+      in_e = 1
+      pathish = 0
+      incident = 0
+      next
+    }
+    /^## / {
+      flush()
+      in_e = 0
+      next
+    }
+    in_e && /(src\/|astro\.config)/ { pathish = 1 }
+    in_e && /(rollback|workaround|[Ff]ragment|revert)/ { incident = 1 }
+    END { flush() }
+    function flush() {
+      if (in_e && pathish && incident)
+        print "incident-unpromoted: " heading " — incident-shaped decision with src/config path and no learnings H2; consolidate Pass A (max 3)"
+    }
+  ' decisions.md
+fi
+
+# Live decisions name repo paths but index decisions line has no when editing:
+if grep -qE '\*\*Status:\*\*[[:space:]]*live' decisions.md 2>/dev/null \
+  && grep -qE 'src/|astro\.config' decisions.md 2>/dev/null; then
+  if ! grep -qE '\[decisions\.md\].*when editing:' index.md 2>/dev/null; then
+    echo "decision-hidden: index decisions.md line lacks when editing: while live decisions name src/config paths — consolidate Pass A"
+  fi
+fi
 
 # Canonical source catalog (index is a short map, not a bibliography)
 awk '
@@ -445,6 +497,54 @@ if [ -f AGENTS.md ] && [ -f .agents/memory/index.md ]; then
     esac
     grep -qxF "$rel" /tmp/am-agents-hrefs.$$ && \
       echo "index-dup-agents: Canonical source $rel is already linked from AGENTS.md — drop the index bullet"
+  done
+  rm -f /tmp/am-agents-hrefs.$$
+fi
+
+# Live Source-only decisions whose path AGENTS.md already maps
+if [ -f AGENTS.md ] && [ -f .agents/memory/decisions.md ]; then
+  grep -oE '\[[^]]+\]\([^)]+\)' AGENTS.md | sed -E 's/^[^]]*\]\(//; s/\)$//' | while IFS= read -r u; do
+    case "$u" in http*|https*|'#'*) continue ;; esac
+    p=$(printf '%s' "$u" | sed 's/#.*//; s|^\./||; s|^/||')
+    [ -n "$p" ] || continue
+    printf '%s\n' "$p"
+  done | sort -u > /tmp/am-agents-hrefs.$$
+  awk '
+    /^```/ { fence = !fence; next }
+    fence { next }
+    /^## \[[0-9]{4}-[0-9]{2}-[0-9]{2}\]/ {
+      flush()
+      heading = $0
+      in_e = 1
+      live = 0
+      body = 0
+      src = ""
+      next
+    }
+    /^## / {
+      flush()
+      in_e = 0
+      next
+    }
+    in_e && /\*\*Status:\*\*[[:space:]]*live/ { live = 1 }
+    in_e && /\*\*(Context|Decision):\*\*/ { body = 1 }
+    in_e && /\*\*Source:\*\*/ { src = $0 }
+    END { flush() }
+    function flush() {
+      if (in_e && live && src != "" && !body)
+        print heading "\t" src
+    }
+  ' .agents/memory/decisions.md | while IFS=$(printf '\t') read -r heading src; do
+    printf '%s\n' "$src" | grep -oE '\[[^]]+\]\([^)]+\)' | sed -E 's/^[^]]*\]\(//; s/\)$//' | while IFS= read -r u; do
+      case "$u" in http*|https*|'#'*) continue ;; esac
+      rel=$(printf '%s' "$u" | sed 's/#.*//; s|^\./||')
+      case "$rel" in
+        ../../*) rel=${rel#../../} ;;
+        ../*) rel=${rel#../} ;;
+      esac
+      grep -qxF "$rel" /tmp/am-agents-hrefs.$$ && \
+        echo "decision-docs-map: $heading — live Source-only and AGENTS.md already links $rel — drop or leave off memory"
+    done
   done
   rm -f /tmp/am-agents-hrefs.$$
 fi

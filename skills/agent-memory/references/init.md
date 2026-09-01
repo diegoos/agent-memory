@@ -106,5 +106,5 @@ When `CLAUDE.md` is standalone (no `@AGENTS.md`), claude and opencode have disti
 ## Notes
 
 - Do not populate the memory here — `init` only scaffolds. To index canonical sources and gaps, the user runs `/agent-memory bootstrap` (pointers, not doc copies). Bootstrap does not invent product vision when docs are missing — it reports the gap.
-- Optional git `pre-commit` / `post-commit` hooks are **not** wired by `init` — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.2.0/hooks/README.md).
+- Optional git `pre-commit` / `post-commit` hooks are **not** wired by `init` — see the [hooks README](https://github.com/diegoos/agent-memory/blob/HEAD/hooks/README.md).
 - **Context vs checkpoint:** native instruction files (`.mdc`, agent `*.md`, `.instructions.md`) inject the agent-memory workflow into the model context. Lifecycle hooks (see `install-hooks.md`) run deterministic git checkpoints — they do not replace context injection.

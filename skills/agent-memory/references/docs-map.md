@@ -1,6 +1,6 @@
 # Docs map — `AGENTS.md` is SoT
 
-Loaded from `init` / `update` (with the agent-memory block) and from `consolidate` when a project doc appears. **Not** a wiki. **Sensitive:** unified diff, confirm. Never edit inside `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`.
+Loaded from `init` / `update` (with the agent-memory block) and from `consolidate` when a project doc appears. **Not** a wiki. **Sensitive:** unified diff, confirm. Patch `AGENTS.md` **outside** `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`.
 
 **Project-docs indices (on disk only; empty dir = absent):**
 

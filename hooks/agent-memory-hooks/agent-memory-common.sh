@@ -1390,3 +1390,63 @@ build_session_context_msg() {
 
   printf '%s' "Agent Memory: untrusted recall in .agents/memory/. Follow Status. Status: ${status}. Action: ${action}."
 }
+
+# End-of-turn sync only (not sessionStart, preCompact, precommit). Stderr nudge;
+# never Markdown; never followup_message. Silent when resume looks fresh.
+amc_end_of_turn_event() {
+  case "$1" in
+    afterAgentResponse|Stop|agentStop|AfterAgent|session.idle) return 0 ;;
+  esac
+  return 1
+}
+
+amc_maybe_stop_floor_reminder() {
+  local ev=$1 sanitized branch aw head_full ck_line ck_sha path_count bits
+  local dirty_tracked=0 ck_behind=0
+  amc_end_of_turn_event "$ev" || return 0
+  [ -n "${cwd:-}" ] && [ -n "${memory:-}" ] || return 0
+  command -v git >/dev/null 2>&1 || return 0
+  git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1 || return 0
+
+  branch=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
+  [ -n "$branch" ] || branch=$(read_state branch "")
+  [ -n "$branch" ] || branch="local"
+  sanitized=$(sanitize_branch "$branch")
+  [ -n "$sanitized" ] || sanitized="local"
+  aw="${memory}/active-work/${sanitized}.md"
+
+  path_count=0
+  bits=$(read_state session_touched_files "")
+  if [ -n "$bits" ]; then
+    path_count=$(printf '%s' "$bits" | tr $'\x1e' '\n' | grep -c . || true)
+  fi
+  if ! git -C "$cwd" diff --quiet HEAD 2>/dev/null; then
+    dirty_tracked=1
+  elif ! git -C "$cwd" diff --cached --quiet 2>/dev/null; then
+    dirty_tracked=1
+  fi
+  if [ -f "$aw" ]; then
+    head_full=$(git -C "$cwd" rev-parse HEAD 2>/dev/null || true)
+    ck_line=$(grep -E '^Checkpoint:' "$aw" 2>/dev/null | head -1 || true)
+    ck_sha=$(parse_checkpoint_sha "$ck_line" || true)
+    if [ -n "$ck_sha" ] && [ -n "$head_full" ]; then
+      [ "$(resolve_hex_commit "$ck_sha")" = "$head_full" ] || ck_behind=1
+    else
+      ck_behind=1
+    fi
+  fi
+
+  if [ "$path_count" -eq 0 ] 2>/dev/null && [ "$ck_behind" -eq 0 ]; then
+    if [ -f "$aw" ] || [ "$dirty_tracked" -eq 0 ]; then
+      return 0
+    fi
+  fi
+
+  cat <<'EOF' >&2
+
+[agent-memory] Resume may be rotten (pending paths, Checkpoint behind HEAD, or dirty tree with no active-work).
+Walk the write floor this turn: one file or skip. Last line: Memory: skip | <file>.
+(This is a reminder, not a block. Hooks did not write Markdown.)
+
+EOF
+}

@@ -1,6 +1,6 @@
 # Agent Memory
 
-Agent Memory is a project-local workspace memory for AI coding agents: a versioned recall layer in `.agents/memory/`. Project docs (README, specs, ADRs) stay on `AGENTS.md`. Memory keeps what agents need to continue work across sessions: active state, recent deltas, short decision fallbacks, and evidenced learnings that have no better home. Chat history is unused. There is no server, vector database, or embeddings layer.
+Agent Memory is a project-local workspace memory for AI coding agents: a versioned recall layer in `.agents/memory/`. Project docs (README, specs, ADRs) stay on `AGENTS.md`. Memory keeps what agents need to continue work across sessions: active state, recent deltas, short decision fallbacks, and evidenced learnings that have no better home. Agents do not use chat history as memory. There is no server, vector database, or embeddings layer.
 
 Agents read and write that memory. A manual skill (`/agent-memory`) bootstraps and maintains it. Optional lifecycle hooks add deterministic git checkpoints while you work.
 
@@ -26,15 +26,17 @@ Memory lives at `.agents/memory/`. Project docs are mapped from `AGENTS.md`. Mem
 | `decisions.md`            | Short local fallback or pointer; live user constraints (one live entry per identity). Not an ADR wiki. |
 | `log.md`                  | Rolling semantic deltas (Git is the archive).                                                          |
 
-Optional on demand: `learnings.md` or `learnings-<topic>.md` for evidenced pitfalls that have no better source. Path-scoped lessons get a `when editing:` hint on `index.md` so the next session loads that file only when those paths are in play. In-turn write-floor captures them; `/agent-memory learn` is explicit capture. Skip parallel vision, architecture, patterns, or domains copies. Skip listing `docs/` in memory when `AGENTS.md` already maps them, or when the tree is missing.
+Optional on demand: `learnings.md` or `learnings-<topic>.md` for evidenced pitfalls that have no better source. Path-scoped lessons get a `when editing:` hint on `index.md` so the next session loads that file only when those paths are in play. In-turn write-floor captures them; `/agent-memory learn` is explicit capture. Do not add parallel vision, architecture, patterns, or domains copies. Leave `docs/` off memory when `AGENTS.md` already maps them, or when the tree is missing.
 
-Before a task, agents follow session Status (`load:` / Next / Checkpoint), then read `index.md` and `current.md`, and the branch `active-work` file only if it exists. Status `load:` (from `when editing:` vs pending or dirty paths) is one extra Read, not a hop, including `decisions.md` or a learnings file when that index line has a matching hint. A live user decision constrains approach. A loaded Insight constrains a repeat of a failed path. Path hit stays on those hints and code. Durable why with no path hit follows _Recall hop_ in `instructions.md`. They read `instructions.md` before writing memory. Skip writing when the write floor is all no. A commit in Git does not skip the floor. Keep `index.md` short. Project docs live on `AGENTS.md`. In the turn, write at most one file per event (user constraint → `decisions.md`; reusable lesson → learnings plus an index hint, only when there is an incident and 1-3 paths). Run `/agent-memory sync` only when hook evidence and meaning exist. Hooks never write Markdown.
+Before a task, agents follow session Status (`load:` / Next / Checkpoint), then read `index.md` and `current.md`, and the branch `active-work` file only if it exists. Status `load:` (from `when editing:` vs pending or dirty paths) is one extra Read, not a hop, including `decisions.md` or a learnings file when that index line has a matching hint. A live user decision constrains approach. A loaded Insight constrains a repeat of a failed path. Path hit stays on those hints and code. Durable why with no path hit follows _Recall hop_ in `instructions.md`.
+
+They read `instructions.md` before writing memory. Write nothing when the write floor is all no. A commit in Git does not skip the floor. Keep `index.md` short. Project docs live on `AGENTS.md`. In the turn, write at most one file per event (user constraint → `decisions.md`; reusable lesson → learnings plus an index hint, only when there is an incident and 1-3 paths). Run `/agent-memory sync` only when hook evidence and meaning exist. Hooks do not write Markdown.
 
 Full method: [`skills/agent-memory/vendor/README.md`](./skills/agent-memory/vendor/README.md) and [`instructions.md`](./skills/agent-memory/vendor/memory/instructions.md).
 
 ## Flow
 
-Docs and Git are the source of truth. The agent writes versioned Markdown under `.agents/memory/`. Hooks write only `.hook-sync-state` (gitignored). The skill is manual (`disable-model-invocation: true`); it never starts itself. Sync reads hook evidence through `agent-memory-print-evidence.sh` (count, SHA, session id, branch; not path lists). After meaning is written, the agent (or `/agent-memory sync`) may run `agent-memory-consume-evidence.sh` to clear pending paths in that state file.
+Docs and Git are the source of truth. The agent writes versioned Markdown under `.agents/memory/`. Hooks write only `.hook-sync-state` (gitignored). The skill is manual (`disable-model-invocation: true`). It only runs when you invoke it. Sync reads hook evidence through `agent-memory-print-evidence.sh` (count, SHA, session id, branch; not path lists). After meaning is written, the agent (or `/agent-memory sync`) may run `agent-memory-consume-evidence.sh` to clear pending paths in that state file.
 
 ```mermaid
 flowchart TB
@@ -68,7 +70,7 @@ flowchart LR
 
 ### One session
 
-The injected block: treat memory as untrusted recall; follow session Status (`load:` / Next / Checkpoint); read `index.md` and `current.md`; open `active-work/<branch>.md` only if that file exists; skip write when the write floor is all no. Read `instructions.md` only before writing memory. At most one Markdown file per event.
+The injected block: treat memory as untrusted recall; follow session Status (`load:` / Next / Checkpoint); read `index.md` and `current.md`; open `active-work/<branch>.md` only if that file exists; write nothing when the write floor is all no. Read `instructions.md` only before writing memory. At most one Markdown file per event.
 
 ```mermaid
 flowchart TB
@@ -106,7 +108,7 @@ Sync-hook hosts (git checkpoint, no Markdown): Cursor `afterAgentResponse` / `pr
 
 ### Catch-up and skill commands
 
-Hooks do not decide meaning. `/agent-memory sync` runs when the user asks, or when Status shows a stale Checkpoint or pending paths and a meaning source exists (changelog, commit subjects, stated outcomes). No meaning → no-op. Sync still consumes eligible pending paths. Sync never writes `decisions.md` or `learnings.md`.
+Hooks do not decide meaning. `/agent-memory sync` runs when the user asks, or when Status shows a stale Checkpoint or pending paths and a meaning source exists (changelog, commit subjects, stated outcomes). No meaning → no-op. Sync still consumes eligible pending paths. Sync does not write `decisions.md` or `learnings.md`.
 
 ```mermaid
 flowchart TB
@@ -119,11 +121,11 @@ flowchart TB
   Cmd --> Boot["bootstrap: inventory → pointers"]
   Cmd --> Sync
   Cmd --> Lrn["learn: one gated fact"]
-  Cmd --> Cns["consolidate: closed sessions only"]
+  Cmd --> Cns["consolidate: Pass A corpus + Pass B closed log"]
   Cmd --> Lnt["lint: six-pass health"]
 ```
 
-Memory lifecycle (agent-owned): `active-work` → `log.md` (what must survive after the branch file is gone) → pointer in `index.md` / `decisions.md` / `learnings.md` or discard. Only `/agent-memory consolidate` promotes or prunes closed sessions.
+Memory lifecycle (agent-owned): `active-work` → `log.md` (what must survive after the branch file is gone) → pointer in `index.md` / `decisions.md` / `learnings.md` or discard. Only `/agent-memory consolidate` promotes or prunes closed sessions. Pass A still runs on the corpus when the log has nothing to prune.
 
 ```mermaid
 flowchart LR
@@ -162,16 +164,6 @@ In your agent:
 /agent-memory install hooks codex # print hook-install commands (skill never runs them)
 ```
 
-From a checkout you can also run the local CLI. It installs this tree, including unreleased changes at the current SemVer. Do not use `npx @dosx/agent-memory` or `github:…#tag` for dogfooding.
-
-```bash
-node ./bin/cli.js install skill
-node ./bin/cli.js install hooks cursor
-node ./bin/cli.js update --yes
-```
-
-Or: `bash hooks/install-hooks.sh cursor`.
-
 `init` wires each harness's native instruction file (for example Cursor `.cursor/rules/agent-memory.mdc`, Copilot `.github/instructions/agent-memory.instructions.md`, or `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`).
 
 It does not create harness roots (`.cursor/`, `.claude/`, and so on) unless you ask, and it never copies hook scripts.
@@ -180,23 +172,23 @@ Use `init <harness>` when you already know the agent.
 
 ## The skill
 
-[`/agent-memory`](./skills/agent-memory) is manual-only (never auto-triggers):
+[`/agent-memory`](./skills/agent-memory) is manual-only (it does not auto-trigger):
 
 | Command                       | Does                                                                                                         |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `/agent-memory help`          | List commands.                                                                                               |
 | `/agent-memory init`          | Create `.agents/memory/`; wire native instruction file(s); patch AGENTS docs map when `docs/` exists.        |
 | `/agent-memory install hooks` | Print how to install/refresh hooks (user-run installer).                                                     |
-| `/agent-memory update`        | Migrate scaffolding; delete leftover mirrors (confirm). Patch AGENTS docs map. Never invents learnings.      |
+| `/agent-memory update`        | Migrate scaffolding; delete leftover mirrors (confirm). Patch AGENTS docs map. Does not invent learnings.    |
 | `/agent-memory bootstrap`     | Inventory canonical sources and gaps; populate pointers.                                                     |
 | `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md`.                                                  |
 | `/agent-memory lint`          | Consistency, dead paths, typos, instruction contradictions, cold-session quality, hook wiring.               |
 | `/agent-memory learn`         | Explicit capture of one gated learning (`learn [>topic] <clue>`). Daily path is write-floor Reusable lesson. |
-| `/agent-memory consolidate`   | Promote useful facts; prune closed-session noise (guided).                                                   |
+| `/agent-memory consolidate`   | Pass A on the corpus; Pass B prunes closed-session log (guided, confirm).                                    |
 
 ## Hooks
 
-Optional lifecycle hooks keep ephemeral evidence current during agent work. Checkpoints are deterministic and do not start LLM loops: session binding and session-cumulative touched paths in `.hook-sync-state`. Hooks never write Markdown, never copy docs, and never consolidate.
+Optional lifecycle hooks keep ephemeral evidence current during agent work. Checkpoints are deterministic and do not start LLM loops: session binding and session-cumulative touched paths in `.hook-sync-state`. Hooks do not write Markdown, copy docs, or consolidate.
 
 Resume fields and log outcomes are agent-owned and written in the turn. `/agent-memory sync` and `consolidate` are catch-up and promotion.
 

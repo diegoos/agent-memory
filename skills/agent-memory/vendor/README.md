@@ -10,13 +10,13 @@ The method borrows the discipline of the [llm-wiki pattern][llm-wiki] (index, lo
 
 ## When to use it
 
-Use it on a project where AI agents do meaningful work across sessions, and where humans and agents need a reliable account of where things stand without duplicating existing docs.
+Use it on a project where AI agents work across sessions, and where humans and agents need a shared record of where things stand without copying existing docs.
 
 ## How agents use it
 
 Agents read and write the memory. Full workflow and multi-developer rules: [`memory/instructions.md`](./memory/instructions.md) (canonical method file; load it before writing memory).
 
-Before a task, follow session Status (`load:` / Next / Checkpoint). Read `index.md` and `current.md`. Open branch `active-work` only if it exists. Status `load:` is one Read, not a hop, including `decisions.md` or a learnings file when a hint matches. Honor live user decisions for approach and loaded Insights before repeating a failed path. Path hit stays on hints and code. Durable why with no path hit follows _Recall hop_ in `instructions.md`. Skip writing when the write floor is all no. A commit in Git does not skip the floor. Keep `index.md` a short map of recall files. Project docs live on `AGENTS.md`. In the turn, write one file per event: rotten resume → `active-work`; user constraint → `decisions.md`; reusable lesson → learnings plus an index hint (incident + 1-3 paths); closed why missing from the commit → `log.md`; shared blocker → `current.md`. Catch up with `/agent-memory sync` only when there is meaning. Run `agent-memory-print-evidence.sh` for hook fields; do not Read `.hook-sync-state`. Hooks write only `.hook-sync-state`. They never write Markdown.
+Before a task, follow session Status (`load:` / Next / Checkpoint). Read `index.md` and `current.md`. Open branch `active-work` only if it exists. Status `load:` is one Read, not a hop, including `decisions.md` or a learnings file when a hint matches. Honor live user decisions for approach and loaded Insights before repeating a failed path. Path hit stays on hints and code. Durable why with no path hit follows _Recall hop_ in `instructions.md`. Write nothing when the write floor is all no. A commit in Git does not skip the floor. Keep `index.md` a short map of recall files. Project docs live on `AGENTS.md`. In the turn, write one file per event: rotten resume → `active-work`; user constraint → `decisions.md`; reusable lesson → learnings plus an index hint (incident + 1-3 paths); closed why missing from the commit → `log.md`; shared blocker → `current.md`. Catch up with `/agent-memory sync` only when there is meaning. Run `agent-memory-print-evidence.sh` for hook fields. Do not Read `.hook-sync-state`. Hooks write only `.hook-sync-state`. They do not write Markdown.
 
 ## What's inside (`.agents/memory/`)
 
@@ -30,7 +30,7 @@ Before a task, follow session Status (`load:` / Next / Checkpoint). Read `index.
 | `log.md`          | Rolling semantic deltas (Git is the archive).                                                                                                             |
 | `.gitignore`      | Ignores hook-local state.                                                                                                                                 |
 
-Optional on demand: `learnings.md` / `learnings-<topic>.md`. Path-scoped files need `when editing:` on `index.md`. In-turn write-floor captures a reusable lesson; `/agent-memory learn` is explicit capture. Skip parallel vision or architecture copies; `/agent-memory update` deletes leftover mirrors. Docs maps belong on `AGENTS.md`, not `index.md`.
+Optional on demand: `learnings.md` / `learnings-<topic>.md`. Path-scoped files need `when editing:` on `index.md`. In-turn write-floor captures a reusable lesson; `/agent-memory learn` is explicit capture. Do not add parallel vision or architecture copies; `/agent-memory update` deletes leftover mirrors. Docs maps belong on `AGENTS.md`, not `index.md`.
 
 ## Install
 
@@ -46,14 +46,14 @@ Install the `agent-memory` skill ([skills.sh](https://www.skills.sh/diegoos/agen
 /agent-memory update | sync | lint | learn | consolidate
 ```
 
-Hooks are user-installed (the skill only prints commands). See the [hooks README](https://github.com/diegoos/agent-memory/blob/0.2.0/hooks/README.md).
+Hooks are user-installed (the skill only prints commands). See the [hooks README](https://github.com/diegoos/agent-memory/blob/HEAD/hooks/README.md).
 
 ### Manual
 
 ```bash
 mkdir -p .agents
 cp -R memory .agents/memory
-# npm omits files named `.gitignore` — copy the pack-safe template explicitly:
+# npm omits files named `.gitignore`. Copy the pack-safe template explicitly:
 cp memory/gitignore .agents/memory/.gitignore
 ```
 

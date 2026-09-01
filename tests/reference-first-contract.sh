@@ -195,6 +195,10 @@ assert_contains "$learn" 'Reusable lesson' \
   "learn treats reusable lesson as a write-floor row"
 assert_contains "$learn" 'do not write a hidden lesson' \
   "path-scoped learn requires an index hint"
+assert_contains "$learn" 'incident-shaped decisions' \
+  "learn points consolidate Pass A at on-disk incident decisions"
+assert_absent "$learn" 'log noise into learnings' \
+  "learn does not say consolidate scrapes log into Insights"
 assert_contains "$consolidate" 'Two `Status: live`' \
   "consolidate finds duplicate live decisions"
 assert_contains "$instructions" 'Read **that linked file**' \
@@ -215,8 +219,8 @@ assert_contains "$agent_block" 'failing test' \
   "always-on block names failing test as path hit"
 assert_contains "$agent_block" 'Durable why' \
   "always-on hop trigger is durable why"
-assert_contains "$agent_block" 'Do not require verb names' \
-  "always-on block does not require closed verb tokens"
+assert_contains "$agent_block" 'Closed verbs match edges' \
+  "always-on block: closed verbs match edges not the prompt"
 assert_contains "$instructions" '## Recall hop' \
   "instructions define Recall hop"
 assert_contains "$instructions" 'Depth **h = 2**' \
@@ -467,6 +471,28 @@ assert_contains "$lint" 'log-unknown-type:' \
   "lint flags closed-list [type] misses"
 assert_contains "$lint" 'decision-body-bloat:' \
   "lint flags superseded decision bodies"
+assert_contains "$lint" 'decision-canonical-dup:' \
+  "lint flags live Source+body wiki decisions"
+assert_contains "$lint" 'decision-docs-map:' \
+  "lint flags Source-only decisions already on AGENTS"
+assert_contains "$lint" 'decision-stale-live:' \
+  "lint flags live status with superseded-by prose"
+assert_contains "$lint" 'incident-unpromoted:' \
+  "lint flags incident-shaped decisions without learnings"
+assert_contains "$lint" 'decision-hidden:' \
+  "lint flags decisions index line missing when editing"
+assert_contains "$lint" 'plus **no** `when editing:` anywhere on `index.md`' \
+  "lint quality-unanswerable when open work has no hints"
+assert_contains "$lint_structural" 'decision-canonical-dup:' \
+  "lint-structural emits decision-canonical-dup"
+assert_contains "$lint_structural" 'decision-stale-live:' \
+  "lint-structural emits decision-stale-live"
+assert_contains "$lint_structural" 'incident-unpromoted:' \
+  "lint-structural emits incident-unpromoted"
+assert_contains "$lint_structural" 'decision-hidden:' \
+  "lint-structural emits decision-hidden"
+assert_contains "$lint_structural" 'decision-docs-map:' \
+  "lint-structural emits decision-docs-map"
 assert_contains "$lint" 'memory-ghost-docs:' \
   "lint flags memory links to missing docs/ADR"
 assert_contains "$lint" 'agents-docs-gap:' \
@@ -631,7 +657,19 @@ assert_contains "$consolidate" 'Exception (same-day supersede)' \
 assert_contains "$consolidate" 'rolling window' \
   "consolidate treats log.md as a rolling window"
 assert_contains "$consolidate" 'report **no-op**' \
-  "consolidate no-op when nothing to prune"
+  "consolidate no-op when both passes empty"
+assert_contains "$consolidate" '**Pass A — corpus**' \
+  "consolidate always runs corpus pass"
+assert_contains "$consolidate" '**Pass B — closed log prune.**' \
+  "consolidate separates log prune from corpus"
+assert_contains "$consolidate" 'An open branch is not the current session' \
+  "consolidate open branch is not current session"
+assert_contains "$consolidate" 'failed consolidate' \
+  "empty Pass A plan with findings is failed consolidate"
+assert_contains "$consolidate" 'at most **3**' \
+  "consolidate caps learning promotions at 3"
+assert_contains "$instructions" '`/agent-memory consolidate` may promote' \
+  "in-turn fail-closed; consolidate may promote on-disk incident decisions"
 assert_contains "$consolidate" 'Current session (prune exclusion)' \
   "consolidate defines current-session rules"
 assert_contains "$consolidate" 'Never propose a Discard set that would leave `log.md` with **zero** session headings' \
@@ -767,6 +805,12 @@ assert_contains "$agent_block" 'Never dual-write' "agent-block no dual-write"
 assert_contains "$agent_block" 'Status `load:`' \
   "agent-block defers hint follow to Status load"
 assert_contains "$agent_block" '_How to write_' "agent-block points at concise writing guidance"
+assert_contains "$agent_block" 'Memory: skip' \
+  "agent-block requires a last-line skip or file after repo-changing turns"
+assert_contains "$skill" 'Last assistant line: `Memory: skip`' \
+  "skill Report ends with Memory skip not a floor row"
+assert_contains "$instructions" 'Memory: skip' \
+  "stop names skip or winning file without a second write"
 assert_contains "$agent_block" '_Harness parity — memory contract_' \
   "agent-block links harness parity"
 assert_contains "$skill" 'agent-memory-consume-evidence.sh' \
@@ -795,6 +839,10 @@ assert_contains "$common_sh" 'reusable lesson needs incident+paths' \
   "session action walks reusable lesson row"
 assert_contains "$common_sh" 'amc_index_hint_loads' \
   "session Status matches when-editing hints"
+assert_contains "$common_sh" 'amc_maybe_stop_floor_reminder' \
+  "end-of-turn sync may stderr a resume nudge"
+assert_contains "$common_sh" 'amc_end_of_turn_event' \
+  "resume nudge is end-of-turn only"
 assert_contains "$common_sh" 'amc_active_work_next_step' \
   "session Status can surface Next step"
 assert_contains "$common_sh" 'resolve_hex_commit' \
@@ -802,6 +850,8 @@ assert_contains "$common_sh" 'resolve_hex_commit' \
 assert_absent "$common_sh" 'rev-parse --end-of-options' \
   "hooks must not use rev-parse --end-of-options (Git 2.55)"
 assert_contains "$sync_sh" 'no Markdown writes' "sync script header documents no Markdown"
+assert_contains "$sync_sh" 'amc_maybe_stop_floor_reminder' \
+  "sync calls end-of-turn resume nudge"
 pre_commit="$repo_root/hooks/git/pre-commit"
 assert_contains "$pre_commit" 'env -u AGENT_MEMORY_SESSION_ID' \
   "pre-commit unsets stale session-binding env"

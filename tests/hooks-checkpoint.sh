@@ -90,7 +90,7 @@ printf 'x\n' > other.txt
 printf '{"session_id":"s1","cwd":"%s"}\n' "$TMP" |
   AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
   AGENT_MEMORY_EVENT=afterAgentResponse AGENT_MEMORY_SESSION_ID=s1 \
-  ./agent-memory-sync.sh >/dev/null
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/stop.err"
 
 grep -q 'session_touched_files=.*app.txt' .agents/memory/.hook-sync-state ||
   fail "full checkpoint missing app.txt in state"
@@ -98,6 +98,17 @@ grep -q 'other.txt' .agents/memory/.hook-sync-state ||
   fail "full checkpoint missing other.txt in state"
 grep -q 'last_processed_head=' .agents/memory/.hook-sync-state ||
   fail "missing last_processed_head"
+grep -q 'Resume may be rotten' "$TMP/stop.err" ||
+  fail "end-of-turn dirty tree with no active-work should stderr resume nudge"
+grep -q 'followup_message' "$TMP/stop.err" &&
+  fail "stop reminder must not mention followup_message"
+
+printf '{"session_id":"s1","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=preCompact AGENT_MEMORY_SESSION_ID=s1 \
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/precompact.err"
+grep -q 'Resume may be rotten' "$TMP/precompact.err" &&
+  fail "preCompact must not stderr the end-of-turn resume nudge"
 
 # Markdown unchanged
 md_after=$(md_checksum)
