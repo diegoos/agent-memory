@@ -813,11 +813,13 @@ function printAgentNextSteps(primary) {
   console.log(c.bold("Next steps"));
   console.log(`  ${c.dim("In your coding agent chat")} ${c.dim("(Cursor, Claude Code, Codex, … — not this terminal):")}`);
   if (primary === "update") {
-    printStep(`${c.cyan("/agent-memory update")}  migrate .agents/memory/ via vendor/UPDATE.md`);
+    printStep(c.cyan("/agent-memory update"));
+    console.log(`    ${c.dim("Type that command only. The skill migrates .agents/memory/ (reads vendor/UPDATE.md). This CLI already refreshed the skill and does not migrate memory.")}`);
   } else {
-    printStep(`${c.cyan("/agent-memory init")}    create .agents/memory/ and wire the agent block`);
+    printStep(c.cyan("/agent-memory init"));
+    console.log(`    ${c.dim("Type that command only. The skill scaffolds .agents/memory/ and wires the agent block.")}`);
   }
-  printStep(`${c.dim("/agent-memory help")}    list skill subcommands`);
+  printStep(`${c.cyan("/agent-memory help")}  ${c.dim("optional — list skill subcommands")}`);
   blank();
 }
 function printHelp() {

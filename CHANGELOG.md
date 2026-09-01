@@ -39,6 +39,7 @@ Migration details for `/agent-memory update` live in [`skills/agent-memory/vendo
 - `/agent-memory consolidate` always runs Pass A on the corpus (docs-map live entries, live+Source wiki bodies, live text that says superseded, incident-shaped decisions, missing `when editing:` on the decisions index line) even when Pass B has nothing to prune from today's log. An open branch is not the current session. No-op only when both passes are empty. At most three learnings per run, from decisions already on disk, not from the log diary. `lint --fix` still does not promote.
 - After a turn that changed repo files, the agent last line is `Memory: skip` or `Memory: <file>` (winning write-floor row). That line is not a Markdown write. After a `/agent-memory` command, `SKILL.md` Routing sets that last line to `Memory: skip` (skill writes are not a floor row). End-of-turn hooks may print a stderr resume nudge when pending paths, Checkpoint is behind, or the tree is dirty with no `active-work`. They do not write Markdown or send `followup_message`. Re-run the hooks installer.
 - `/agent-memory learn` points consolidate Pass A at incident-shaped decisions already on disk (max 3 learnings). Pass B trims or discards closed log headings; it does not scrape the log diary into Insights. Hook README links in the skill use `blob/HEAD`; npx install examples still pin the last released tag until this prerelease is published.
+- CLI post-install Next steps print `/agent-memory update` or `/agent-memory init` as the command only.
 
 ## [0.2.0] - 2026-08-04
 
