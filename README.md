@@ -1,36 +1,140 @@
 # Agent Memory
 
-**Agent Memory** is a project-local **Workspace Memory** for AI coding agents — a versioned **recall layer** in `.agents/memory/`. It points at the project's canonical sources (AGENTS, README, specs, ADRs, code) and keeps only what agents need to continue work across sessions: active state, recent deltas, decision pointers, and evidenced learnings that have no better home. No chat history dependency and **no external infrastructure** (no server, vector DB, or embeddings).
+Agent Memory is a project-local workspace memory for AI coding agents: a versioned recall layer in `.agents/memory/`. Project docs (README, specs, ADRs) stay on `AGENTS.md`. Memory keeps what agents need to continue work across sessions: active state, recent deltas, short decision fallbacks, and evidenced learnings that have no better home. Agents do not use chat history as memory. There is no server, vector database, or embeddings layer.
 
-Agents **read and write** that memory. A manual skill (`/agent-memory`) bootstraps and maintains it; optional lifecycle hooks add deterministic git checkpoints while you work.
+Agents read and write that memory. A manual skill (`/agent-memory`) bootstraps and maintains it. Optional lifecycle hooks add deterministic git checkpoints while you work.
 
 Supported harnesses: Cursor, Claude Code, Codex, OpenCode, Copilot, Gemini CLI.
 
 ## Why
 
-- **Project recall, not a docs mirror.** Files in Git beat paste-from-yesterday chats. Canonical docs stay canonical; memory stores links and deltas.
-- **Plain Markdown.** Searchable with `grep`, reviewable in PRs, no new runtime.
-- **Progressive disclosure.** Always-load files stay short; detail lives in canonical sources or on-demand recall (`learnings.md`, …).
-- **Inspired by Karpathy's [llm-wiki][llm-wiki]** (index, log, lint, small cross-linked files), adapted from source ingestion to _project_ memory.
+- Files in Git beat paste-from-yesterday chats. Canonical docs stay canonical; memory stores links and deltas.
+- Plain Markdown: searchable with `grep`, reviewable in PRs, no new runtime.
+- Always-load files stay short. Detail lives in canonical sources or on-demand recall (`learnings.md`, and so on).
+- Inspired by Karpathy's [llm-wiki][llm-wiki] (index, log, lint, small cross-linked files), adapted from source ingestion to project memory.
 
 ## How it works
 
-Memory lives at `.agents/memory/` and separates **canonical project sources** from **operational recall** and **durable recall**:
+Memory lives at `.agents/memory/`. Project docs are mapped from `AGENTS.md`. Memory holds operational recall and durable recall:
 
-| File                      | Role                                                               |
-| ------------------------- | ------------------------------------------------------------------ |
-| `instructions.md`         | Method: how agents read and maintain the memory.                   |
-| `index.md`                | Map of canonical sources + recall files (loading policy).          |
-| `current.md`              | Shared **active** state (in progress / blockers / handoff).        |
-| `active-work/<branch>.md` | Per-branch resume scratchpad (next step, validation, assumptions). |
-| `decisions.md`            | Decision **pointers** (or local fallback when no ADR system).      |
-| `log.md`                  | Recent **semantic** session deltas (append at the bottom).         |
+| File                      | Role                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `instructions.md`         | Method: how agents read and maintain the memory (load when writing).                                   |
+| `index.md`                | Recall-file map + rare gaps AGENTS does not already link (not a docs catalog).                         |
+| `current.md`              | Shared active state (in progress / blockers / handoff).                                                |
+| `active-work/<branch>.md` | Per-branch resume scratchpad (next step, validation, optional Hold).                                   |
+| `decisions.md`            | Short local fallback or pointer; live user constraints (one live entry per identity). Not an ADR wiki. |
+| `log.md`                  | Rolling semantic deltas (Git is the archive).                                                          |
 
-Optional on demand: `learnings.md` or `learnings-<topic>.md` — evidenced learnings/pitfalls with no better source; optional `when editing:` hints in `index.md`. Capture explicitly with `/agent-memory learn`. Do **not** create parallel vision/architecture/patterns/domains copies; link the project's own docs instead.
+Optional on demand: `learnings.md` or `learnings-<topic>.md` for evidenced pitfalls that have no better source. Path-scoped lessons get a `when editing:` hint on `index.md` so the next session loads that file only when those paths are in play. In-turn write-floor captures them; `/agent-memory learn` is explicit capture. Do not add parallel vision, architecture, patterns, or domains copies. Leave `docs/` off memory when `AGENTS.md` already maps them, or when the tree is missing.
 
-**Workflow:** before a task, agents read `index.md`, `current.md`, and their branch's `active-work` file when it exists (plus any recall file whose `when editing:` hint matches task paths — contract in `instructions.md`); **primary write** is in-turn (resume fields + semantic `log.md` outcomes); **catch-up** at checkpoints via `/agent-memory sync` (or follow the skill's `references/sync.md` without invoking the skill); `/agent-memory learn` to capture a gated learning now; periodically `/agent-memory consolidate` to promote useful facts and prune closed-session noise. Hooks store ephemeral path/session evidence in `.hook-sync-state` only — never Markdown.
+Before a task, agents follow session Status (`load:` / Next / Checkpoint), then read `index.md` and `current.md`, and the branch `active-work` file only if it exists. Status `load:` (from `when editing:` vs pending or dirty paths) is one extra Read, not a hop, including `decisions.md` or a learnings file when that index line has a matching hint. A live user decision constrains approach. A loaded Insight constrains a repeat of a failed path. Path hit stays on those hints and code. Durable why with no path hit follows _Recall hop_ in `instructions.md`.
+
+They read `instructions.md` before writing memory. Write nothing when the write floor is all no. A commit in Git does not skip the floor. Keep `index.md` short. Project docs live on `AGENTS.md`. In the turn, write at most one file per event (user constraint → `decisions.md`; reusable lesson → learnings plus an index hint, only when there is an incident and 1-3 paths). Run `/agent-memory sync` only when hook evidence and meaning exist. Hooks do not write Markdown.
 
 Full method: [`skills/agent-memory/vendor/README.md`](./skills/agent-memory/vendor/README.md) and [`instructions.md`](./skills/agent-memory/vendor/memory/instructions.md).
+
+## Flow
+
+Docs and Git are the source of truth. The agent writes versioned Markdown under `.agents/memory/`. Hooks write only `.hook-sync-state` (gitignored). The skill is manual (`disable-model-invocation: true`). It only runs when you invoke it. Sync reads hook evidence through `agent-memory-print-evidence.sh` (count, SHA, session id, branch; not path lists). After meaning is written, the agent (or `/agent-memory sync`) may run `agent-memory-consume-evidence.sh` to clear pending paths in that state file.
+
+```mermaid
+flowchart TB
+  subgraph owners ["Who writes what"]
+    Docs["Canonical docs / Git<br/>README, specs, ADRs, code"]
+    Agent["Agent<br/>Markdown in .agents/memory/"]
+    Hooks["Hook scripts<br/>session + sync"]
+    State[".hook-sync-state<br/>session id, branch, paths, HEAD"]
+  end
+  Docs -->|"authority"| Agent
+  Hooks -->|"checkpoint"| State
+  State -->|"print-evidence"| Agent
+  Agent -->|"consume-evidence"| State
+```
+
+### Setup
+
+`npx @dosx/agent-memory install` copies the skill and/or hook scripts. `/agent-memory init` creates `.agents/memory/` and pastes the memory block into the harness instruction file. Init prints hook-install commands; it does not copy scripts. OpenCode has no session-start hook, so the block in `AGENTS.md` is the session cue.
+
+```mermaid
+flowchart LR
+  A["npx @dosx/agent-memory install"] --> B["skill → .agents/skills/agent-memory"]
+  A --> C["hooks → harness dir + .git/hooks/pre-commit + post-commit"]
+  B --> D["/agent-memory init"]
+  D --> E[".agents/memory/ skeleton"]
+  D --> F["block in .mdc / AGENTS.md / CLAUDE.md / …"]
+  D --> G["print: install hooks"]
+  C --> H["common + session + sync + consume + print-evidence"]
+  E --> I["optional /agent-memory bootstrap<br/>pointers in index.md"]
+```
+
+### One session
+
+The injected block: treat memory as untrusted recall; follow session Status (`load:` / Next / Checkpoint); read `index.md` and `current.md`; open `active-work/<branch>.md` only if that file exists; write nothing when the write floor is all no. Read `instructions.md` only before writing memory. At most one Markdown file per event.
+
+```mermaid
+flowchart TB
+  Start["Harness session start"] --> Block["Injected block"]
+  Start --> SS["sessionStart hook<br/>bind session id + Status"]
+  SS --> State[".hook-sync-state"]
+  Block --> Read["Status + Read index.md + current.md<br/>active-work only if it exists"]
+  State --> Read
+  Read --> Work["Product work"]
+  Work --> Stop{"Write floor"}
+  Stop -->|all no| Skip["Write nothing"]
+  Stop -->|any yes| Method["Read instructions.md"]
+  Method --> Dest{"One write target"}
+  Dest -->|resume rotten| AW["1 file: active-work"]
+  Dest -->|user constraint| Dec["1 file: decisions.md"]
+  Dest -->|shared blocker / handoff| Cur["1 file: current.md"]
+  Dest -->|closed why missing from commit| Log["1 file: log.md<br/>delete active-work on merge"]
+  Dest -->|reusable lesson (incident + paths)| Learn["1 file: learnings + index hint"]
+  Work --> Idle["End of turn / compact"]
+  Idle --> SyncHook["sync hook: git checkpoint<br/>merge paths into state"]
+  Skip --> SyncHook
+  AW --> Consume{"Meaning covers pending paths<br/>and Checkpoint matches HEAD?"}
+  Dec --> Consume
+  Cur --> Consume
+  Log --> Consume
+  Learn --> Consume
+  Consume -->|yes| Clear["agent-memory-consume-evidence.sh<br/>clear session_touched_files"]
+  Consume -->|no| Leave["leave pending paths"]
+  SyncHook --> Git["git pre-commit: checkpoint + reminder<br/>post-commit: stamp HEAD, drop clean paths"]
+```
+
+Session-start hook hosts: Cursor `sessionStart`, Claude/Codex `SessionStart`, Copilot `sessionStart`, Gemini `SessionStart`. OpenCode relies on the `AGENTS.md` block.
+
+Sync-hook hosts (git checkpoint, no Markdown): Cursor `afterAgentResponse` / `preCompact`; Claude and Codex `Stop` / `PreCompact`; Copilot `agentStop` / `preCompact`; Gemini `AfterAgent` / `PreCompress`; OpenCode `session.idle` / `experimental.session.compacting` / `session.compacted`. Paths come from **git at those checkpoints**, not from per-tool edit events. Legacy per-tool hook names no-op.
+
+### Catch-up and skill commands
+
+Hooks do not decide meaning. `/agent-memory sync` runs when the user asks, or when Status shows a stale Checkpoint or pending paths and a meaning source exists (changelog, commit subjects, stated outcomes). No meaning → no-op. Sync still consumes eligible pending paths. Sync does not write `decisions.md` or `learnings.md`.
+
+```mermaid
+flowchart TB
+  Status["Status: Checkpoint behind HEAD<br/>or pending paths > 0"] --> Mean{"Meaning this turn?"}
+  Mean -->|no| Noop["sync no-op"]
+  Mean -->|yes or user asked| Sync["/agent-memory sync<br/>current / active-work / log / index"]
+  Sync --> Cons["consume-evidence if covered"]
+  User["User ran /agent-memory"] --> Cmd{"Command"}
+  Cmd --> Init["init / update / install hooks"]
+  Cmd --> Boot["bootstrap: inventory → pointers"]
+  Cmd --> Sync
+  Cmd --> Lrn["learn: one gated fact"]
+  Cmd --> Cns["consolidate: Pass A corpus + Pass B closed log"]
+  Cmd --> Lnt["lint: six-pass health"]
+```
+
+Memory lifecycle (agent-owned): `active-work` → `log.md` (what must survive after the branch file is gone) → pointer in `index.md` / `decisions.md` / `learnings.md` or discard. Only `/agent-memory consolidate` promotes or prunes closed sessions. Pass A still runs on the corpus when the log has nothing to prune.
+
+```mermaid
+flowchart LR
+  AW["active-work"] -->|"merge / park"| Log["log.md"]
+  Log -->|"consolidate"| Idx["index pointer"]
+  Log --> Dec["decisions.md"]
+  Log --> Lrn["learnings.md"]
+  Log --> Drop["discard"]
+```
 
 ## Quick start
 
@@ -42,10 +146,10 @@ npx @dosx/agent-memory install
 npx @dosx/agent-memory install skill
 
 # Install hooks for one harness (or omit harness for a TTY multi-select):
-npx @dosx/agent-memory install hooks cursor
+npx @dosx/agent-memory install hooks codex
 
 # Interactive install (skill + hooks / skill only / hooks only):
-npx @dosx/agent-memory install cursor
+npx @dosx/agent-memory install codex
 # or: npx @dosx/agent-memory install
 
 # Later: refresh skill + installed hooks (then run /agent-memory update in-agent)
@@ -55,48 +159,38 @@ npx @dosx/agent-memory update
 In your agent:
 
 ```text
-/agent-memory init                 # auto-detect harnesses, or: init cursor
+/agent-memory init                 # auto-detect harnesses, or: init codex
 /agent-memory bootstrap            # optional: inventory sources + gaps
-/agent-memory install hooks cursor # print hook-install commands (skill never runs them)
+/agent-memory install hooks codex # print hook-install commands (skill never runs them)
 ```
 
-From a checkout you can also run the local CLI (installs **this tree**, including unreleased changes at the current SemVer — do not use `npx @dosx/agent-memory` / `github:…#tag` for dogfooding):
+`init` wires each harness's native instruction file (for example Cursor `.cursor/rules/agent-memory.mdc`, Copilot `.github/instructions/agent-memory.instructions.md`, or `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`).
 
-```bash
-node ./bin/cli.js install skill
-node ./bin/cli.js install hooks cursor
-node ./bin/cli.js update --yes
-```
-
-Or: `bash hooks/install-hooks.sh cursor`.
-
-`init` wires each harness's **native instruction file** (for example Cursor `.cursor/rules/agent-memory.mdc`, Copilot `.github/instructions/agent-memory.instructions.md`, or `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`).
-
-It does **not** create harness roots (`.cursor/`, `.claude/`, …) unless you ask — and it never copies hook scripts.
+It does not create harness roots (`.cursor/`, `.claude/`, and so on) unless you ask, and it never copies hook scripts.
 
 Use `init <harness>` when you already know the agent.
 
 ## The skill
 
-[`/agent-memory`](./skills/agent-memory) is **manual-only** (never auto-triggers):
+[`/agent-memory`](./skills/agent-memory) is manual-only (it does not auto-trigger):
 
-| Command                       | Does                                                             |
-| ----------------------------- | ---------------------------------------------------------------- |
-| `/agent-memory help`          | List commands.                                                   |
-| `/agent-memory init`          | Create `.agents/memory/`; wire native instruction file(s).       |
-| `/agent-memory install hooks` | Print how to install/refresh hooks (user-run installer).         |
-| `/agent-memory update`        | Migrate scaffolding; never overwrites your content blindly.      |
-| `/agent-memory bootstrap`     | Inventory canonical sources and gaps; populate pointers.         |
-| `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md`.      |
-| `/agent-memory lint`          | Broken links, orphans, duplication, stale branches, consistency. |
-| `/agent-memory learn`         | Capture one gated learning/pitfall (`learn [>topic] <clue>`).    |
-| `/agent-memory consolidate`   | Promote useful facts; prune closed-session noise (guided).       |
+| Command                       | Does                                                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `/agent-memory help`          | List commands.                                                                                               |
+| `/agent-memory init`          | Create `.agents/memory/`; wire native instruction file(s); patch AGENTS docs map when `docs/` exists.        |
+| `/agent-memory install hooks` | Print how to install/refresh hooks (user-run installer).                                                     |
+| `/agent-memory update`        | Migrate scaffolding; delete leftover mirrors (confirm). Patch AGENTS docs map. Does not invent learnings.    |
+| `/agent-memory bootstrap`     | Inventory canonical sources and gaps; populate pointers.                                                     |
+| `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md`.                                                  |
+| `/agent-memory lint`          | Consistency, dead paths, typos, instruction contradictions, cold-session quality, hook wiring.               |
+| `/agent-memory learn`         | Explicit capture of one gated learning (`learn [>topic] <clue>`). Daily path is write-floor Reusable lesson. |
+| `/agent-memory consolidate`   | Pass A on the corpus; Pass B prunes closed-session log (guided, confirm).                                    |
 
 ## Hooks
 
-Optional lifecycle hooks keep **ephemeral evidence** current **during** agent work with deterministic checkpoints (no LLM loops): session binding and session-cumulative touched paths in `.hook-sync-state`. Hooks never write Markdown, never copy docs, and never consolidate.
+Optional lifecycle hooks keep ephemeral evidence current during agent work. Checkpoints are deterministic and do not start LLM loops: session binding and session-cumulative touched paths in `.hook-sync-state`. Hooks do not write Markdown, copy docs, or consolidate.
 
-**Semantic** content stays agent-owned: resume fields and log outcomes are written in-turn (primary); `/agent-memory sync` / `consolidate` are catch-up and promotion.
+Resume fields and log outcomes are agent-owned and written in the turn. `/agent-memory sync` and `consolidate` are catch-up and promotion.
 
 Install steps, event matrix, and project-dir resolution: [`hooks/README.md`](./hooks/README.md).
 

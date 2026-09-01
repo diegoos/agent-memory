@@ -21,11 +21,13 @@ export function readSkillVersionFromDir(skillDir: string): string | null {
   if (!fs.existsSync(skillMd)) return null;
   const text = fs.readFileSync(skillMd, "utf8");
   const m = text.match(
-    /^metadata:\s*\n(?:[ \t]+.+\n)*?[ \t]+version:\s*["']?([0-9]+\.[0-9]+\.[0-9]+)["']?/m,
+    /^metadata:\s*\n(?:[ \t]+.+\n)*?[ \t]+version:\s*["']?([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)["']?/m,
   );
   if (m) return m[1];
   // Fallback when the metadata block layout differs from the strict form.
-  const loose = text.match(/version:\s*["']([0-9]+\.[0-9]+\.[0-9]+)["']/);
+  const loose = text.match(
+    /version:\s*["']([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)["']/,
+  );
   return loose ? loose[1] : null;
 }
 
@@ -72,9 +74,7 @@ export function detectInstalledHarnesses(): Harness[] {
   );
   check(
     "opencode",
-    fs.existsSync(
-      path.join(root, ".opencode", "plugins", "agent-memory.ts"),
-    ) ||
+    fs.existsSync(path.join(root, ".opencode", "plugins", "agent-memory.ts")) ||
       // Legacy singular path (pre-fix; OpenCode never auto-loaded it)
       fs.existsSync(
         path.join(root, ".opencode", "plugin", "agent-memory.ts"),

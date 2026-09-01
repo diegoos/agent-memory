@@ -28,6 +28,7 @@ If blocked (missing permission, ambiguous SemVer, conflict between docs and code
 
 - Agent-memory block: `skills/agent-memory/references/agent-block.md`
 - Installed memory shape: `skills/agent-memory/vendor/memory/`
+- Recall hop: `skills/agent-memory/vendor/memory/instructions.md` → _Recall hop_
 - Harness parity (hooks vs agent): `skills/agent-memory/vendor/memory/instructions.md` → _Harness parity — memory contract_
 - Trust boundary / intentional capabilities (CLI + hooks): `SECURITY.md`
 - Migrations: `skills/agent-memory/vendor/UPDATE.md`
@@ -85,7 +86,7 @@ When a bump **is** requested:
 
 ## Dogfooding
 
-To use Workspace Memory at the repo root, run `/agent-memory init` (installs `.agents/memory/` from `skills/agent-memory/vendor/memory/`). Until then, treat `skills/agent-memory/vendor/memory/instructions.md` as the method file for this project.
+Local dogfood memory is `.agents/memory/` (gitignored with other harness dirs). Method file once initialized: `.agents/memory/instructions.md`. Skeleton SoT remains `skills/agent-memory/vendor/memory/`. To (re)scaffold, run `/agent-memory init`.
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html

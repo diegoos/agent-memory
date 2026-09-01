@@ -5,10 +5,10 @@
 # work has no .agents/memory/ change (semantic fields may still need
 # /agent-memory sync). Never blocks the commit. Fails open.
 #
-# Install:
-#   cp hooks/git/pre-commit .git/hooks/pre-commit
+# Install (with post-commit):
+#   cp hooks/git/pre-commit hooks/git/post-commit .git/hooks/
 #   cp hooks/agent-memory-hooks/agent-memory-*.sh .git/hooks/
-#   chmod +x .git/hooks/pre-commit .git/hooks/agent-memory-*.sh
+#   chmod +x .git/hooks/pre-commit .git/hooks/post-commit .git/hooks/agent-memory-*.sh
 
 # GIT_PREFIX is the subdirectory where the user ran `git commit`, not the repo
 # root — never use it as PROJECT_DIR (would skip memory when committing from src/).
@@ -45,7 +45,7 @@ if [ -f "$aw" ] && [ -n "$head_full" ]; then
     ck_sha=""
   fi
   if [ -n "$ck_sha" ] && [ "$ck_sha" != "<short-sha>" ]; then
-    ck_full=$(git rev-parse --end-of-options "$ck_sha" 2>/dev/null || true)
+    ck_full=$(git rev-parse --verify "${ck_sha}^{commit}" 2>/dev/null || true)
     if [ -z "$ck_full" ] || [ "$ck_full" != "$head_full" ]; then
       cat <<EOF
 

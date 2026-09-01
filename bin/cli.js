@@ -103,10 +103,10 @@ function readSkillVersionFromDir(skillDir) {
   if (!import_node_fs.default.existsSync(skillMd))
     return null;
   const text = import_node_fs.default.readFileSync(skillMd, "utf8");
-  const m = text.match(/^metadata:\s*\n(?:[ \t]+.+\n)*?[ \t]+version:\s*["']?([0-9]+\.[0-9]+\.[0-9]+)["']?/m);
+  const m = text.match(/^metadata:\s*\n(?:[ \t]+.+\n)*?[ \t]+version:\s*["']?([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)["']?/m);
   if (m)
     return m[1];
-  const loose = text.match(/version:\s*["']([0-9]+\.[0-9]+\.[0-9]+)["']/);
+  const loose = text.match(/version:\s*["']([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)["']/);
   return loose ? loose[1] : null;
 }
 function readInstalledSkillVersion() {
@@ -379,18 +379,79 @@ function resolvePackageRoot() {
 }
 
 // lib/cli/semver.ts
-function compareSemver(a, b) {
-  const pa = a.split(".").map((n) => parseInt(n, 10) || 0);
-  const pb = b.split(".").map((n) => parseInt(n, 10) || 0);
-  for (let i = 0;i < 3; i++) {
-    const x = pa[i] ?? 0;
-    const y = pb[i] ?? 0;
-    if (x < y)
+var SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
+function parseIdents(pre) {
+  return pre.split(".").map((part) => /^[0-9]+$/.test(part) ? Number(part) : part);
+}
+function parseSemver(v) {
+  const m = v.trim().match(SEMVER);
+  if (!m) {
+    const bits = v.split(".").map((n) => parseInt(n, 10) || 0);
+    return {
+      major: bits[0] ?? 0,
+      minor: bits[1] ?? 0,
+      patch: bits[2] ?? 0,
+      pre: null
+    };
+  }
+  return {
+    major: Number(m[1]),
+    minor: Number(m[2]),
+    patch: Number(m[3]),
+    pre: m[4] ? parseIdents(m[4]) : null
+  };
+}
+function compareIdents(a, b) {
+  const aNum = typeof a === "number";
+  const bNum = typeof b === "number";
+  if (aNum && bNum) {
+    if (a < b)
       return -1;
-    if (x > y)
+    if (a > b)
       return 1;
+    return 0;
+  }
+  if (aNum && !bNum)
+    return -1;
+  if (!aNum && bNum)
+    return 1;
+  if (a < b)
+    return -1;
+  if (a > b)
+    return 1;
+  return 0;
+}
+function comparePre(a, b) {
+  if (a === null && b === null)
+    return 0;
+  if (a !== null && b === null)
+    return -1;
+  if (a === null && b !== null)
+    return 1;
+  const aa = a;
+  const bb = b;
+  const n = Math.max(aa.length, bb.length);
+  for (let i = 0;i < n; i++) {
+    if (i >= aa.length)
+      return -1;
+    if (i >= bb.length)
+      return 1;
+    const c = compareIdents(aa[i], bb[i]);
+    if (c !== 0)
+      return c;
   }
   return 0;
+}
+function compareSemver(a, b) {
+  const pa = parseSemver(a);
+  const pb = parseSemver(b);
+  if (pa.major !== pb.major)
+    return pa.major < pb.major ? -1 : 1;
+  if (pa.minor !== pb.minor)
+    return pa.minor < pb.minor ? -1 : 1;
+  if (pa.patch !== pb.patch)
+    return pa.patch < pb.patch ? -1 : 1;
+  return comparePre(pa.pre, pb.pre);
 }
 
 // lib/cli/tty.ts
@@ -991,9 +1052,7 @@ function parseUpdateFlags(args) {
       force = true;
       continue;
     }
-    console.error(`${c.red("error:")} unexpected argument: ${a}`);
-    printHelp();
-    process.exit(1);
+    fatalUsage(`unexpected argument: ${a}`);
   }
   return { yes, force };
 }
@@ -1101,8 +1160,7 @@ async function main(argv) {
   }
   if (rest[0] === "skill") {
     if (rest.length > 1) {
-      console.error(`${c.red("error:")} install skill does not accept arguments`);
-      process.exit(1);
+      fatal("install skill does not accept arguments");
     }
     printHeader("install · skill");
     printSummary({ skillPath: installSkill(), hooks: [] });
@@ -1115,8 +1173,7 @@ async function main(argv) {
     }
     const raw = rest[1];
     if (rest.length > 2) {
-      console.error(`${c.red("error:")} unexpected argument: ${rest[2]}`);
-      process.exit(1);
+      fatal(`unexpected argument: ${rest[2]}`);
     }
     const harness2 = normalizeHarness(raw);
     if (!harness2) {
@@ -1130,8 +1187,7 @@ async function main(argv) {
   const harness = normalizeHarness(rest[0]);
   if (harness) {
     if (rest.length > 1) {
-      console.error(`${c.red("error:")} unexpected argument: ${rest[1]}`);
-      process.exit(1);
+      fatal(`unexpected argument: ${rest[1]}`);
     }
     await promptInstallChoice(harness);
     return;

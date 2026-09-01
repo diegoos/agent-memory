@@ -15,27 +15,27 @@ Analyze the project and populate the memory as a **source inventory + gaps** —
 
 4. **Synthesize and write (inventory-first, skip empties).** Wait for all three, then fill memory **without copying docs**:
 
-   | Source       | Writes to                                                     |
-   | ------------ | ------------------------------------------------------------- |
-   | A (sources)  | `index.md` → _Canonical project sources_ (few entry points)   |
-   | A (ADRs)     | `decisions.md` — optional single pointer to ADR index/dir     |
-   |              | when a decision system exists and is useful for continuity    |
-   | B + C (gaps) | `learnings.md` (or a clear `learnings-<topic>.md`) — **only** |
-   |              | stable, evidenced, undocumented facts that pass the gate      |
-   | synthesis    | `log.md` — one bootstrap session entry                        |
+   | Source       | Writes to                                                                                                                                                                                                                                                                                                                                         |
+   | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | A (sources)  | **`AGENTS.md` docs map** when project-docs indices exist and AGENTS omits them (`references/docs-map.md`). `index.md` Canonical sources stay `_None yet._` unless a **non-docs** gap passes the index rule (AGENTS does not link it **and** a cold session needs it before choosing a recall file). Do **not** list missing `docs/` or ADR trees. |
+   | A (ADRs)     | **Nothing in memory** when no ADR dir exists. Do **not** invent a `decisions.md` “see ADRs” pointer. ADR index belongs on `AGENTS.md`. Local `decisions.md` only for a live user-constraint fallback with no canonical doc yet.                                                                                                                   |
+   | B + C (gaps) | `learnings.md` (or a clear `learnings-<topic>.md`) — **only**                                                                                                                                                                                                                                                                                     |
+   |              | stable, evidenced, undocumented facts that pass the gate                                                                                                                                                                                                                                                                                          |
+   | synthesis    | `log.md` — one bootstrap session entry                                                                                                                                                                                                                                                                                                            |
 
    Rules:
-   - Do **not** create `vision.md`, `architecture.md`, `patterns.md`, `mistakes.md`, `known-issues.md`, `domains/*`, or `features/*`.
+   - Do **not** create `vision.md`, `architecture.md`, `patterns.md`, `mistakes.md`, `known-issues.md`, `project.md`, `domains/*`, `features/*`, `architecture/`, `components/`, `episodes/`, `changes/`, or `timeline/`. Never copy spec/ADR bodies into memory — pointers only.
    - Do **not** invent product vision/scope. If purpose/scope is undocumented, report the gap — do not write a vision file.
-   - Leave `current.md` with empty placeholders if there is no active work — do not invent milestones, Done lists, or roadmaps.
-   - Leave `active-work/` with only its `TEMPLATE.md` **unless** the branch already has resumable product work (dirty tree / open task / in-flight plan). If you create or refresh `active-work/<branch>.md` after bootstrap, copy from TEMPLATE with section blurbs stripped (headings + `-` bullets only; omit empty optional sections), set _Next step_ to a **product** action bullet (commit, PR, feature gap) — never “run `/agent-memory lint|sync|consolidate`”. Put memory-command suggestions in the Report, not in Next step. Progress may point at `log.md` / `learnings.md`; do not copy bootstrap bullets into Progress. Add optional sections only when bootstrap evidence requires them.
-   - Do **not** invent decisions — only point at an existing ADR index/dir when helpful, or leave `decisions.md` empty.
+   - Leave `current.md` idle if there is no **shared** active work (`## In progress` → `_none_`; omit empty Blockers/Handoff) — do not invent milestones, Done lists, or roadmaps.
+   - Leave `active-work/` empty **unless** the branch already has resumable product work (dirty tree / open task / in-flight plan). If you create or refresh `active-work/<branch>.md` after bootstrap, copy from this skill's `references/active-work-template.md` with section blurbs stripped (headings + `-` bullets only; omit empty optional sections), set _Next step_ to a **product** action bullet (commit, PR, feature gap) — never “run `/agent-memory lint|sync|consolidate`”. Put memory-command suggestions in the Report, not in Next step. Progress may point at `log.md` / `learnings.md`; do not copy bootstrap bullets into Progress. Add optional sections only when bootstrap evidence requires them (`Hold` max 3). Do not write `TEMPLATE.md` into project memory.
+   - Do **not** invent decisions — if no ADR tree exists, leave `decisions.md` empty. Do not add an ADR-index pointer in memory.
    - Create `learnings.md` (or a topic split) only when at least one fact passes the gate (reusable, undocumented, non-obvious, evidenced, no secrets). Use the H2 learning/pitfall format in `instructions.md`. Documented-vs-actual layout or AGENTS/README closure gaps that pass the gate **must** become learnings (not log-only inventory): include `pending-doc` **and** `Invalidate when: <concrete doc condition>`. Skip facts already clear from a linked canonical one-liner; prefer quality over volume (merge related tooling nits when one Invalidate condition covers them). Link every new learnings file from `index.md`. When Evidence paths are clear and globs stay within the `when editing:` contract, add a narrow hint on the learnings index line (AskQuestion if unsure). Prefer one `learnings.md` on first bootstrap unless a single theme dominates.
    - Append **one** synthesis heading to `log.md` for the whole bootstrap (init scaffold + inventory + gaps) — e.g. `## [YYYY-MM-DD] [docs] bootstrap source inventory` — with short bullets for sources indexed / learnings created / “gaps → learnings” / contradictions needing a user decision. Do **not** paste durable gap bodies into the log (those live in learnings). Do **not** open a second `[ingest]` / init-only heading for the same calendar day; fold init into this heading. When writing the first session heading, **remove** the scaffold placeholder `_No entries yet._`.
-   - Keep every `index.md` source line to: link + what it owns + when to read.
+   - Keep `index.md` Canonical sources empty of project docs. Prefer AGENTS as the docs map. Do not list every config (`package.json`, SECURITY, skill) unless a cold session must open it before choosing a recall file.
+   - When inventory is refined the same day, rewrite the synthesis heading; do not append a second `[docs]` heading that contradicts it.
 
 5. **Report.** Group clearly:
-   - **Sources indexed** — paths linked in `index.md`.
+   - **Sources indexed** — paths linked in `AGENTS.md` (docs map) and any rare `index.md` Canonical gap.
    - **Gaps kept as learnings** — with evidence and `pending-doc` / `Invalidate when` when applicable.
    - **Contradictions** — need a user decision.
    - **Missing documentation recommended** — suggested external paths (skill does **not** create those docs).

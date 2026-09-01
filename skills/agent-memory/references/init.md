@@ -31,7 +31,7 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
 1. **Guard.** If `.agents/memory/` already exists, stop and tell the user the project is already initialized — suggest `/agent-memory update` or `/agent-memory install hooks <harness>` to refresh hooks. Do not overwrite anything.
 
-2. **Copy the skeleton.** Read this skill's `vendor/memory/` (see `SKILL.md` → Vendor source) and copy that directory into the project as `.agents/memory/` (the entire directory, including `active-work/TEMPLATE.md` and the hook-state ignore template). Do not clone or fetch remotely.
+2. **Copy the skeleton.** Read this skill's `vendor/memory/` (see `SKILL.md` → Vendor source) and copy that directory into the project as `.agents/memory/` (the entire directory, including the hook-state ignore template). Do **not** copy `references/active-work-template.md` into project memory — that file stays in the skill. Do not clone or fetch remotely. Copy the skeleton as-is — **zero invented content**.
 
    **Dotfiles (required):** hosts often hide dotfiles from `Glob`, and npm omits files named `.gitignore` from published packs. After the copy, **explicitly** Read `vendor/memory/gitignore` (pack-safe name; same rules as a local `.gitignore` sibling when present) and Write it to `.agents/memory/.gitignore` (create/overwrite to match vendor). Contents must ignore `.hook-sync-state`, `.hook-sync-state.lock`, and `.hook-sync-state.*`. Then verify `.agents/memory/.gitignore` exists before continuing.
 
@@ -50,22 +50,7 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
    **Auto mode** (`init`): detect harnesses (below), resolve carriers for each, write the block once per distinct carrier. Apply copilot coexistence and delegation rules across the full set.
 
-   **Cursor `.mdc` wrapper:** the block body is the canonical block verbatim. Prepend YAML frontmatter:
-
-   ```yaml
-   ---
-   description: Agent Memory workspace memory workflow
-   alwaysApply: true
-   ---
-   ```
-
-   **Copilot `.instructions.md` wrapper:** the block body is the canonical block verbatim. Prepend YAML frontmatter so the file is **always-on** (Copilot path-specific files apply only to files matching `applyTo`):
-
-   ```yaml
-   ---
-   applyTo: "**"
-   ---
-   ```
+   **Cursor `.mdc` / Copilot `.instructions.md` wrappers:** apply **Wrappers** from [`references/agent-block.md`](./agent-block.md) (Cursor `alwaysApply: true`; Copilot `applyTo: "**"` so the file is always-on).
 
    **Prerequisite dirs (create harness roots only on explicit request).** Native instruction files inside a harness dir require that dir to exist. The skill does **not** create `.cursor/`, `.claude/`, `.codex/`, `.opencode/`, `.github/`, or `.gemini/` on its own: if the required dir is missing, **stop** for that harness and ask the user — offer to create it (and the needed subdir) on explicit confirmation, or tell them to create/enable it first (e.g. open the harness once so it creates its dir) and re-run. Creating a **subdirectory** inside an existing harness dir (e.g. `.cursor/rules/`, `.github/instructions/`) is allowed. Required dir per harness:
 
@@ -82,9 +67,11 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
    **Orphan block cleanup:** for `cursor` / `copilot`, if `AGENTS.md` contains a block but is **not** an effective carrier (no codex/opencode/claude via delegation), warn and offer to remove it (**sensitive** — show diff, confirm first). Do not remove a block from `AGENTS.md` when it serves codex, opencode, or claude via delegation.
 
-6. **Print hook-install instructions.** Follow [`references/install-hooks.md`](./install-hooks.md) for each harness that applies (targeted: that harness only; auto: every detected harness whose prerequisite dir exists). In `init`, run those steps **without** the memory guard (step 1 of that reference). **Do not** copy hook scripts or merge harness hook configs — only print the user-run `npx` / shell commands. Note: the skill never creates harness roots; the user-run installer **does** create them if missing when the user runs the printed command.
+6. **Docs map.** Follow [`references/docs-map.md`](./docs-map.md): if project-docs indices exist and `AGENTS.md` omits them, patch `AGENTS.md` **outside** the agent-memory block (create a minimal `AGENTS.md` with only that section if the file is missing and docs exist). Confirm. Do **not** copy those links into `.agents/memory/index.md`. Skip when no such indices exist.
 
-7. **Report.** List: mode (auto or targeted harness), detected harness(es), skeleton created, carrier file(s) wired or skipped (and why — delegation, copilot coexistence, idempotency), orphan-block offers, hook-install commands printed (or skipped for missing harness dirs), and suggest `bootstrap` (source inventory / gaps — not doc copies) / `sync` next steps. For Cursor, note that **hooks are the recommended checkpoint integration** (user-installed) and **`.mdc` is the context layer**. For OpenCode, note carrier is usually `AGENTS.md` and hooks are the Bun plugin under `.opencode/plugins/` (plus `.opencode/hooks/*.sh`). **After the user installs hooks**, tell them to **re-run `/agent-memory sync`** (or `--auto`) so `current.md` blockers and evidence catch up — memory written before hooks install will otherwise claim state is absent.
+7. **Print hook-install instructions.** Follow [`references/install-hooks.md`](./install-hooks.md) for each harness that applies (targeted: that harness only; auto: every detected harness whose prerequisite dir exists). In `init`, run those steps **without** the memory guard (step 1 of that reference). **Do not** copy hook scripts or merge harness hook configs — only print the user-run `npx` / shell commands. Note: the skill never creates harness roots; the user-run installer **does** create them if missing when the user runs the printed command.
+
+8. **Report.** List: mode (auto or targeted harness), detected harness(es), skeleton created, carrier file(s) wired or skipped (and why — delegation, copilot coexistence, idempotency), orphan-block offers, **docs-map** patches or skips, hook-install commands printed (or skipped for missing harness dirs), and suggest `bootstrap` (source inventory / gaps — not doc copies) / `sync` next steps. For Cursor, note that **hooks are the recommended checkpoint integration** (user-installed) and **`.mdc` is the context layer**. For OpenCode, note carrier is usually `AGENTS.md` and hooks are the Bun plugin under `.opencode/plugins/` (plus `.opencode/hooks/*.sh`). **After the user installs hooks**, tell them to **re-run `/agent-memory sync`** (or `--auto`) so `current.md` blockers and evidence catch up — memory written before hooks install will otherwise claim state is absent.
 
 ## Auto-detection (`init` without `<harness>`)
 
@@ -119,5 +106,5 @@ When `CLAUDE.md` is standalone (no `@AGENTS.md`), claude and opencode have disti
 ## Notes
 
 - Do not populate the memory here — `init` only scaffolds. To index canonical sources and gaps, the user runs `/agent-memory bootstrap` (pointers, not doc copies). Bootstrap does not invent product vision when docs are missing — it reports the gap.
-- Optional git `pre-commit` hook is **not** wired by `init` — see the [hooks README](https://github.com/diegoos/agent-memory/blob/0.2.0/hooks/README.md).
+- Optional git `pre-commit` / `post-commit` hooks are **not** wired by `init` — see the [hooks README](https://github.com/diegoos/agent-memory/blob/HEAD/hooks/README.md).
 - **Context vs checkpoint:** native instruction files (`.mdc`, agent `*.md`, `.instructions.md`) inject the agent-memory workflow into the model context. Lifecycle hooks (see `install-hooks.md`) run deterministic git checkpoints — they do not replace context injection.

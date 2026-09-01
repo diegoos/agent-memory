@@ -17,7 +17,7 @@ fi
 if [[ -z "${VERSION:-}" && -n "${AGENT_MEMORY_VERSION:-}" ]]; then
   VERSION="$AGENT_MEMORY_VERSION"
 fi
-VERSION="${VERSION:-0.2.0}"
+VERSION="${VERSION:-0.2.1-rc.3}"
 
 # No weak cd/pwd fallback: it skips symlink resolution, so a logical path
 # could pass the under-project check while escaping it (parity with hooks).
@@ -169,7 +169,7 @@ install_shared_scripts() {
   local dest=$1
   local f
   for f in agent-memory-common.sh agent-memory-sync.sh agent-memory-session.sh \
-    agent-memory-consume-evidence.sh; do
+    agent-memory-consume-evidence.sh agent-memory-print-evidence.sh; do
     [[ -f "$SHARED_DIR/$f" ]] || die "missing shared script: $SHARED_DIR/$f"
     safe_install_file "$SHARED_DIR/$f" "$PROJECT_DIR/$dest/$f"
     chmod +x "$PROJECT_DIR/$dest/$f"

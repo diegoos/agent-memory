@@ -11,22 +11,34 @@ fail() {
   exit 1
 }
 
-version=$(node -p 'require("./package.json").version')
-[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "invalid package.json version: $version"
+# npm / SemVer 2.0: MAJOR.MINOR.PATCH with optional -prerelease and +build.
+semver_re='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
 
-skill_v=$(grep -E '^\s+version:\s*"' skills/agent-memory/SKILL.md | head -1 | sed -E 's/.*"([0-9.]+)".*/\1/')
+version=$(node -p 'require("./package.json").version')
+[[ "$version" =~ $semver_re ]] || fail "invalid package.json version: $version"
+
+prerelease=0
+[[ "$version" == *-* ]] && prerelease=1
+
+skill_v=$(grep -E '^\s+version:\s*"' skills/agent-memory/SKILL.md | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
 [[ "$skill_v" == "$version" ]] || fail "SKILL.md version $skill_v != $version"
 
-fallback=$(grep -E 'VERSION="\$\{VERSION:-' hooks/install-hooks.sh | sed -E 's/.*VERSION:-([0-9.]+)\}.*/\1/')
+fallback=$(grep -E 'VERSION="\$\{VERSION:-' hooks/install-hooks.sh | sed -E 's/.*VERSION:-([^}]+)\}.*/\1/')
 [[ "$fallback" == "$version" ]] || fail "install-hooks fallback $fallback != $version"
 
-grep -Fq "## $version" skills/agent-memory/vendor/UPDATE.md ||
-  fail "UPDATE.md missing ## $version"
+if [[ "$prerelease" -eq 0 ]]; then
+  grep -Fq "## $version" skills/agent-memory/vendor/UPDATE.md ||
+    fail "UPDATE.md missing ## $version"
+  grep -Fq "## [$version]" CHANGELOG.md ||
+    fail "CHANGELOG.md missing ## [$version]"
+else
+  grep -Fq "## [$version]" CHANGELOG.md || grep -Fq "## [Unreleased]" CHANGELOG.md ||
+    fail "CHANGELOG.md missing ## [$version] or ## [Unreleased] for prerelease $version"
+fi
 
-grep -Fq "## [$version]" CHANGELOG.md ||
-  fail "CHANGELOG.md missing ## [$version]"
-
-# Sample pinned blob URLs / clone branch must match current version
+# Sample pinned blob URLs / clone branch must match current version.
+# Prerelease packages may keep pins on the last released tag (no RC git tag yet).
+pin_re='blob/[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?|--branch [0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?|agent-memory#[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?'
 for f in \
   skills/agent-memory/vendor/memory/instructions.md \
   skills/agent-memory/references/agent-block.md \
@@ -34,7 +46,10 @@ for f in \
   skills/agent-memory/references/init.md \
   skills/agent-memory/vendor/README.md \
   README.md; do
-  if grep -Eoq 'blob/[0-9]+\.[0-9]+\.[0-9]+|--branch [0-9]+\.[0-9]+\.[0-9]+|agent-memory#[0-9]+\.[0-9]+\.[0-9]+' "$f"; then
+  if grep -Eoq "$pin_re" "$f"; then
+    if [[ "$prerelease" -eq 1 ]]; then
+      continue
+    fi
     grep -Eq "blob/${version}|--branch ${version}|agent-memory#${version}|e\.g\. \`${version}\`|e\.g\. ${version}" "$f" ||
       fail "$f pins do not include $version"
   fi

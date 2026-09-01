@@ -48,31 +48,22 @@ function bindingScopes(input: unknown): {
   return { root, event, props };
 }
 
-function extractSessionId(input: unknown): string | undefined {
-  const s = bindingScopes(input);
-  if (!s) return undefined;
-  // Payload only — never inherit process.env.AGENT_MEMORY_SESSION_ID (stale
-  // parent env must not rebind another workspace's .hook-sync-state).
-  return firstBindingId([
-    s.root.sessionID,
-    s.root.session_id,
-    s.event?.sessionID,
-    s.event?.session_id,
-    s.props?.sessionID,
-    s.props?.session_id,
-  ]);
-}
-
-function extractConversationId(input: unknown): string | undefined {
+/** Payload only — never inherit process.env.AGENT_MEMORY_SESSION_ID (stale
+ *  parent env must not rebind another workspace's .hook-sync-state). */
+function extractBindingId(
+  input: unknown,
+  camel: string,
+  snake: string
+): string | undefined {
   const s = bindingScopes(input);
   if (!s) return undefined;
   return firstBindingId([
-    s.root.conversationID,
-    s.root.conversation_id,
-    s.event?.conversationID,
-    s.event?.conversation_id,
-    s.props?.conversationID,
-    s.props?.conversation_id,
+    s.root[camel],
+    s.root[snake],
+    s.event?.[camel],
+    s.event?.[snake],
+    s.props?.[camel],
+    s.props?.[snake],
   ]);
 }
 
@@ -171,7 +162,10 @@ function runScript(
 function resolveBindingId(input: unknown): string | undefined {
   // Prefer conversation id — stable across OpenCode ses_* rotation within a
   // work stream. Fall back to session id when conversation is unavailable.
-  return extractConversationId(input) || extractSessionId(input);
+  return (
+    extractBindingId(input, 'conversationID', 'conversation_id') ||
+    extractBindingId(input, 'sessionID', 'session_id')
+  );
 }
 
 function runSync(projectDir: string, event: string, input?: unknown): void {

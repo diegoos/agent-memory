@@ -1,6 +1,6 @@
 {
   "name": "@dosx/agent-memory",
-  "version": "0.2.0",
+  "version": "0.2.1-rc.3",
   "description": "Local Markdown workspace memory for AI coding agents (Cursor, Claude Code, Codex, OpenCode, Copilot, Gemini). npx CLI installs the skill into .agents/skills/ and harness lifecycle hooks — no server, vector DB, or embeddings.",
   "bin": {
     "agent-memory": "bin/cli.js"
@@ -8,7 +8,7 @@
   "scripts": {
     "build": "bun build ./install.ts --outfile bin/cli.js --target node --format cjs --banner '#!/usr/bin/env node'",
     "typecheck": "bunx tsc -p tsconfig.json --noEmit",
-    "lint:md": "bunx markdownlint '**/*.md' --ignore node_modules --ignore bin",
+    "lint:md": "bunx markdownlint '**/*.md' --ignore node_modules --ignore bin --ignore QA",
     "build:check": "bash scripts/build-check.sh",
     "test": "bash tests/test-runner.sh",
     "check": "bun audit && bun run typecheck && bun run lint:md && bun run build:check && bun run test && bun run build",

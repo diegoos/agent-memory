@@ -40,5 +40,6 @@ git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
 # One lock: resolve session id, persist, rebind, refresh branch, merge paths.
 run_sync_ephemeral_checkpoint "$hook_stdin_session_id"
+amc_maybe_stop_floor_reminder "$raw_event"
 
 exit 0
