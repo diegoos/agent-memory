@@ -35,7 +35,7 @@ jobs:
       - name: Markdown lint
         run: bun run lint:md
 
-      - name: bin/cli.js matches install.ts
+      - name: bin/cli.js matches src/cli.ts
         run: bun run build:check
 
       - name: Tests
@@ -65,7 +65,7 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: bin/cli.js matches install.ts
+      - name: bin/cli.js matches src/cli.ts
         run: bun run build:check
 
       - name: Build

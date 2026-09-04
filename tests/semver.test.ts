@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { compareSemver } from "../lib/cli/semver";
+import { compareSemver } from "../src/semver";
 
 describe("compareSemver", () => {
   test("orders core versions", () => {

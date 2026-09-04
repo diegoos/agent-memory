@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Assert npm pack ships the pack-safe memory ignore template (npm omits .gitignore),
 # package/bin/cli.js matches a fresh private rebuild (prepack / publish integrity),
-# and published-pack CLI semantics differ from a local checkout (no install.ts →
+# and published-pack CLI semantics differ from a local checkout (no src/ →
 # same-SemVer update skips unless --force).
 
 set -euo pipefail
@@ -27,11 +27,9 @@ grep -qx 'package/skills/agent-memory/vendor/memory/gitignore' "$TMP/list.txt" |
 ! grep -E 'package/skills/agent-memory/vendor/memory/\.gitignore$' "$TMP/list.txt" ||
   fail "unexpected: npm pack included vendor/memory/.gitignore (document if intentional)"
 
-# Published pack must omit install.ts — CLI uses its presence to detect local checkout.
-! grep -E 'package/install\.ts$' "$TMP/list.txt" ||
-  fail "npm pack must not include install.ts (would mis-detect published pack as local checkout)"
-! grep -E 'package/lib/' "$TMP/list.txt" ||
-  fail "npm pack must not include lib/ (bundled into bin/cli.js only)"
+# Published pack must omit src/ — CLI uses src/cli.ts to detect local checkout.
+! grep -E 'package/src/' "$TMP/list.txt" ||
+  fail "npm pack must not include src/ (would mis-detect published pack as local checkout)"
 
 tar -xOf "$TMP/$tarball" package/skills/agent-memory/vendor/memory/gitignore >"$TMP/packed-gitignore"
 grep -qx '.hook-sync-state' "$TMP/packed-gitignore" ||
@@ -50,7 +48,7 @@ grep -qx 'package/hooks/install-hooks.sh' "$TMP/list.txt" ||
 
 rebuild=$(mktemp)
 trap 'rm -f "$rebuild" "$TMP"/*.tgz; rm -rf "$TMP" ${PROJ:+"$PROJ"}' EXIT
-bun build ./install.ts --outfile "$rebuild" --target node --format cjs \
+bun build ./src/cli.ts --outfile "$rebuild" --target node --format cjs \
   --banner '#!/usr/bin/env node' >/dev/null
 tar -xOf "$TMP/$tarball" package/bin/cli.js >"$TMP/packed-cli.js"
 cmp -s "$rebuild" "$TMP/packed-cli.js" ||
@@ -60,7 +58,7 @@ cmp -s "$rebuild" "$TMP/packed-cli.js" ||
 tar -xzf "$TMP/$tarball" -C "$TMP"
 packed_cli="$TMP/package/bin/cli.js"
 [[ -f "$packed_cli" ]] || fail "extracted packed cli missing"
-[[ ! -e "$TMP/package/install.ts" ]] || fail "extracted pack unexpectedly has install.ts"
+[[ ! -e "$TMP/package/src" ]] || fail "extracted pack unexpectedly has src/"
 
 PROJ=$(mktemp -d)
 AGENT_MEMORY_PROJECT_DIR="$PROJ" node "$packed_cli" install skill >/dev/null

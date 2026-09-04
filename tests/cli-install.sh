@@ -38,7 +38,7 @@ AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" install hooks cursor >/dev/null
 ! grep -q postToolUse "$TMP/.cursor/hooks.json" || fail "installed cursor config has postToolUse"
 
 # --- update --yes refreshes from local checkout even when SemVer matches ---
-# (source tree has install.ts; published packs skip same-version refresh unless --force)
+# (source tree has src/cli.ts; published packs skip same-version refresh unless --force)
 marker="$TMP/.agents/skills/agent-memory/LOCAL_REFRESH_MARKER.md"
 echo stale >"$marker"
 out=$(AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" update --yes)

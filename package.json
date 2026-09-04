@@ -6,7 +6,7 @@
     "agent-memory": "bin/cli.js"
   },
   "scripts": {
-    "build": "bun build ./install.ts --outfile bin/cli.js --target node --format cjs --banner '#!/usr/bin/env node'",
+    "build": "bun build ./src/cli.ts --outfile bin/cli.js --target node --format cjs --banner '#!/usr/bin/env node'",
     "typecheck": "bunx tsc -p tsconfig.json --noEmit",
     "lint:md": "bunx markdownlint '**/*.md' --ignore node_modules --ignore bin --ignore QA",
     "build:check": "bash scripts/build-check.sh",
@@ -34,8 +34,8 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^26.1.1",
-    "bun-types": "^1.3.14",
+    "@types/node": "^26.4.1",
+    "bun-types": "^1.4.1",
     "markdownlint-cli": "0.49.1",
     "typescript": "7.0.2"
   }

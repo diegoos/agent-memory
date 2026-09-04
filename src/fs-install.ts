@@ -9,6 +9,10 @@ export type AtomicSkillInstallResult = {
   existed: boolean;
 };
 
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /**
  * Atomic replace: stage into a sibling temp dir, then swap. Removes obsolete
  * files from prior skill versions that a force-copy would leave behind.
@@ -38,9 +42,7 @@ export function installSkillAtomic(opts: {
     fs.cpSync(skillSource, staging, { recursive: true, force: true });
   } catch (err) {
     fs.rmSync(staging, { recursive: true, force: true });
-    onError(
-      `skill install failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    onError(`skill install failed: ${errorMessage(err)}`);
   }
 
   if (existed) {
@@ -49,9 +51,7 @@ export function installSkillAtomic(opts: {
       movedAside = true;
     } catch (err) {
       fs.rmSync(staging, { recursive: true, force: true });
-      onError(
-        `skill install failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      onError(`skill install failed: ${errorMessage(err)}`);
     }
   }
 
@@ -71,9 +71,7 @@ export function installSkillAtomic(opts: {
             `skill install failed and restore failed; previous skill left at ${backup}`,
           );
         }
-        onError(
-          `skill install failed: ${err instanceof Error ? err.message : String(err)}`,
-        );
+        onError(`skill install failed: ${errorMessage(err)}`);
       }
       // First install: leave staging contents in place as dest if possible.
       if (!fs.existsSync(dest) && fs.existsSync(staging)) {
@@ -85,17 +83,13 @@ export function installSkillAtomic(opts: {
             fs.rmSync(staging, { recursive: true, force: true });
           } catch {
             fs.rmSync(staging, { recursive: true, force: true });
-            onError(
-              `skill install failed: ${err instanceof Error ? err.message : String(err)}`,
-            );
+            onError(`skill install failed: ${errorMessage(err)}`);
           }
         }
         // Dest recovered via fallback — treat as success.
       } else {
         fs.rmSync(staging, { recursive: true, force: true });
-        onError(
-          `skill install failed: ${err instanceof Error ? err.message : String(err)}`,
-        );
+        onError(`skill install failed: ${errorMessage(err)}`);
       }
     }
   }
@@ -142,27 +136,44 @@ function refuseSymlinkComponents(
   }
 }
 
+/**
+ * Resolve `target` and refuse if it is not the ancestor or a path under it.
+ * Callers pass the real path to copy/spawn so a symlink cannot jump the tree.
+ */
+export function resolvedUnder(
+  target: string,
+  ancestor: string,
+  onError: (message: string) => never,
+  onEscape: (resolved: string) => string,
+): string {
+  let ancestorReal: string;
+  let targetReal: string;
+  try {
+    ancestorReal = fs.realpathSync(ancestor);
+    targetReal = fs.realpathSync(target);
+  } catch (err) {
+    onError(`cannot resolve install path: ${errorMessage(err)}`);
+  }
+  const prefix = ancestorReal.endsWith(path.sep)
+    ? ancestorReal
+    : ancestorReal + path.sep;
+  if (targetReal !== ancestorReal && !targetReal.startsWith(prefix)) {
+    onError(onEscape(targetReal));
+  }
+  return targetReal;
+}
+
 /** After mkdir, ensure resolved parent stays under project root (parity with install-hooks.sh). */
 function ensureResolvedUnderProject(
   dir: string,
   onError: (message: string) => never,
 ): void {
-  let projectReal: string;
-  let dirReal: string;
-  try {
-    projectReal = fs.realpathSync(projectDir());
-    dirReal = fs.realpathSync(dir);
-  } catch (err) {
-    onError(
-      `cannot resolve install path: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-  const prefix = projectReal.endsWith(path.sep)
-    ? projectReal
-    : projectReal + path.sep;
-  if (dirReal !== projectReal && !dirReal.startsWith(prefix)) {
-    onError(`resolved parent escapes project: ${dirReal}`);
-  }
+  resolvedUnder(
+    dir,
+    projectDir(),
+    onError,
+    (real) => `resolved parent escapes project: ${real}`,
+  );
 }
 
 function relPath(p: string): string {

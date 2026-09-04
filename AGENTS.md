@@ -1,6 +1,6 @@
 # Agent instructions — agent-memory repository
 
-This repo is the source for the [Agent Memory](README.md) method and its manual-only skill — not a consumer install. Skeleton: `skills/agent-memory/vendor/`; skill orchestrator: `skills/agent-memory/`; hooks: repo-root `hooks/`; CLI: `install.ts` → `bin/cli.js`.
+This repo is the source for the [Agent Memory](README.md) method and its manual-only skill — not a consumer install. Skeleton: `skills/agent-memory/vendor/`; skill orchestrator: `skills/agent-memory/`; hooks: repo-root `hooks/`; CLI: `src/cli.ts` → `bin/cli.js`.
 
 Package manager: **Bun** (`bun.lock`). Verify with `bun run check` (typecheck + markdownlint + `build:check` + tests + build). Shorter: `bun run test`, `bun run typecheck`, `bun run lint:md`, `bun run build`.
 
@@ -9,7 +9,7 @@ Package manager: **Bun** (`bun.lock`). Verify with `bun run check` (typecheck + 
 | Mode             | Scope |
 | ---------------- | ----- |
 | READ             | Whole repo; method details in `skills/agent-memory/vendor/memory/instructions.md` |
-| WRITE            | `skills/agent-memory/`, `hooks/`, `install.ts`, `lib/cli/`, `tests/`, `bin/cli.js` (via `bun run build`), root docs (`README.md`, `CHANGELOG.md`, `SECURITY.md`, this file), `package.json` / `bun.lock` when asked |
+| WRITE            | `skills/agent-memory/`, `hooks/`, `src/`, `tests/`, `bin/cli.js` (via `bun run build`), root docs (`README.md`, `CHANGELOG.md`, `SECURITY.md`, this file), `package.json` / `bun.lock` when asked |
 | NEVER            | Invent a repo-root `agent-memory/` path for writes; push; create git tags or npm publish unless the user explicitly asks; install hooks into a consumer project from this agent (print commands only); add `shell: true` on child processes; forward full `process.env` to hook children; write Markdown from hooks |
 | HUMAN_CHECKPOINT | Version bump; release tag; npm publish; any change that rewrites consumer memory Markdown outside this meta-repo |
 
@@ -40,7 +40,7 @@ If blocked (missing permission, ambiguous SemVer, conflict between docs and code
 
 - **Skill boundary** — `/agent-memory` is manual-only (`disable-model-invocation: true`). Never auto-trigger it. Follow `SKILL.md` + `references/<command>.md`. The skill **never** installs hooks (print instructions only).
 - **Hooks** — under `hooks/` (not inside the skill). Shared scripts in `hooks/agent-memory-hooks/`; per-host config in `hooks/<harness>/`. User installs via `hooks/install-hooks.sh` or `npx` CLI. Deterministic checkpoint: ephemeral evidence in `.hook-sync-state` only — **no Markdown writes**, no LLM loops (`followup_message` on Cursor `stop` unused). Trust model and audit path: `SECURITY.md`. Upgrade notes: [Known issues](#known-issues).
-- **Security (CLI / OpenCode spawn)** — details in `SECURITY.md`. Keep `ENV_ALLOWLIST_EXACT` aligned (`lib/cli/constants.ts` ↔ `hooks/opencode/agent-memory.ts`). OpenCode spawn must go through `hooks/opencode/safe-script.ts` before `execFileSync`. Do not add `--minify` to `bun run build` (auditability; `bun run build:check`). Closure for spawn/security edits: `bun run test` (includes `tests/opencode-safe-script.test.ts`).
+- **Security (CLI / OpenCode spawn)** — details in `SECURITY.md`. Keep `ENV_ALLOWLIST_EXACT` aligned (`src/constants.ts` ↔ `hooks/opencode/agent-memory.ts`). OpenCode spawn must go through `hooks/opencode/safe-script.ts` before `execFileSync`. Do not add `--minify` to `bun run build` (auditability; `bun run build:check`). Closure for spawn/security edits: `bun run test` (includes `tests/opencode-safe-script.test.ts`).
 - **Markdown** — normal paragraphs (no hard-wrap for line length); `.markdownlint.json` (MD013 off).
 - **Content language** — English in repo docs and commits.
 
