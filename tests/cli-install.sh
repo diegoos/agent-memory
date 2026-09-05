@@ -21,6 +21,10 @@ trap 'rm -rf "$TMP"' EXIT
 AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" install skill >/dev/null
 [[ -f "$TMP/.agents/skills/agent-memory/SKILL.md" ]] || fail "skill not installed"
 [[ -d "$TMP/.agents/skills/agent-memory/vendor/memory" ]] || fail "vendor missing"
+[[ -f "$TMP/.agents/skills/agent-memory/scripts/lint-structural-from-memory.sh" ]] ||
+  fail "lint-structural-from-memory.sh missing from installed skill"
+[[ -f "$TMP/.agents/skills/agent-memory/scripts/lint-structural-from-root.sh" ]] ||
+  fail "lint-structural-from-root.sh missing from installed skill"
 
 # Plant an obsolete file then reinstall — atomic replace must remove it
 echo obsolete >"$TMP/.agents/skills/agent-memory/OBSOLETE.md"

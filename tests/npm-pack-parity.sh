@@ -41,8 +41,10 @@ grep -qx '.hook-sync-state.*' "$TMP/packed-gitignore" ||
 
 grep -qx 'package/bin/cli.js' "$TMP/list.txt" ||
   fail "npm pack must include bin/cli.js"
-grep -qx 'package/skills/agent-memory/SKILL.md' "$TMP/list.txt" ||
-  fail "npm pack must include skills/agent-memory for install skill"
+grep -qx 'package/skills/agent-memory/scripts/lint-structural-from-memory.sh' "$TMP/list.txt" ||
+  fail "npm pack must include lint-structural-from-memory.sh (skill scripts)"
+grep -qx 'package/skills/agent-memory/scripts/lint-structural-from-root.sh' "$TMP/list.txt" ||
+  fail "npm pack must include lint-structural-from-root.sh (skill scripts)"
 grep -qx 'package/hooks/install-hooks.sh' "$TMP/list.txt" ||
   fail "npm pack must include hooks/install-hooks.sh"
 
