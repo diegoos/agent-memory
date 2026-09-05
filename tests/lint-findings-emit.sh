@@ -273,6 +273,8 @@ printf '%s\n' '# Decisions' >"$root_fx/.agents/memory/decisions.md"
 (
   cd "$root_fx"
   git init -q
+  git config user.email test@example.com
+  git config user.name test
   git add -A
   git commit -q -m init
   branch=$(git branch --show-current)
