@@ -1,5 +1,6 @@
 /** TTY color + interactive select menus for the installer CLI. */
-import type { SelectOption } from "./constants";
+
+export type SelectOption<T extends string> = { label: string; value: T };
 
 const ESC = "\u001b";
 const CSI = `${ESC}[`;
@@ -32,8 +33,6 @@ export const c = {
   green: (t: string) => wrap("32", t),
   yellow: (t: string) => wrap("33", t),
   red: (t: string) => wrap("31", t),
-  magenta: (t: string) => wrap("35", t),
-  boldCyan: (t: string) => wrap("1;36", t),
   boldGreen: (t: string) => wrap("1;32", t),
   boldMagenta: (t: string) => wrap("1;35", t),
 };

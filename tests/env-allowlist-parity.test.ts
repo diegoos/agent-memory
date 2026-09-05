@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ENV_ALLOWLIST_EXACT } from "../lib/cli/constants";
+import { ENV_ALLOWLIST_EXACT } from "../src/constants";
 
 /** Keys listed in hooks/opencode/agent-memory.ts ENV_ALLOWLIST_EXACT (keep in sync). */
 async function opencodeAllowlistKeys(): Promise<string[]> {

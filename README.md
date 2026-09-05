@@ -218,7 +218,7 @@ Then paste the agent-memory block from [`skills/agent-memory/references/agent-bl
 
 ```text
 agent-memory/
-├── install.ts                  # CLI source (Bun → bin/cli.js)
+├── src/                        # CLI source (Bun → bin/cli.js)
 ├── bin/cli.js                  # npx CLI (skill + hooks)
 ├── package.json                # SoT: package / skill / hooks version
 ├── hooks/                      # installer + harness configs (outside the skill)

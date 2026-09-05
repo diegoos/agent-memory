@@ -9,14 +9,16 @@ import {
 } from "./constants";
 
 export function projectDir(): string {
-  return process.env.AGENT_MEMORY_PROJECT_DIR || process.cwd();
+  const fromEnv = process.env.AGENT_MEMORY_PROJECT_DIR;
+  if (fromEnv) return fromEnv;
+  return process.cwd();
 }
 
 export function installedSkillDir(): string {
   return path.join(projectDir(), ".agents", "skills", "agent-memory");
 }
 
-export function readSkillVersionFromDir(skillDir: string): string | null {
+function readSkillVersionFromDir(skillDir: string): string | null {
   const skillMd = path.join(skillDir, "SKILL.md");
   if (!fs.existsSync(skillMd)) return null;
   const text = fs.readFileSync(skillMd, "utf8");
@@ -42,7 +44,7 @@ export function readInstalledHooksVersion(harness: Harness): string | null {
   return v || null;
 }
 
-export function fileContains(filePath: string, needle: string): boolean {
+function fileContains(filePath: string, needle: string): boolean {
   try {
     return fs.readFileSync(filePath, "utf8").includes(needle);
   } catch {
@@ -53,56 +55,47 @@ export function fileContains(filePath: string, needle: string): boolean {
 export function detectInstalledHarnesses(): Harness[] {
   const root = projectDir();
   const found: Harness[] = [];
-
-  const check = (harness: Harness, ok: boolean): void => {
-    if (ok) found.push(harness);
-  };
-
-  check(
-    "cursor",
-    fs.existsSync(
-      path.join(root, ".cursor", "hooks", "agent-memory-sync.sh"),
-    ) || fileContains(path.join(root, ".cursor", "hooks.json"), "agent-memory"),
-  );
-  check(
-    "claude",
-    fs.existsSync(path.join(root, ".claude", "hooks", "agent-memory-sync.sh")),
-  );
-  check(
-    "codex",
-    fs.existsSync(path.join(root, ".codex", "hooks", "agent-memory-sync.sh")),
-  );
-  check(
-    "opencode",
+  if (
+    fs.existsSync(path.join(root, ".cursor", "hooks", "agent-memory-sync.sh")) ||
+    fileContains(path.join(root, ".cursor", "hooks.json"), "agent-memory")
+  ) {
+    found.push("cursor");
+  }
+  if (fs.existsSync(path.join(root, ".claude", "hooks", "agent-memory-sync.sh"))) {
+    found.push("claude");
+  }
+  if (fs.existsSync(path.join(root, ".codex", "hooks", "agent-memory-sync.sh"))) {
+    found.push("codex");
+  }
+  if (
     fs.existsSync(path.join(root, ".opencode", "plugins", "agent-memory.ts")) ||
-      // Legacy singular path (pre-fix; OpenCode never auto-loaded it)
-      fs.existsSync(
-        path.join(root, ".opencode", "plugin", "agent-memory.ts"),
-      ) ||
-      fs.existsSync(
-        path.join(root, ".opencode", "hooks", "agent-memory-sync.sh"),
-      ),
-  );
-  check(
-    "copilot",
+    // Legacy singular path (pre-fix; OpenCode never auto-loaded it)
+    fs.existsSync(path.join(root, ".opencode", "plugin", "agent-memory.ts")) ||
+    fs.existsSync(path.join(root, ".opencode", "hooks", "agent-memory-sync.sh"))
+  ) {
+    found.push("opencode");
+  }
+  if (
     fs.existsSync(path.join(root, ".github", "hooks", "agent-memory.json")) ||
-      fs.existsSync(
-        path.join(root, ".github", "hooks", "agent-memory-sync.sh"),
-      ),
-  );
-  check(
-    "gemini",
-    fs.existsSync(
-      path.join(root, ".gemini", "hooks", "agent-memory-sync.sh"),
-    ) ||
-      fileContains(path.join(root, ".gemini", "settings.json"), "agent-memory"),
-  );
-
+    fs.existsSync(path.join(root, ".github", "hooks", "agent-memory-sync.sh"))
+  ) {
+    found.push("copilot");
+  }
+  if (
+    fs.existsSync(path.join(root, ".gemini", "hooks", "agent-memory-sync.sh")) ||
+    fileContains(path.join(root, ".gemini", "settings.json"), "agent-memory")
+  ) {
+    found.push("gemini");
+  }
   return found;
 }
 
-export function memoryExists(): boolean {
+function memoryExists(): boolean {
   return fs.existsSync(path.join(projectDir(), ".agents", "memory"));
+}
+
+export function nextSkillCommand(): "init" | "update" {
+  return memoryExists() ? "update" : "init";
 }
 
 export function normalizeHarness(name: string): Harness | null {

@@ -53,16 +53,16 @@ function compareIdents(a: Ident, b: Ident): -1 | 0 | 1 {
 }
 
 function comparePre(a: Ident[] | null, b: Ident[] | null): -1 | 0 | 1 {
-  if (a === null && b === null) return 0;
-  if (a !== null && b === null) return -1;
-  if (a === null && b !== null) return 1;
-  const aa = a as Ident[];
-  const bb = b as Ident[];
-  const n = Math.max(aa.length, bb.length);
+  if (a === null || b === null) {
+    if (a === null && b === null) return 0;
+    if (a !== null) return -1;
+    return 1;
+  }
+  const n = Math.max(a.length, b.length);
   for (let i = 0; i < n; i++) {
-    if (i >= aa.length) return -1;
-    if (i >= bb.length) return 1;
-    const c = compareIdents(aa[i] as Ident, bb[i] as Ident);
+    if (i >= a.length) return -1;
+    if (i >= b.length) return 1;
+    const c = compareIdents(a[i] as Ident, b[i] as Ident);
     if (c !== 0) return c;
   }
   return 0;

@@ -30,11 +30,10 @@ var __toESM = (mod, isNodeMode, target) => {
   return to;
 };
 
-// install.ts
-var import_node_fs4 = __toESM(require("node:fs"));
-var import_node_path4 = __toESM(require("node:path"));
+// src/actions.ts
+var import_node_fs5 = __toESM(require("node:fs"));
 
-// lib/cli/constants.ts
+// src/constants.ts
 var CANONICAL_HARNESSES = [
   "cursor",
   "claude",
@@ -89,20 +88,96 @@ var ENV_ALLOWLIST_EXACT = new Set([
   "GIT_CONFIG"
 ]);
 
-// lib/cli/detect.ts
+// src/context.ts
+var import_node_fs2 = __toESM(require("node:fs"));
+var import_node_path2 = __toESM(require("node:path"));
+
+// src/package-root.ts
 var import_node_fs = __toESM(require("node:fs"));
 var import_node_path = __toESM(require("node:path"));
+function resolvePackageRoot() {
+  const entry = process.argv[1];
+  if (entry) {
+    let scriptPath = import_node_path.default.resolve(entry);
+    try {
+      scriptPath = import_node_fs.default.realpathSync(scriptPath);
+    } catch {}
+    const dir = import_node_path.default.dirname(scriptPath);
+    if (import_node_path.default.basename(dir) === "bin") {
+      return import_node_path.default.resolve(dir, "..");
+    }
+    let cur = dir;
+    for (;; ) {
+      const pkgPath = import_node_path.default.join(cur, "package.json");
+      if (import_node_fs.default.existsSync(pkgPath)) {
+        try {
+          const name = JSON.parse(import_node_fs.default.readFileSync(pkgPath, "utf8")).name;
+          if (name === "@dosx/agent-memory")
+            return cur;
+        } catch {}
+      }
+      const parent = import_node_path.default.dirname(cur);
+      if (parent === cur)
+        break;
+      cur = parent;
+    }
+  }
+  console.error("error: unable to resolve @dosx/agent-memory package root from process.argv[1]");
+  process.exit(1);
+}
+
+// src/context.ts
+var ROOT = resolvePackageRoot();
+var VERSION = readPackageVersion(ROOT);
+var INSTALL_HOOKS_SH = import_node_path2.default.join(ROOT, "hooks", "install-hooks.sh");
+var SKILL_SOURCE = import_node_path2.default.join(ROOT, "skills", "agent-memory");
+var SOURCE_CHECKOUT = import_node_fs2.default.existsSync(import_node_path2.default.join(ROOT, "src", "cli.ts"));
+function readPackageVersion(root) {
+  let data;
+  try {
+    data = JSON.parse(import_node_fs2.default.readFileSync(import_node_path2.default.join(root, "package.json"), "utf8"));
+  } catch {
+    console.error("error: cannot read package.json version");
+    process.exit(1);
+  }
+  const version = data && typeof data === "object" && "version" in data ? data.version : undefined;
+  if (typeof version !== "string" || version.length === 0 || /[\0\r\n]/.test(version)) {
+    console.error("error: invalid package.json version");
+    process.exit(1);
+  }
+  return version;
+}
+function isSourceCheckout() {
+  return SOURCE_CHECKOUT;
+}
+function cliInvocation() {
+  if (isSourceCheckout()) {
+    return `node ${import_node_path2.default.join(ROOT, "bin", "cli.js")}`;
+  }
+  return "npx @dosx/agent-memory";
+}
+
+// src/fs-install.ts
+var import_node_fs4 = __toESM(require("node:fs"));
+var import_node_path4 = __toESM(require("node:path"));
+
+// src/detect.ts
+var import_node_fs3 = __toESM(require("node:fs"));
+var import_node_path3 = __toESM(require("node:path"));
 function projectDir() {
-  return process.env.AGENT_MEMORY_PROJECT_DIR || process.cwd();
+  const fromEnv = process.env.AGENT_MEMORY_PROJECT_DIR;
+  if (fromEnv)
+    return fromEnv;
+  return process.cwd();
 }
 function installedSkillDir() {
-  return import_node_path.default.join(projectDir(), ".agents", "skills", "agent-memory");
+  return import_node_path3.default.join(projectDir(), ".agents", "skills", "agent-memory");
 }
 function readSkillVersionFromDir(skillDir) {
-  const skillMd = import_node_path.default.join(skillDir, "SKILL.md");
-  if (!import_node_fs.default.existsSync(skillMd))
+  const skillMd = import_node_path3.default.join(skillDir, "SKILL.md");
+  if (!import_node_fs3.default.existsSync(skillMd))
     return null;
-  const text = import_node_fs.default.readFileSync(skillMd, "utf8");
+  const text = import_node_fs3.default.readFileSync(skillMd, "utf8");
   const m = text.match(/^metadata:\s*\n(?:[ \t]+.+\n)*?[ \t]+version:\s*["']?([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)["']?/m);
   if (m)
     return m[1];
@@ -113,15 +188,15 @@ function readInstalledSkillVersion() {
   return readSkillVersionFromDir(installedSkillDir());
 }
 function readInstalledHooksVersion(harness) {
-  const stamp = import_node_path.default.join(projectDir(), HARNESS_HOOKS_DIR[harness], ".version");
-  if (!import_node_fs.default.existsSync(stamp))
+  const stamp = import_node_path3.default.join(projectDir(), HARNESS_HOOKS_DIR[harness], ".version");
+  if (!import_node_fs3.default.existsSync(stamp))
     return null;
-  const v = import_node_fs.default.readFileSync(stamp, "utf8").trim();
+  const v = import_node_fs3.default.readFileSync(stamp, "utf8").trim();
   return v || null;
 }
 function fileContains(filePath, needle) {
   try {
-    return import_node_fs.default.readFileSync(filePath, "utf8").includes(needle);
+    return import_node_fs3.default.readFileSync(filePath, "utf8").includes(needle);
   } catch {
     return false;
   }
@@ -129,20 +204,31 @@ function fileContains(filePath, needle) {
 function detectInstalledHarnesses() {
   const root = projectDir();
   const found = [];
-  const check = (harness, ok) => {
-    if (ok)
-      found.push(harness);
-  };
-  check("cursor", import_node_fs.default.existsSync(import_node_path.default.join(root, ".cursor", "hooks", "agent-memory-sync.sh")) || fileContains(import_node_path.default.join(root, ".cursor", "hooks.json"), "agent-memory"));
-  check("claude", import_node_fs.default.existsSync(import_node_path.default.join(root, ".claude", "hooks", "agent-memory-sync.sh")));
-  check("codex", import_node_fs.default.existsSync(import_node_path.default.join(root, ".codex", "hooks", "agent-memory-sync.sh")));
-  check("opencode", import_node_fs.default.existsSync(import_node_path.default.join(root, ".opencode", "plugins", "agent-memory.ts")) || import_node_fs.default.existsSync(import_node_path.default.join(root, ".opencode", "plugin", "agent-memory.ts")) || import_node_fs.default.existsSync(import_node_path.default.join(root, ".opencode", "hooks", "agent-memory-sync.sh")));
-  check("copilot", import_node_fs.default.existsSync(import_node_path.default.join(root, ".github", "hooks", "agent-memory.json")) || import_node_fs.default.existsSync(import_node_path.default.join(root, ".github", "hooks", "agent-memory-sync.sh")));
-  check("gemini", import_node_fs.default.existsSync(import_node_path.default.join(root, ".gemini", "hooks", "agent-memory-sync.sh")) || fileContains(import_node_path.default.join(root, ".gemini", "settings.json"), "agent-memory"));
+  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".cursor", "hooks", "agent-memory-sync.sh")) || fileContains(import_node_path3.default.join(root, ".cursor", "hooks.json"), "agent-memory")) {
+    found.push("cursor");
+  }
+  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".claude", "hooks", "agent-memory-sync.sh"))) {
+    found.push("claude");
+  }
+  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".codex", "hooks", "agent-memory-sync.sh"))) {
+    found.push("codex");
+  }
+  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".opencode", "plugins", "agent-memory.ts")) || import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".opencode", "plugin", "agent-memory.ts")) || import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".opencode", "hooks", "agent-memory-sync.sh"))) {
+    found.push("opencode");
+  }
+  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".github", "hooks", "agent-memory.json")) || import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".github", "hooks", "agent-memory-sync.sh"))) {
+    found.push("copilot");
+  }
+  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".gemini", "hooks", "agent-memory-sync.sh")) || fileContains(import_node_path3.default.join(root, ".gemini", "settings.json"), "agent-memory")) {
+    found.push("gemini");
+  }
   return found;
 }
 function memoryExists() {
-  return import_node_fs.default.existsSync(import_node_path.default.join(projectDir(), ".agents", "memory"));
+  return import_node_fs3.default.existsSync(import_node_path3.default.join(projectDir(), ".agents", "memory"));
+}
+function nextSkillCommand() {
+  return memoryExists() ? "update" : "init";
 }
 function normalizeHarness(name) {
   if (CANONICAL_HARNESSES.includes(name)) {
@@ -151,74 +237,75 @@ function normalizeHarness(name) {
   return HARNESS_ALIASES[name] ?? null;
 }
 
-// lib/cli/fs-install.ts
-var import_node_fs2 = __toESM(require("node:fs"));
-var import_node_path2 = __toESM(require("node:path"));
+// src/fs-install.ts
+function errorMessage(err) {
+  return err instanceof Error ? err.message : String(err);
+}
 function installSkillAtomic(opts) {
   const { skillSource, onError } = opts;
-  if (!import_node_fs2.default.existsSync(skillSource)) {
+  if (!import_node_fs4.default.existsSync(skillSource)) {
     onError(`missing skill at ${skillSource}`);
   }
   const dest = installedSkillDir();
   refuseSymlinkComponents(dest, onError);
-  const existed = import_node_fs2.default.existsSync(dest);
-  const parent = import_node_path2.default.dirname(dest);
-  import_node_fs2.default.mkdirSync(parent, { recursive: true });
+  const existed = import_node_fs4.default.existsSync(dest);
+  const parent = import_node_path4.default.dirname(dest);
+  import_node_fs4.default.mkdirSync(parent, { recursive: true });
   ensureResolvedUnderProject(parent, onError);
-  const staging = import_node_fs2.default.mkdtempSync(import_node_path2.default.join(parent, ".agent-memory-skill-"));
+  const staging = import_node_fs4.default.mkdtempSync(import_node_path4.default.join(parent, ".agent-memory-skill-"));
   const backup = `${dest}.bak-${process.pid}-${Date.now()}`;
   let movedAside = false;
   try {
-    import_node_fs2.default.cpSync(skillSource, staging, { recursive: true, force: true });
+    import_node_fs4.default.cpSync(skillSource, staging, { recursive: true, force: true });
   } catch (err) {
-    import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-    onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+    import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
+    onError(`skill install failed: ${errorMessage(err)}`);
   }
   if (existed) {
     try {
-      import_node_fs2.default.renameSync(dest, backup);
+      import_node_fs4.default.renameSync(dest, backup);
       movedAside = true;
     } catch (err) {
-      import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-      onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+      import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
+      onError(`skill install failed: ${errorMessage(err)}`);
     }
   }
   try {
-    import_node_fs2.default.renameSync(staging, dest);
+    import_node_fs4.default.renameSync(staging, dest);
   } catch {
     try {
-      import_node_fs2.default.cpSync(staging, dest, { recursive: true, force: true });
-      import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+      import_node_fs4.default.cpSync(staging, dest, { recursive: true, force: true });
+      import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
     } catch (err) {
       if (movedAside) {
         const ok = restoreBackup(backup, dest);
-        import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+        import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
         if (!ok) {
           onError(`skill install failed and restore failed; previous skill left at ${backup}`);
         }
-        onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+        onError(`skill install failed: ${errorMessage(err)}`);
       }
-      if (!import_node_fs2.default.existsSync(dest) && import_node_fs2.default.existsSync(staging)) {
+      if (!import_node_fs4.default.existsSync(dest) && import_node_fs4.default.existsSync(staging)) {
         try {
-          import_node_fs2.default.renameSync(staging, dest);
+          import_node_fs4.default.renameSync(staging, dest);
         } catch {
           try {
-            import_node_fs2.default.cpSync(staging, dest, { recursive: true, force: true });
-            import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
+            import_node_fs4.default.cpSync(staging, dest, { recursive: true, force: true });
+            import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
           } catch {
-            import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-            onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+            import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
+            onError(`skill install failed: ${errorMessage(err)}`);
           }
         }
       } else {
-        import_node_fs2.default.rmSync(staging, { recursive: true, force: true });
-        onError(`skill install failed: ${err instanceof Error ? err.message : String(err)}`);
+        import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
+        onError(`skill install failed: ${errorMessage(err)}`);
       }
     }
   }
-  if (movedAside && import_node_fs2.default.existsSync(backup)) {
+  if (movedAside && import_node_fs4.default.existsSync(backup)) {
     try {
-      import_node_fs2.default.rmSync(backup, { recursive: true, force: true });
+      import_node_fs4.default.rmSync(backup, { recursive: true, force: true });
     } catch {}
   }
   return {
@@ -229,54 +316,58 @@ function installSkillAtomic(opts) {
 }
 function isSymlink(p) {
   try {
-    return import_node_fs2.default.lstatSync(p).isSymbolicLink();
+    return import_node_fs4.default.lstatSync(p).isSymbolicLink();
   } catch {
     return false;
   }
 }
 function refuseSymlinkComponents(dest, onError) {
-  const project = import_node_path2.default.resolve(projectDir());
-  let cur = import_node_path2.default.resolve(dest);
+  const project = import_node_path4.default.resolve(projectDir());
+  let cur = import_node_path4.default.resolve(dest);
   while (true) {
     if (isSymlink(cur)) {
       onError(`refusing symlink in destination path: ${cur}`);
     }
-    if (cur === project || cur === import_node_path2.default.parse(cur).root)
+    if (cur === project || cur === import_node_path4.default.parse(cur).root)
       break;
-    const parent = import_node_path2.default.dirname(cur);
+    const parent = import_node_path4.default.dirname(cur);
     if (parent === cur)
       break;
     cur = parent;
   }
 }
-function ensureResolvedUnderProject(dir, onError) {
-  let projectReal;
-  let dirReal;
+function resolvedUnder(target, ancestor, onError, onEscape) {
+  let ancestorReal;
+  let targetReal;
   try {
-    projectReal = import_node_fs2.default.realpathSync(projectDir());
-    dirReal = import_node_fs2.default.realpathSync(dir);
+    ancestorReal = import_node_fs4.default.realpathSync(ancestor);
+    targetReal = import_node_fs4.default.realpathSync(target);
   } catch (err) {
-    onError(`cannot resolve install path: ${err instanceof Error ? err.message : String(err)}`);
+    onError(`cannot resolve install path: ${errorMessage(err)}`);
   }
-  const prefix = projectReal.endsWith(import_node_path2.default.sep) ? projectReal : projectReal + import_node_path2.default.sep;
-  if (dirReal !== projectReal && !dirReal.startsWith(prefix)) {
-    onError(`resolved parent escapes project: ${dirReal}`);
+  const prefix = ancestorReal.endsWith(import_node_path4.default.sep) ? ancestorReal : ancestorReal + import_node_path4.default.sep;
+  if (targetReal !== ancestorReal && !targetReal.startsWith(prefix)) {
+    onError(onEscape(targetReal));
   }
+  return targetReal;
+}
+function ensureResolvedUnderProject(dir, onError) {
+  resolvedUnder(dir, projectDir(), onError, (real) => `resolved parent escapes project: ${real}`);
 }
 function relPath(p) {
-  const root = import_node_path2.default.resolve(projectDir());
-  const abs = import_node_path2.default.resolve(p);
+  const root = import_node_path4.default.resolve(projectDir());
+  const abs = import_node_path4.default.resolve(p);
   if (abs === root)
     return ".";
-  if (abs.startsWith(root + import_node_path2.default.sep))
-    return import_node_path2.default.relative(root, abs);
+  if (abs.startsWith(root + import_node_path4.default.sep))
+    return import_node_path4.default.relative(root, abs);
   return abs;
 }
 function countFiles(dir) {
   let n = 0;
   const walk = (d) => {
-    for (const ent of import_node_fs2.default.readdirSync(d, { withFileTypes: true })) {
-      const full = import_node_path2.default.join(d, ent.name);
+    for (const ent of import_node_fs4.default.readdirSync(d, { withFileTypes: true })) {
+      const full = import_node_path4.default.join(d, ent.name);
       if (ent.isDirectory())
         walk(full);
       else if (ent.isFile())
@@ -287,22 +378,22 @@ function countFiles(dir) {
   return n;
 }
 function restoreBackup(backup, dest) {
-  if (!import_node_fs2.default.existsSync(backup)) {
-    return import_node_fs2.default.existsSync(dest);
+  if (!import_node_fs4.default.existsSync(backup)) {
+    return import_node_fs4.default.existsSync(dest);
   }
-  if (import_node_fs2.default.existsSync(dest)) {
+  if (import_node_fs4.default.existsSync(dest)) {
     try {
-      import_node_fs2.default.rmSync(dest, { recursive: true, force: true });
+      import_node_fs4.default.rmSync(dest, { recursive: true, force: true });
     } catch {
       return false;
     }
   }
   try {
-    import_node_fs2.default.renameSync(backup, dest);
+    import_node_fs4.default.renameSync(backup, dest);
     return true;
   } catch {
     try {
-      import_node_fs2.default.cpSync(backup, dest, { recursive: true, force: true });
+      import_node_fs4.default.cpSync(backup, dest, { recursive: true, force: true });
       return true;
     } catch {
       return false;
@@ -310,7 +401,7 @@ function restoreBackup(backup, dest) {
   }
 }
 
-// lib/cli/hooks-run.ts
+// src/hooks-run.ts
 var import_node_child_process = require("node:child_process");
 function runCaptured(command, args, options) {
   const result = import_node_child_process.spawnSync(command, args, {
@@ -344,117 +435,7 @@ function buildInstallerEnv(version) {
   return env;
 }
 
-// lib/cli/package-root.ts
-var import_node_fs3 = __toESM(require("node:fs"));
-var import_node_path3 = __toESM(require("node:path"));
-function resolvePackageRoot() {
-  const entry = process.argv[1];
-  if (entry) {
-    let scriptPath = import_node_path3.default.resolve(entry);
-    try {
-      scriptPath = import_node_fs3.default.realpathSync(scriptPath);
-    } catch {}
-    const dir = import_node_path3.default.dirname(scriptPath);
-    if (import_node_path3.default.basename(dir) === "bin") {
-      return import_node_path3.default.resolve(dir, "..");
-    }
-    let cur = dir;
-    for (;; ) {
-      const pkgPath = import_node_path3.default.join(cur, "package.json");
-      if (import_node_fs3.default.existsSync(pkgPath)) {
-        try {
-          const name = JSON.parse(import_node_fs3.default.readFileSync(pkgPath, "utf8")).name;
-          if (name === "@dosx/agent-memory")
-            return cur;
-        } catch {}
-      }
-      const parent = import_node_path3.default.dirname(cur);
-      if (parent === cur)
-        break;
-      cur = parent;
-    }
-  }
-  console.error("error: unable to resolve @dosx/agent-memory package root from process.argv[1]");
-  process.exit(1);
-}
-
-// lib/cli/semver.ts
-var SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
-function parseIdents(pre) {
-  return pre.split(".").map((part) => /^[0-9]+$/.test(part) ? Number(part) : part);
-}
-function parseSemver(v) {
-  const m = v.trim().match(SEMVER);
-  if (!m) {
-    const bits = v.split(".").map((n) => parseInt(n, 10) || 0);
-    return {
-      major: bits[0] ?? 0,
-      minor: bits[1] ?? 0,
-      patch: bits[2] ?? 0,
-      pre: null
-    };
-  }
-  return {
-    major: Number(m[1]),
-    minor: Number(m[2]),
-    patch: Number(m[3]),
-    pre: m[4] ? parseIdents(m[4]) : null
-  };
-}
-function compareIdents(a, b) {
-  const aNum = typeof a === "number";
-  const bNum = typeof b === "number";
-  if (aNum && bNum) {
-    if (a < b)
-      return -1;
-    if (a > b)
-      return 1;
-    return 0;
-  }
-  if (aNum && !bNum)
-    return -1;
-  if (!aNum && bNum)
-    return 1;
-  if (a < b)
-    return -1;
-  if (a > b)
-    return 1;
-  return 0;
-}
-function comparePre(a, b) {
-  if (a === null && b === null)
-    return 0;
-  if (a !== null && b === null)
-    return -1;
-  if (a === null && b !== null)
-    return 1;
-  const aa = a;
-  const bb = b;
-  const n = Math.max(aa.length, bb.length);
-  for (let i = 0;i < n; i++) {
-    if (i >= aa.length)
-      return -1;
-    if (i >= bb.length)
-      return 1;
-    const c = compareIdents(aa[i], bb[i]);
-    if (c !== 0)
-      return c;
-  }
-  return 0;
-}
-function compareSemver(a, b) {
-  const pa = parseSemver(a);
-  const pb = parseSemver(b);
-  if (pa.major !== pb.major)
-    return pa.major < pb.major ? -1 : 1;
-  if (pa.minor !== pb.minor)
-    return pa.minor < pb.minor ? -1 : 1;
-  if (pa.patch !== pb.patch)
-    return pa.patch < pb.patch ? -1 : 1;
-  return comparePre(pa.pre, pb.pre);
-}
-
-// lib/cli/tty.ts
+// src/tty.ts
 var ESC = "\x1B";
 var CSI = `${ESC}[`;
 function isTTY() {
@@ -482,8 +463,6 @@ var c = {
   green: (t) => wrap("32", t),
   yellow: (t) => wrap("33", t),
   red: (t) => wrap("31", t),
-  magenta: (t) => wrap("35", t),
-  boldCyan: (t) => wrap("1;36", t),
   boldGreen: (t) => wrap("1;32", t),
   boldMagenta: (t) => wrap("1;35", t)
 };
@@ -756,22 +735,13 @@ function multiSelectPrompt(title, options) {
   });
 }
 
-// install.ts
-var ROOT = resolvePackageRoot();
-var VERSION = JSON.parse(import_node_fs4.default.readFileSync(import_node_path4.default.join(ROOT, "package.json"), "utf8")).version;
-var INSTALL_HOOKS_SH = import_node_path4.default.join(ROOT, "hooks", "install-hooks.sh");
-var SKILL_SOURCE = import_node_path4.default.join(ROOT, "skills", "agent-memory");
-function isSourceCheckout() {
-  return import_node_fs4.default.existsSync(import_node_path4.default.join(ROOT, "install.ts"));
-}
-function cliInvocation() {
-  if (isSourceCheckout()) {
-    return `node ${import_node_path4.default.join(ROOT, "bin", "cli.js")}`;
-  }
-  return "npx @dosx/agent-memory";
-}
-function fatal(message) {
+// src/ui.ts
+var import_node_path5 = __toESM(require("node:path"));
+function fatal(message, hints = []) {
   console.error(`${c.red("error:")} ${message}`);
+  for (const h of hints) {
+    console.error(`  ${c.dim(h)}`);
+  }
   process.exit(1);
 }
 function blank() {
@@ -780,7 +750,7 @@ function blank() {
 function printHeader(action) {
   blank();
   console.log(`${c.boldMagenta("agent-memory")} ${c.dim(`v${VERSION}`)}  ${c.dim("·")}  ${c.cyan(action)}`);
-  console.log(c.dim(`project  ${import_node_path4.default.resolve(projectDir())}`));
+  console.log(c.dim(`project  ${import_node_path5.default.resolve(projectDir())}`));
   console.log(c.dim(`source   ${ROOT}${isSourceCheckout() ? " (local checkout)" : ""}`));
 }
 function printSection(title) {
@@ -797,7 +767,7 @@ function printStep(line) {
 function printOk(message) {
   console.log(`  ${c.green("✓")} ${message}`);
 }
-function printSummary(report) {
+function printSummary(report, nextStep) {
   blank();
   console.log(`${c.boldGreen("✓")} ${c.bold("Install complete")} ${c.dim(`v${VERSION}`)}`);
   if (report.skillPath) {
@@ -806,18 +776,20 @@ function printSummary(report) {
   if (report.hooks.length > 0) {
     printDetail("hooks", report.hooks.map((h) => `${h} ${c.dim(`(${HARNESS_HOOKS_DIR[h]})`)}`).join(", "));
   }
-  printAgentNextSteps(memoryExists() ? "update" : "init");
+  printAgentNextSteps(nextStep);
 }
 function printAgentNextSteps(primary) {
   blank();
   console.log(c.bold("Next steps"));
   console.log(`  ${c.dim("In your coding agent chat")} ${c.dim("(Cursor, Claude Code, Codex, … — not this terminal):")}`);
   if (primary === "update") {
-    printStep(`${c.cyan("/agent-memory update")}  migrate .agents/memory/ via vendor/UPDATE.md`);
+    printStep(c.cyan("/agent-memory update"));
+    console.log(`    ${c.dim("Type that command only. The skill migrates .agents/memory/ (reads vendor/UPDATE.md). This CLI already refreshed the skill and does not migrate memory.")}`);
   } else {
-    printStep(`${c.cyan("/agent-memory init")}    create .agents/memory/ and wire the agent block`);
+    printStep(c.cyan("/agent-memory init"));
+    console.log(`    ${c.dim("Type that command only. The skill scaffolds .agents/memory/ and wires the agent block.")}`);
   }
-  printStep(`${c.dim("/agent-memory help")}    list skill subcommands`);
+  printStep(`${c.cyan("/agent-memory help")}  ${c.dim("optional — list skill subcommands")}`);
   blank();
 }
 function printHelp() {
@@ -857,39 +829,46 @@ ${c.bold("Local checkout")} ${c.dim("(dogfood unreleased — same SemVer, new fi
   ${c.dim(`${local} update --force --yes`)} ${c.dim("# force refresh from any package")}
 `);
 }
-function installSkill() {
-  const result = installSkillAtomic({
-    skillSource: SKILL_SOURCE,
-    onError: fatal
-  });
-  printSection("Skill");
-  printDetail("name", c.bold("agent-memory"));
-  printDetail("version", VERSION);
-  printDetail("path", result.destRel);
-  printDetail("files", `${result.files} files ${c.dim(result.existed ? "(updated)" : "(new)")}`);
-  printOk(`skill ready at ${c.cyan(result.destRel)}`);
-  return result.destRel;
+function fatalUsage(message) {
+  console.error(`${c.red("error:")} ${message}`);
+  printHelp();
+  process.exit(1);
 }
-function installHooks(harness) {
-  if (!import_node_fs4.default.existsSync(INSTALL_HOOKS_SH)) {
-    fatal(`missing installer at ${INSTALL_HOOKS_SH}`);
+function printUpdateSummary(opts) {
+  blank();
+  console.log(`${c.boldGreen("✓")} ${c.bold("Update complete")} ${c.dim(`cli ${VERSION}`)}`);
+  if (opts.skillMissing) {
+    printDetail("skill", c.dim("not installed (skipped)"));
+  } else if (opts.skillUpdated) {
+    printDetail("skill", `${opts.skillFrom ?? "?"} → ${opts.skillTo} ${c.dim("(.agents/skills/agent-memory)")}`);
+  } else {
+    printDetail("skill", `${opts.skillTo} ${c.dim("(already current)")}`);
   }
-  const bash = process.platform === "win32" ? "bash.exe" : "bash";
-  printSection(`Hooks · ${harness}`);
-  printDetail("target", HARNESS_HOOKS_DIR[harness]);
-  const { stdout, stderr } = runCaptured(bash, [INSTALL_HOOKS_SH, harness], {
-    env: buildInstallerEnv(VERSION),
-    onSpawnError: fatal,
-    onCommandFail: (errText, status) => {
-      if (errText.trim()) {
-        for (const line of errText.trim().split(`
-`)) {
-          console.error(`  ${c.red("✗")} ${line}`);
-        }
-      }
-      process.exit(status ?? 1);
-    }
-  });
+  if (opts.hooksRefreshed.length > 0) {
+    printDetail("hooks", opts.hooksRefreshed.map((h) => `${h} ${c.dim(`→ ${VERSION}`)}`).join(", "));
+  }
+  if (opts.hooksSkipped.length > 0) {
+    printDetail("skipped", opts.hooksSkipped.map((h) => `${h} ${c.dim("(current)")}`).join(", "));
+  }
+  printAgentNextSteps(opts.nextStep);
+}
+
+// src/actions.ts
+var cachedSkillSource;
+var cachedInstaller;
+function packageSkillSource() {
+  if (!cachedSkillSource) {
+    cachedSkillSource = resolvedUnder(SKILL_SOURCE, ROOT, fatal, (real) => `skill source escapes package: ${real}`);
+  }
+  return cachedSkillSource;
+}
+function packageInstaller() {
+  if (!cachedInstaller) {
+    cachedInstaller = resolvedUnder(INSTALL_HOOKS_SH, ROOT, fatal, (real) => `installer escapes package: ${real}`);
+  }
+  return cachedInstaller;
+}
+function printInstallerOutput(stdout, stderr) {
   for (const line of stdout.split(`
 `)) {
     const trimmed = line.trim();
@@ -908,7 +887,255 @@ function installHooks(harness) {
       continue;
     console.error(`  ${c.red("✗")} ${trimmed}`);
   }
+}
+function installSkill() {
+  const result = installSkillAtomic({
+    skillSource: packageSkillSource(),
+    onError: fatal
+  });
+  printSection("Skill");
+  printDetail("name", c.bold("agent-memory"));
+  printDetail("version", VERSION);
+  printDetail("path", result.destRel);
+  printDetail("files", `${result.files} files ${c.dim(result.existed ? "(updated)" : "(new)")}`);
+  printOk(`skill ready at ${c.cyan(result.destRel)}`);
+  return result.destRel;
+}
+function installHooks(harness) {
+  if (!import_node_fs5.default.existsSync(INSTALL_HOOKS_SH)) {
+    fatal(`missing installer at ${INSTALL_HOOKS_SH}`);
+  }
+  const bash = process.platform === "win32" ? "bash.exe" : "bash";
+  printSection(`Hooks · ${harness}`);
+  printDetail("target", HARNESS_HOOKS_DIR[harness]);
+  const { stdout, stderr } = runCaptured(bash, [packageInstaller(), harness], {
+    env: buildInstallerEnv(VERSION),
+    onSpawnError: fatal,
+    onCommandFail: (errText, status) => {
+      if (errText.trim()) {
+        for (const line of errText.trim().split(`
+`)) {
+          console.error(`  ${c.red("✗")} ${line}`);
+        }
+      }
+      process.exit(status ?? 1);
+    }
+  });
+  printInstallerOutput(stdout, stderr);
   printOk(`hooks ready for ${c.bold(harness)}`);
+}
+
+// src/cmd-install.ts
+var INSTALL_MODE_OPTIONS = [
+  { label: "Skill + hooks", value: "both" },
+  { label: "Skill only", value: "skill" },
+  { label: "Hooks only", value: "hooks" }
+];
+function harnessOptions() {
+  return CANONICAL_HARNESSES.map((h) => ({ label: h, value: h }));
+}
+function pickHarnesses() {
+  return multiSelectPrompt("Select harnesses (Space to toggle):", harnessOptions());
+}
+function requireTty(message, hints) {
+  if (!isTTY())
+    fatal(message, hints);
+}
+function applyInstall(header, skill, hooks) {
+  printHeader(header);
+  const report = { hooks };
+  if (skill)
+    report.skillPath = installSkill();
+  for (const h of hooks) {
+    installHooks(h);
+  }
+  printSummary(report, nextSkillCommand());
+}
+async function promptInstallChoice(harness) {
+  const cli = cliInvocation();
+  requireTty("interactive install requires a TTY.", [
+    `Hooks: ${cli} install hooks ${harness}`,
+    `Skill: ${cli} install skill`
+  ]);
+  const choice = await selectPrompt(`Install agent-memory for ${harness}:`, INSTALL_MODE_OPTIONS);
+  const header = `install · ${harness}`;
+  if (choice === "both") {
+    applyInstall(header, true, [harness]);
+    return;
+  }
+  if (choice === "skill") {
+    applyInstall(header, true, []);
+    return;
+  }
+  applyInstall(header, false, [harness]);
+}
+async function promptInstallBare() {
+  const cli = cliInvocation();
+  requireTty("interactive install requires a TTY.", [
+    `Skill: ${cli} install skill`,
+    `Hooks: ${cli} install hooks <harness>`
+  ]);
+  const mode = await selectPrompt("What do you want to install?", INSTALL_MODE_OPTIONS);
+  if (mode === "skill") {
+    applyInstall("install · skill", true, []);
+    return;
+  }
+  const selected = await pickHarnesses();
+  const header = mode === "both" ? `install · skill + ${selected.join(", ")}` : `install · hooks · ${selected.join(", ")}`;
+  applyInstall(header, mode === "both", selected);
+}
+async function promptHooksMultiSelect() {
+  requireTty("interactive install hooks requires a TTY.", [
+    `Hooks: ${cliInvocation()} install hooks <harness>`
+  ]);
+  const selected = await pickHarnesses();
+  applyInstall(`install · hooks · ${selected.join(", ")}`, false, selected);
+}
+async function cmdInstall(rest) {
+  if (rest.length === 0) {
+    await promptInstallBare();
+    return;
+  }
+  if (rest[0] === "skill") {
+    if (rest.length > 1) {
+      fatal("install skill does not accept arguments");
+    }
+    applyInstall("install · skill", true, []);
+    return;
+  }
+  if (rest[0] === "hooks") {
+    if (rest.length === 1) {
+      await promptHooksMultiSelect();
+      return;
+    }
+    const raw = rest[1];
+    if (rest.length > 2) {
+      fatal(`unexpected argument: ${rest[2]}`);
+    }
+    const harness2 = normalizeHarness(raw);
+    if (!harness2) {
+      fatalUsage(`unknown harness: ${raw}`);
+    }
+    applyInstall(`install · hooks · ${harness2}`, false, [harness2]);
+    return;
+  }
+  const harness = normalizeHarness(rest[0]);
+  if (harness) {
+    if (rest.length > 1) {
+      fatal(`unexpected argument: ${rest[1]}`);
+    }
+    await promptInstallChoice(harness);
+    return;
+  }
+  fatalUsage(`unknown install target: ${rest[0]}`);
+}
+
+// src/semver.ts
+var SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
+function parseIdents(pre) {
+  return pre.split(".").map((part) => /^[0-9]+$/.test(part) ? Number(part) : part);
+}
+function parseSemver(v) {
+  const m = v.trim().match(SEMVER);
+  if (!m) {
+    const bits = v.split(".").map((n) => parseInt(n, 10) || 0);
+    return {
+      major: bits[0] ?? 0,
+      minor: bits[1] ?? 0,
+      patch: bits[2] ?? 0,
+      pre: null
+    };
+  }
+  return {
+    major: Number(m[1]),
+    minor: Number(m[2]),
+    patch: Number(m[3]),
+    pre: m[4] ? parseIdents(m[4]) : null
+  };
+}
+function compareIdents(a, b) {
+  const aNum = typeof a === "number";
+  const bNum = typeof b === "number";
+  if (aNum && bNum) {
+    if (a < b)
+      return -1;
+    if (a > b)
+      return 1;
+    return 0;
+  }
+  if (aNum && !bNum)
+    return -1;
+  if (!aNum && bNum)
+    return 1;
+  if (a < b)
+    return -1;
+  if (a > b)
+    return 1;
+  return 0;
+}
+function comparePre(a, b) {
+  if (a === null || b === null) {
+    if (a === null && b === null)
+      return 0;
+    if (a !== null)
+      return -1;
+    return 1;
+  }
+  const n = Math.max(a.length, b.length);
+  for (let i = 0;i < n; i++) {
+    if (i >= a.length)
+      return -1;
+    if (i >= b.length)
+      return 1;
+    const c2 = compareIdents(a[i], b[i]);
+    if (c2 !== 0)
+      return c2;
+  }
+  return 0;
+}
+function compareSemver(a, b) {
+  const pa = parseSemver(a);
+  const pb = parseSemver(b);
+  if (pa.major !== pb.major)
+    return pa.major < pb.major ? -1 : 1;
+  if (pa.minor !== pb.minor)
+    return pa.minor < pb.minor ? -1 : 1;
+  if (pa.patch !== pb.patch)
+    return pa.patch < pb.patch ? -1 : 1;
+  return comparePre(pa.pre, pb.pre);
+}
+
+// src/cmd-update.ts
+function planSkill(installed, pkg, refreshSame) {
+  if (!installed)
+    return { kind: "missing" };
+  const cmp = compareSemver(pkg, installed);
+  if (cmp > 0)
+    return { kind: "upgrade", from: installed };
+  if (cmp < 0)
+    return { kind: "downgrade", from: installed };
+  if (refreshSame)
+    return { kind: "refresh" };
+  return { kind: "current" };
+}
+function planHooks(harnesses, pkg, refreshSame) {
+  const plans = [];
+  for (const h of harnesses) {
+    const stamp = readInstalledHooksVersion(h);
+    if (!stamp || compareSemver(pkg, stamp) > 0) {
+      plans.push({ harness: h, kind: "upgrade", stamp });
+      continue;
+    }
+    if (refreshSame) {
+      plans.push({ harness: h, kind: "refresh", stamp });
+      continue;
+    }
+    plans.push({ harness: h, kind: "skip", stamp });
+  }
+  return plans;
+}
+function skillNeedsInstall(plan) {
+  return plan.kind === "upgrade" || plan.kind === "refresh";
 }
 async function confirmPrompt(message) {
   const choice = await selectPrompt(message, [
@@ -917,128 +1144,39 @@ async function confirmPrompt(message) {
   ]);
   return choice === "yes";
 }
-function printUpdateSummary(opts) {
-  blank();
-  console.log(`${c.boldGreen("✓")} ${c.bold("Update complete")} ${c.dim(`cli ${VERSION}`)}`);
-  if (opts.skillMissing) {
-    printDetail("skill", c.dim("not installed (skipped)"));
-  } else if (opts.skillUpdated) {
-    printDetail("skill", `${opts.skillFrom ?? "?"} → ${opts.skillTo} ${c.dim("(.agents/skills/agent-memory)")}`);
-  } else {
-    printDetail("skill", `${opts.skillTo} ${c.dim("(already current)")}`);
-  }
-  if (opts.hooksRefreshed.length > 0) {
-    printDetail("hooks", opts.hooksRefreshed.map((h) => `${h} ${c.dim(`→ ${VERSION}`)}`).join(", "));
-  }
-  if (opts.hooksSkipped.length > 0) {
-    printDetail("skipped", opts.hooksSkipped.map((h) => `${h} ${c.dim("(current)")}`).join(", "));
-  }
-  printAgentNextSteps(memoryExists() ? "update" : "init");
-}
-async function cmdUpdate(flags) {
-  const installedSkill = readInstalledSkillVersion();
-  const skillMissing = !installedSkill;
-  const refreshSameVersion = flags.force || isSourceCheckout();
-  const cli = cliInvocation();
-  printHeader("update");
-  printSection("Versions");
-  printDetail("package", VERSION);
-  if (skillMissing) {
-    printDetail("skill", c.dim("not installed"));
-    printStep(c.yellow(`skill missing — hooks-only update; install with: ${cli} install skill`));
-  } else {
-    printDetail("skill", `${installedSkill} ${c.dim("installed")} · ${VERSION} ${c.dim("package")}`);
-  }
-  printDetail("hooks", `${VERSION} ${c.dim("package")}`);
-  if (refreshSameVersion) {
-    printStep(c.dim(flags.force ? "force refresh enabled" : "local checkout — refreshing files even when SemVer matches"));
-  }
-  let needSkill = false;
-  if (installedSkill) {
-    const skillCmp = compareSemver(VERSION, installedSkill);
-    if (skillCmp > 0) {
-      needSkill = true;
-      printStep(`skill upgrade available ${c.yellow(`${installedSkill} → ${VERSION}`)}`);
-    } else if (skillCmp < 0) {
-      console.log(`  ${c.yellow("!")} installed skill (${installedSkill}) is newer than package (${VERSION}); will not downgrade`);
-    } else if (refreshSameVersion) {
-      needSkill = true;
-      printStep(`skill refresh ${VERSION} ${c.dim("(same version → package tree)")}`);
-    } else {
-      printStep(`skill already at ${VERSION}`);
-    }
-  }
-  const installedHarnesses = detectInstalledHarnesses();
-  const hooksToRefresh = [];
-  const hooksSkipped = [];
-  if (installedHarnesses.length === 0) {
-    printStep(c.dim("no hooks detected"));
-  } else {
-    for (const h of installedHarnesses) {
-      const stamp = readInstalledHooksVersion(h);
-      if (!stamp || compareSemver(VERSION, stamp) > 0) {
-        hooksToRefresh.push(h);
-        printStep(`hooks ${h}: ${c.yellow(`${stamp ?? "none"} → ${VERSION}`)}`);
-      } else if (refreshSameVersion) {
-        hooksToRefresh.push(h);
-        printStep(`hooks ${h}: refresh ${stamp} ${c.dim("(same version → package tree)")}`);
-      } else {
-        hooksSkipped.push(h);
-        printStep(`hooks ${h}: ${stamp} ${c.dim("(current)")}`);
-      }
-    }
-  }
-  if (skillMissing && hooksToRefresh.length === 0 && installedHarnesses.length === 0) {
-    console.error(`${c.red("error:")} nothing to update — install the skill and/or hooks first`);
-    console.error(`  ${c.dim(`${cli} install skill`)}`);
-    console.error(`  ${c.dim(`${cli} install hooks <harness>`)}`);
-    process.exit(1);
-  }
-  if (!needSkill && hooksToRefresh.length === 0) {
-    blank();
-    console.log(`${c.boldGreen("✓")} ${c.bold("Already up to date")} ${c.dim(VERSION)}`);
-    if (skillMissing) {
-      printStep(c.dim(`optional: ${cli} install skill`));
-    }
-    printAgentNextSteps(memoryExists() ? "update" : "init");
+function printSkillPlan(plan) {
+  if (plan.kind === "upgrade") {
+    printStep(`skill upgrade available ${c.yellow(`${plan.from} → ${VERSION}`)}`);
     return;
   }
-  if (!flags.yes) {
-    if (!isTTY()) {
-      failNonTTY("interactive update requires a TTY (or pass --yes).", [
-        `${cli} update --yes`
-      ]);
-    }
-    const planParts = [];
-    if (needSkill) {
-      planParts.push(installedSkill === VERSION ? `skill refresh ${VERSION}` : `skill ${installedSkill} → ${VERSION}`);
-    }
-    if (hooksToRefresh.length > 0) {
-      planParts.push(`hooks ${hooksToRefresh.join(", ")} → ${VERSION}`);
-    }
-    blank();
-    const ok = await confirmPrompt(`Apply update? (${planParts.join("; ")})`);
-    if (!ok) {
-      console.log(c.dim("Cancelled."));
-      process.exit(0);
-    }
+  if (plan.kind === "downgrade") {
+    console.log(`  ${c.yellow("!")} installed skill (${plan.from}) is newer than package (${VERSION}); will not downgrade`);
+    return;
   }
-  let skillUpdated = false;
-  if (needSkill) {
-    installSkill();
-    skillUpdated = true;
+  if (plan.kind === "refresh") {
+    printStep(`skill refresh ${VERSION} ${c.dim("(same version → package tree)")}`);
+    return;
   }
-  for (const h of hooksToRefresh) {
-    installHooks(h);
+  if (plan.kind === "current") {
+    printStep(`skill already at ${VERSION}`);
   }
-  printUpdateSummary({
-    skillUpdated,
-    skillFrom: installedSkill,
-    skillTo: VERSION,
-    skillMissing,
-    hooksRefreshed: hooksToRefresh,
-    hooksSkipped
-  });
+}
+function printHookPlans(plans, noneInstalled) {
+  if (noneInstalled) {
+    printStep(c.dim("no hooks detected"));
+    return;
+  }
+  for (const p of plans) {
+    if (p.kind === "skip") {
+      printStep(`hooks ${p.harness}: ${p.stamp} ${c.dim("(current)")}`);
+      continue;
+    }
+    if (p.kind === "refresh") {
+      printStep(`hooks ${p.harness}: refresh ${p.stamp} ${c.dim("(same version → package tree)")}`);
+      continue;
+    }
+    printStep(`hooks ${p.harness}: ${c.yellow(`${p.stamp ?? "none"} → ${VERSION}`)}`);
+  }
 }
 function parseUpdateFlags(args) {
   let yes = false;
@@ -1056,90 +1194,119 @@ function parseUpdateFlags(args) {
   }
   return { yes, force };
 }
-function harnessOptions() {
-  return CANONICAL_HARNESSES.map((h) => ({ label: h, value: h }));
-}
-var INSTALL_MODE_OPTIONS = [
-  { label: "Skill + hooks", value: "both" },
-  { label: "Skill only", value: "skill" },
-  { label: "Hooks only", value: "hooks" }
-];
-function pickHarnesses() {
-  return multiSelectPrompt("Select harnesses (Space to toggle):", harnessOptions());
-}
-function failNonTTY(message, hints) {
-  console.error(`${c.red("error:")} ${message}`);
-  for (const h of hints) {
-    console.error(`  ${c.dim(h)}`);
+function printUpdateVersions(opts) {
+  printHeader("update");
+  printSection("Versions");
+  printDetail("package", VERSION);
+  if (opts.skillMissing) {
+    printDetail("skill", c.dim("not installed"));
+    printStep(c.yellow(`skill missing — hooks-only update; install with: ${opts.cli} install skill`));
+  } else {
+    printDetail("skill", `${opts.installedSkill} ${c.dim("installed")} · ${VERSION} ${c.dim("package")}`);
   }
-  process.exit(1);
+  printDetail("hooks", `${VERSION} ${c.dim("package")}`);
+  if (!opts.refreshSameVersion)
+    return;
+  printStep(c.dim(opts.force ? "force refresh enabled" : "local checkout — refreshing files even when SemVer matches"));
 }
-function fatalUsage(message) {
-  console.error(`${c.red("error:")} ${message}`);
-  printHelp();
-  process.exit(1);
+function failIfNothingInstalled(skillMissing, hooksToRefresh, installedHarnesses, cli) {
+  if (!skillMissing || hooksToRefresh.length > 0 || installedHarnesses.length > 0) {
+    return;
+  }
+  fatal("nothing to update — install the skill and/or hooks first", [
+    `${cli} install skill`,
+    `${cli} install hooks <harness>`
+  ]);
 }
-async function promptInstallChoice(harness) {
+function printAlreadyCurrent(skillMissing, cli) {
+  blank();
+  console.log(`${c.boldGreen("✓")} ${c.bold("Already up to date")} ${c.dim(VERSION)}`);
+  if (skillMissing) {
+    printStep(c.dim(`optional: ${cli} install skill`));
+  }
+  printAgentNextSteps(nextSkillCommand());
+}
+async function confirmApply(opts) {
+  if (opts.yes)
+    return;
   if (!isTTY()) {
-    const cli = cliInvocation();
-    failNonTTY("interactive install requires a TTY.", [
-      `Hooks: ${cli} install hooks ${harness}`,
-      `Skill: ${cli} install skill`
+    fatal("interactive update requires a TTY (or pass --yes).", [
+      `${opts.cli} update --yes`
     ]);
   }
-  const choice = await selectPrompt(`Install agent-memory for ${harness}:`, INSTALL_MODE_OPTIONS);
-  printHeader(`install · ${harness}`);
-  if (choice === "both") {
-    const skillPath = installSkill();
-    installHooks(harness);
-    printSummary({ skillPath, hooks: [harness] });
-    return;
+  const planParts = [];
+  if (opts.needSkill) {
+    planParts.push(opts.installedSkill === VERSION ? `skill refresh ${VERSION}` : `skill ${opts.installedSkill} → ${VERSION}`);
   }
-  if (choice === "skill") {
-    printSummary({ skillPath: installSkill(), hooks: [] });
-    return;
+  if (opts.hooksToRefresh.length > 0) {
+    planParts.push(`hooks ${opts.hooksToRefresh.join(", ")} → ${VERSION}`);
   }
-  installHooks(harness);
-  printSummary({ hooks: [harness] });
+  blank();
+  const ok = await confirmPrompt(`Apply update? (${planParts.join("; ")})`);
+  if (ok)
+    return;
+  console.log(c.dim("Cancelled."));
+  process.exit(0);
 }
-async function promptInstallBare() {
-  if (!isTTY()) {
-    const cli = cliInvocation();
-    failNonTTY("interactive install requires a TTY.", [
-      `Skill: ${cli} install skill`,
-      `Hooks: ${cli} install hooks <harness>`
-    ]);
+async function cmdUpdate(args) {
+  const flags = parseUpdateFlags(args);
+  const installedSkill = readInstalledSkillVersion();
+  const skillMissing = !installedSkill;
+  const refreshSameVersion = flags.force || isSourceCheckout();
+  const cli = cliInvocation();
+  const skillPlan = planSkill(installedSkill, VERSION, refreshSameVersion);
+  const installedHarnesses = detectInstalledHarnesses();
+  const hookPlans = planHooks(installedHarnesses, VERSION, refreshSameVersion);
+  const hooksToRefresh = [];
+  const hooksSkipped = [];
+  for (const p of hookPlans) {
+    if (p.kind === "skip")
+      hooksSkipped.push(p.harness);
+    else
+      hooksToRefresh.push(p.harness);
   }
-  const mode = await selectPrompt("What do you want to install?", INSTALL_MODE_OPTIONS);
-  if (mode === "skill") {
-    printHeader("install · skill");
-    printSummary({ skillPath: installSkill(), hooks: [] });
+  const needSkill = skillNeedsInstall(skillPlan);
+  printUpdateVersions({
+    installedSkill,
+    skillMissing,
+    refreshSameVersion,
+    force: flags.force,
+    cli
+  });
+  printSkillPlan(skillPlan);
+  printHookPlans(hookPlans, installedHarnesses.length === 0);
+  failIfNothingInstalled(skillMissing, hooksToRefresh, installedHarnesses, cli);
+  if (!needSkill && hooksToRefresh.length === 0) {
+    printAlreadyCurrent(skillMissing, cli);
     return;
   }
-  const selected = await pickHarnesses();
-  printHeader(mode === "both" ? `install · skill + ${selected.join(", ")}` : `install · hooks · ${selected.join(", ")}`);
-  const report = { hooks: selected };
-  if (mode === "both") {
-    report.skillPath = installSkill();
+  await confirmApply({
+    yes: flags.yes,
+    needSkill,
+    installedSkill,
+    hooksToRefresh,
+    cli
+  });
+  let skillUpdated = false;
+  if (needSkill) {
+    installSkill();
+    skillUpdated = true;
   }
-  for (const h of selected) {
+  for (const h of hooksToRefresh) {
     installHooks(h);
   }
-  printSummary(report);
+  printUpdateSummary({
+    skillUpdated,
+    skillFrom: installedSkill,
+    skillTo: VERSION,
+    skillMissing,
+    hooksRefreshed: hooksToRefresh,
+    hooksSkipped,
+    nextStep: nextSkillCommand()
+  });
 }
-async function promptHooksMultiSelect() {
-  if (!isTTY()) {
-    failNonTTY("interactive install hooks requires a TTY.", [
-      `Hooks: ${cliInvocation()} install hooks <harness>`
-    ]);
-  }
-  const selected = await pickHarnesses();
-  printHeader(`install · hooks · ${selected.join(", ")}`);
-  for (const h of selected) {
-    installHooks(h);
-  }
-  printSummary({ hooks: selected });
-}
+
+// src/cli.ts
 async function main(argv) {
   const args = argv.slice(2);
   if (args.length === 0 || args[0] === "help" || args[0] === "--help" || args[0] === "-h") {
@@ -1147,52 +1314,13 @@ async function main(argv) {
     return;
   }
   if (args[0] === "update") {
-    await cmdUpdate(parseUpdateFlags(args.slice(1)));
+    await cmdUpdate(args.slice(1));
     return;
   }
   if (args[0] !== "install") {
     fatalUsage(`unknown command: ${args[0]}`);
   }
-  const rest = args.slice(1);
-  if (rest.length === 0) {
-    await promptInstallBare();
-    return;
-  }
-  if (rest[0] === "skill") {
-    if (rest.length > 1) {
-      fatal("install skill does not accept arguments");
-    }
-    printHeader("install · skill");
-    printSummary({ skillPath: installSkill(), hooks: [] });
-    return;
-  }
-  if (rest[0] === "hooks") {
-    if (rest.length === 1) {
-      await promptHooksMultiSelect();
-      return;
-    }
-    const raw = rest[1];
-    if (rest.length > 2) {
-      fatal(`unexpected argument: ${rest[2]}`);
-    }
-    const harness2 = normalizeHarness(raw);
-    if (!harness2) {
-      fatalUsage(`unknown harness: ${raw}`);
-    }
-    printHeader(`install · hooks · ${harness2}`);
-    installHooks(harness2);
-    printSummary({ hooks: [harness2] });
-    return;
-  }
-  const harness = normalizeHarness(rest[0]);
-  if (harness) {
-    if (rest.length > 1) {
-      fatal(`unexpected argument: ${rest[1]}`);
-    }
-    await promptInstallChoice(harness);
-    return;
-  }
-  fatalUsage(`unknown install target: ${rest[0]}`);
+  await cmdInstall(args.slice(1));
 }
 main(process.argv).catch((err) => {
   console.error(err);

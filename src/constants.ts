@@ -66,8 +66,6 @@ export const ENV_ALLOWLIST_EXACT = new Set([
   "GIT_CONFIG",
 ]);
 
-export type SelectOption<T extends string> = { label: string; value: T };
-
 export type InstallReport = {
   skillPath?: string;
   hooks: Harness[];

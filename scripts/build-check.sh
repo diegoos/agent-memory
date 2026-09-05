@@ -10,6 +10,6 @@ cd "$repo_root"
 out=$(mktemp)
 trap 'rm -f "$out"' EXIT
 
-bun build ./install.ts --outfile "$out" --target node --format cjs \
+bun build ./src/cli.ts --outfile "$out" --target node --format cjs \
   --banner '#!/usr/bin/env node'
 cmp -s bin/cli.js "$out"

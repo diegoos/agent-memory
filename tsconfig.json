@@ -9,8 +9,7 @@
     "types": ["node", "bun-types"]
   },
   "include": [
-    "install.ts",
-    "lib/cli/**/*.ts",
+    "src/**/*.ts",
     "hooks/opencode/**/*.ts",
     "tests/**/*.ts"
   ]
