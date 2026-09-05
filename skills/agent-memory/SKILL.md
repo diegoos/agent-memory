@@ -40,6 +40,10 @@ allowed-tools: >-
   Bash(.github/hooks/agent-memory-print-evidence.sh)
   Bash(.gemini/hooks/agent-memory-print-evidence.sh)
   Bash(hooks/agent-memory-hooks/agent-memory-print-evidence.sh)
+  Bash(.agents/skills/agent-memory/scripts/lint-structural-from-memory.sh)
+  Bash(.agents/skills/agent-memory/scripts/lint-structural-from-root.sh)
+  Bash(skills/agent-memory/scripts/lint-structural-from-memory.sh)
+  Bash(skills/agent-memory/scripts/lint-structural-from-root.sh)
 disable-model-invocation: true
 ---
 
@@ -55,12 +59,13 @@ Run the loaded command in this agent. Hooks are print-only (`references/install-
 
 | Tool                         | Used for                                                                                                                                                                                                                                                                                                                                      |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Read`, `Grep`, `Glob`       | Analysis, `references/*`, `vendor/`.                                                                                                                                                                                                                                                                                                          |
+| `Read`, `Grep`, `Glob`       | Analysis, `references/*`, `vendor/`, `scripts/`.                                                                                                                                                                                                                                                                                              |
 | `Task`                       | Optional read-only `bootstrap` subagents.                                                                                                                                                                                                                                                                                                     |
 | `Edit`, `Write`              | Frontmatter paths. Sync: `current` / `index` / `log` / `active-work` / `.version` / `.gitignore`. Update also: `decisions.md` and mirrors in `references/update-graph.md`. Init/update/consolidate: `AGENTS.md` **docs map only** (`references/docs-map.md`, outside the block). Host prompts: learnings, `instructions.md`, carriers, hooks. |
 | `Bash(git …)`                | Exact `branch --show-current` / `status` / `status -sb`.                                                                                                                                                                                                                                                                                      |
 | `Bash(…consume-evidence.sh)` | Clear `session_touched_files` after covering sync.                                                                                                                                                                                                                                                                                            |
 | `Bash(…print-evidence.sh)`   | Allowlisted hook fields (stdout only).                                                                                                                                                                                                                                                                                                        |
+| `Bash(…lint-structural-from-*.sh)` | `/agent-memory lint` structural emitters (`references/lint-structural.md`).                                                                                                                         |
 
 ### Write scope
 
@@ -107,7 +112,7 @@ Read the subcommand from the invocation, load **only** the matching reference, a
 | `bootstrap`     | Inventory sources; pointers, not copies                                                        | `references/bootstrap.md`     |
 | `sync`          | Catch-up for current / active-work / log / index                                               | `references/sync.md`          |
 | `lint`          | Six-pass health (consistency, dead paths, typos, contradictions, cold-session quality, hooks)  | `references/lint.md`          |
-| `consolidate`   | Pass A corpus even when log prune is empty; Pass B closed log (confirm; no `--auto`)           | `references/consolidate.md`   |
+| `consolidate`   | Pass A Apply on corpus findings; Pass B prior-day Trim; confirm; no `--auto`                   | `references/consolidate.md`   |
 | `learn`         | One gated learning (confirm; no `--auto`)                                                      | `references/learn.md`         |
 | `help`          | Print the guide below                                                                          | _Help_ section below          |
 
@@ -137,8 +142,8 @@ For `/agent-memory help` (and for any empty or unknown invocation), output the f
 | `/agent-memory bootstrap`     | Inventory canonical sources and gaps (up to 3 subagents); populate pointers — not doc copies.                                                                       |
 | `/agent-memory update`        | Migrate scaffolding; delete leftover mirrors; refresh the harness block; patch the AGENTS.md docs map; print hook installer commands only when stamps are stale.    |
 | `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. `--auto` applies all diffs without per-file prompts.                                    |
-| `/agent-memory lint`          | Check consistency, dead paths, typos, instruction contradictions, cold-session quality, and hook wiring. `--fix` also deletes stale per-branch `active-work` files. |
-| `/agent-memory consolidate`   | Pass A (decisions/index/learnings) even when Pass B log prune is empty; confirm each diff; no `--auto`. `lint --fix` and `sync` do not replace this.                |
+| `/agent-memory lint`          | Check consistency, dead paths, typos, instruction contradictions, cold-session quality, and hook wiring. `--fix` also deletes stale per-branch `active-work` files and closed-placeholder resumes (not the current git branch). |
+| `/agent-memory consolidate`   | Pass A (decisions/index/learnings) even when Pass B log prune is empty; default Apply on Pass A findings; prior-day log Trim (not Retain); confirm each diff; no `--auto`. `lint --fix` and `sync` do not replace this.                |
 | `/agent-memory learn`         | Capture one gated learning/pitfall (`learn [>topic] <clue>`). Confirm before write; no `--auto`.                                                                    |
 
 **Getting started**
@@ -146,8 +151,8 @@ For `/agent-memory help` (and for any empty or unknown invocation), output the f
 - New project? Run `init` (or `init <harness>` — e.g. `init cursor` if you use Cursor and already have a `.cursor/` directory), then optionally `bootstrap` to index sources (not copy docs). Install hooks with the printed `npx` or shell command. Then run **one** `sync` so Status and shared blockers catch up. After that, skip is the default when the write floor is all no.
 - Memory exists but hooks missing or stale? Run `install hooks <harness>` for instructions, or re-run the installer from the release tag. Run `/agent-memory sync` once if Status is stale **and** there is meaning. OpenCode: files must be under `.opencode/plugins/` (with `safe-script.ts`); restart OpenCode; state appears on `session.idle` / native `/compact` — not from DCP-only commands (`/dcp-compact`).
 - Keeping the memory current? Follow session Status (`load:` / Next / Checkpoint). Skip when the write floor is all no. Write **one** file when a floor row is yes (rotten resume → active-work; user constraint → `decisions.md` and supersede the old live entry; reusable lesson → learnings + index `when editing:` when there is an incident and 1–3 paths; closed why missing from the commit → `log.md`; shared blocker → `current.md`). Optional `## Hold` on active-work (max 3 bullets) is still that file. Run `sync` only when hook Status is stale **and** there is meaning (or follow `references/sync.md` without invoking the skill). Use `sync --auto` for low-friction flushes — sync **must consume** pending hook paths when meaning covers them (dirty tree does not skip consume).
-- Pruning noise? Run `consolidate` (guided; never automatic). Pass A always classifies docs-map / stale-live / incident-shaped decisions even if today's log is empty to prune. Same-day after bootstrap is report-only for Pass B — do not expect Discard of founding log headings. `lint --fix` and `sync` do not slim `decisions.md`.
+- Pruning noise? Run `consolidate` (guided; never automatic). Pass A always classifies docs-map / stale-live / incident-shaped decisions even if today's log is empty to prune — default **Apply**, not Defer. Same-day after bootstrap is report-only for Pass B — do not expect Discard of founding log headings. Prior-day diary defaults to **Trim**. `lint --fix` and `sync` do not slim `decisions.md`.
 - Capture a lesson now? In-turn write-floor **Reusable lesson** (incident + 1–3 paths + index hint) is the daily path. Run `learn [>topic] <clue>` only for explicit capture (retention gate; confirm).
-- Already set up? Use `lint` to check health (`lint --fix` also removes stale per-branch files), `update` to upgrade scaffolding **and** delete leftover `vision.md` / `domains/*` mirrors (docs stay on `AGENTS.md`). Hook installer commands print only when `$hooksDir/.version` is missing, differs from this skill, or scripts are incomplete.
+- Already set up? Use `lint` to check health (`lint --fix` also removes stale per-branch files and closed-placeholder resumes), `update` to upgrade scaffolding **and** delete leftover `vision.md` / `domains/*` mirrors (docs stay on `AGENTS.md`). Hook installer commands print only when `$hooksDir/.version` is missing, differs from this skill, or scripts are incomplete.
 
 Method & conventions: `.agents/memory/instructions.md`

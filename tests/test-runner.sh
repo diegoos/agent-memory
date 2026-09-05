@@ -11,6 +11,7 @@ cd "$repo_root"
 bun run build:check
 
 bash tests/reference-first-contract.sh
+bash tests/lint-findings-emit.sh
 bash tests/hooks-checkpoint.sh
 bash tests/json-escape.sh
 bash tests/version-parity.sh

@@ -8,6 +8,8 @@ instructions="$repo_root/skills/agent-memory/vendor/memory/instructions.md"
 bootstrap="$repo_root/skills/agent-memory/references/bootstrap.md"
 lint="$repo_root/skills/agent-memory/references/lint.md"
 lint_structural="$repo_root/skills/agent-memory/references/lint-structural.md"
+lint_from_memory="$repo_root/skills/agent-memory/scripts/lint-structural-from-memory.sh"
+lint_from_root="$repo_root/skills/agent-memory/scripts/lint-structural-from-root.sh"
 sync="$repo_root/skills/agent-memory/references/sync.md"
 consolidate="$repo_root/skills/agent-memory/references/consolidate.md"
 learn="$repo_root/skills/agent-memory/references/learn.md"
@@ -209,7 +211,7 @@ assert_absent "$aw_template" '## Hold' \
   "TEMPLATE does not pre-create Hold"
 assert_contains "$lint" 'hold-overflow:' \
   "lint flags Hold over 3 bullets"
-assert_contains "$lint_structural" "'## Hold'" \
+assert_contains "$lint_from_memory" "'## Hold'" \
   "lint treats Hold as optional empty-section heading"
 assert_contains "$agent_block" '_Recall hop_' \
   "always-on block points at Recall hop for durable why"
@@ -324,6 +326,7 @@ assert_contains "$lint" '*/**' "lint overbroad denylist includes */** equivalent
 assert_contains "$lint" '**/*.ts' "lint overbroad denylist includes **/*.ts"
 assert_contains "$lint" '**/**/*.ts' "lint overbroad denylist includes **/**/*.ts"
 assert_contains "$lint" 'src/**/*' "lint overbroad denylist includes src/**/*"
+assert_contains "$lint" 'src/pages/**' "lint overbroad denylist includes src/pages/**"
 assert_contains "$lint" '*/*' "lint overbroad denylist includes */*"
 assert_contains "$lint" '**/*/*' "lint overbroad denylist includes **/*/*"
 assert_contains "$lint" '*/*/*' "lint overbroad denylist includes */*/*"
@@ -457,8 +460,6 @@ assert_contains "$lint" '## Next step' "lint checks Next step"
 assert_contains "$lint" '## Validation' "lint checks Validation"
 assert_contains "$lint" 'empty-optional-section:' \
   "lint warns on empty optional active-work sections"
-assert_contains "$lint" 'hold-overflow:' \
-  "lint names hold-overflow finding"
 assert_contains "$lint" 'Required headings for resume (agent-owned) — core only' \
   "lint requires core resume headings only"
 assert_contains "$lint" 'same-day-dup-log:' \
@@ -478,20 +479,28 @@ assert_contains "$lint" 'decision-docs-map:' \
 assert_contains "$lint" 'decision-stale-live:' \
   "lint flags live status with superseded-by prose"
 assert_contains "$lint" 'incident-unpromoted:' \
-  "lint flags incident-shaped decisions without learnings"
+  "lint flags incident-shaped decisions without matching learnings"
+assert_contains "$lint" 'decision-lesson-dup:' \
+  "lint flags live decision body after learnings Relates"
+assert_contains "$lint" 'closed-placeholder-resume:' \
+  "lint flags Closed Task active-work placeholders"
+assert_contains "$instructions" 'Identity is the approach noun' \
+  "method defines identity as approach noun not heading"
 assert_contains "$lint" 'decision-hidden:' \
   "lint flags decisions index line missing when editing"
 assert_contains "$lint" 'plus **no** `when editing:` anywhere on `index.md`' \
   "lint quality-unanswerable when open work has no hints"
-assert_contains "$lint_structural" 'decision-canonical-dup:' \
+assert_contains "$lint_from_memory" 'decision-canonical-dup:' \
   "lint-structural emits decision-canonical-dup"
-assert_contains "$lint_structural" 'decision-stale-live:' \
+assert_contains "$lint_from_memory" 'decision-stale-live:' \
   "lint-structural emits decision-stale-live"
-assert_contains "$lint_structural" 'incident-unpromoted:' \
-  "lint-structural emits incident-unpromoted"
-assert_contains "$lint_structural" 'decision-hidden:' \
+assert_contains "$lint_from_memory" 'closed-placeholder-resume:' \
+  "lint-structural emits closed-placeholder-resume"
+assert_contains "$lint_from_memory" 'dup-progress-log:' \
+  "lint-structural emits dup-progress-log on Progress > 5"
+assert_contains "$lint_from_memory" 'decision-hidden:' \
   "lint-structural emits decision-hidden"
-assert_contains "$lint_structural" 'decision-docs-map:' \
+assert_contains "$lint_from_root" 'decision-docs-map:' \
   "lint-structural emits decision-docs-map"
 assert_contains "$lint" 'memory-ghost-docs:' \
   "lint flags memory links to missing docs/ADR"
@@ -499,7 +508,7 @@ assert_contains "$lint" 'agents-docs-gap:' \
   "lint flags docs on disk omitted from AGENTS.md"
 assert_contains "$lint" 're-run `/agent-memory consolidate` until that band is empty' \
   "lint tells the user to re-run consolidate"
-assert_contains "$lint_structural" 'if (n > 3)' \
+assert_contains "$lint_from_memory" 'if (n > 3)' \
   "index-catalog cap is 3"
 assert_contains "$lint" 'empty-log:' "lint warns when log has no session headings"
 assert_contains "$lint" 'empty-log-after-scaffold:' \
@@ -509,29 +518,31 @@ assert_contains "$lint" 'Soft budgets (warnings only)' "soft budgets live in lin
 assert_contains "$lint" 'stale-resume:' "lint checks checkpoint freshness vs HEAD"
 assert_contains "$lint" 'template-in-memory:' \
   "lint flags leftover TEMPLATE.md in project memory"
-assert_contains "$lint_structural" 'branch=$(printf '\''%s'\'' "$branch" | tr -c' \
+assert_contains "$lint_from_root" 'branch=$(printf '\''%s'\'' "$branch" | tr -c' \
   "lint sanitizes branch without piping git newline into tr"
-assert_contains "$lint_structural" 'rev-parse --verify' \
+assert_contains "$lint_from_root" 'rev-parse --verify' \
   "lint resolves Checkpoint SHA with rev-parse --verify"
 assert_absent "$lint" 'rev-parse --end-of-options' \
   "lint must not use rev-parse --end-of-options (Git 2.55)"
-assert_absent "$lint_structural" 'rev-parse --end-of-options' \
-  "lint structural must not use rev-parse --end-of-options (Git 2.55)"
+assert_absent "$lint_from_memory" 'rev-parse --end-of-options' \
+  "lint memory script must not use rev-parse --end-of-options (Git 2.55)"
+assert_absent "$lint_from_root" 'rev-parse --end-of-options' \
+  "lint root script must not use rev-parse --end-of-options (Git 2.55)"
 assert_contains "$lint" 'checkpoint-backticks:' \
   "lint warns on backtick Checkpoint form"
 assert_contains "$lint" 'checkpoint-prose:' \
   "lint warns on Checkpoint trailing TEMPLATE prose"
 assert_contains "$lint" 'stale-next-step:' \
   "lint warns when Next step cites /agent-memory"
-assert_contains "$lint_structural" 'in_ns && /^-/ && /\/agent-memory' \
+assert_contains "$lint_from_memory" 'in_ns && /^-/ && /\/agent-memory' \
   "lint stale-next-step matches action bullets only"
 assert_contains "$lint" 'dup-progress-log' \
   "lint warns when Progress replays log"
 assert_contains "$lint" 'skills/agent-memory/vendor/memory/' \
   "lint skips dogfood instructions↔vendor dup-exact"
-assert_contains "$lint_structural" 'file) continue' \
+assert_contains "$lint_from_memory" 'file) continue' \
   "lint skips when-editing placeholder ./file link"
-assert_contains "$lint_structural" "grep -q '<'" \
+assert_contains "$lint_from_memory" "grep -qF -- '<'" \
   "lint skips shape placeholders with angle brackets (learnings-<topic>.md)"
 assert_contains "$lint" 'evidence-stale-uncleared:' \
   "lint distinguishes uncleared evidence after fresh Checkpoint"
@@ -590,12 +601,18 @@ assert_contains "$lint" '**Typos.**' \
   "lint has a typo pass"
 assert_contains "$lint" '**Instruction contradictions.**' \
   "lint has an instruction-contradiction pass"
-assert_contains "$lint_structural" 'hook-incomplete:' \
+assert_contains "$lint_from_root" 'hook-incomplete:' \
   "lint structural emits hook-incomplete"
-assert_contains "$lint_structural" 'agent-memory-print-evidence.sh' \
+assert_contains "$lint_from_root" 'agent-memory-print-evidence.sh' \
   "lint structural expects print-evidence among shared scripts"
-assert_contains "$lint_structural" 'typo-token:' \
+assert_contains "$lint_from_memory" 'typo-token:' \
   "lint structural emits typo-token"
+assert_contains "$lint_structural" 'lint-structural-from-memory.sh' \
+  "lint-structural.md points at extracted memory script"
+assert_contains "$lint_structural" 'lint-structural-from-root.sh' \
+  "lint-structural.md points at extracted root script"
+assert_absent "$lint_structural" 'report_empty_optional' \
+  "lint-structural.md does not inline the emitter body"
 assert_contains "$instructions" 'Six passes:' \
   "lint boundaries name the six passes"
 
@@ -677,7 +694,15 @@ assert_contains "$consolidate" 'Never propose a Discard set that would leave `lo
 assert_contains "$consolidate" '**Trim**' \
   "consolidate can trim closed-session bullets"
 assert_contains "$consolidate" 'Progress follow-up' \
-  "consolidate Progress ask only after closed log removal"
+  "consolidate Progress follow-up covers dup-progress-log and closed log trim"
+assert_contains "$consolidate" 'Pass A defaults: Apply' \
+  "consolidate Pass A default is Apply not Defer"
+assert_contains "$consolidate" 'Prior-day' \
+  "consolidate Pass B defaults Trim on prior-day diary"
+assert_contains "$consolidate" 'closed-placeholder-resume:' \
+  "consolidate Pass B deletes closed-placeholder resume"
+assert_contains "$consolidate" 'decision-lesson-dup:' \
+  "consolidate Pass A collapses promoted decision bodies"
 assert_contains "$consolidate" 'retained: current-session founding log' \
   "consolidate Report names retained founding log"
 assert_contains "$consolidate" "Never prune the **current branch's** active-work file." \
@@ -716,6 +741,8 @@ assert_contains "$learn" 'sanitized' "learn sanitizes topic slug"
 assert_contains "$learn" 'do not guess' "learn does not guess ambiguous target"
 assert_contains "$learn" 'already listed **without** a `when editing:` hint' \
   "learn updates existing index line"
+assert_contains "$learn" 'do not widen to `src/pages/**`' \
+  "learn hints stay Evidence path literals"
 assert_contains "$learn" '## [YYYY-MM-DD] [learning|pitfall] Short topic' \
   "learn uses canonical H2 entry"
 assert_contains "$learn" '- Relates: caused_by [target](path)' \
@@ -817,6 +844,8 @@ assert_contains "$skill" 'agent-memory-consume-evidence.sh' \
   "skill allows consume-evidence helper"
 assert_contains "$skill" 'agent-memory-print-evidence.sh' \
   "skill allows print-evidence helper"
+assert_contains "$skill" 'lint-structural-from-memory.sh' \
+  "skill allows lint structural scripts"
 assert_contains "$session_sh" 'build_session_context_msg' \
   "session uses contextual status builder"
 consume_sh="$repo_root/hooks/agent-memory-hooks/agent-memory-consume-evidence.sh"
