@@ -241,6 +241,10 @@ Format:
 - safe: `learn` / `lint` / `consolidate` — `Relates:` required when Evidence is a recall file (`learning-missing-relates`); `relates-missing` also checks `#fragment`; `current-stale-branch`; findings `unknown-relates-verb`, `relates-missing`, `learning-missing-evidence`, `contradicts-unlinked`, `supersede-cycle`; consolidate Contradiction / No evidence / Orphan Relates.
 - safe: `lint` — six-pass recipe (consistency, dead paths, typos, instruction contradictions, cold-session quality, hook consistency); structural emitters are this skill's `scripts/lint-structural-from-memory.sh` and `scripts/lint-structural-from-root.sh` (pointer `references/lint-structural.md`); findings `typo-heading` / `typo-token` / `method-stale` / `carrier-stale` / `hook-incomplete` / `opencode-legacy-plugin` / `learning-hidden` / `quality-unanswerable` / `live-dup-identity`.
 
+## 0.2.1-rc.4
+
+- safe: `lint` — structural emitters live in skill `scripts/` (memory cwd + project root); `references/lint-structural.md` documents absolute `<skill-dir>` and per-script cwd. `wrong-cwd:` when cwd is wrong. Learnings slug edges count only on `- Relates:` lines (not prose `decisions.md#…`). Fence-aware scans for `missing:`, typed Relates, `log.md` `## Format` body, `legacy-path-bullet`, and root `memory-ghost-docs`. `bad-log-heading:` / `empty-log-heading:` in lint orchestrator. Re-run from `.agents/memory/` and project root after updating the skill package.
+
 ## 0.2.1
 
 - safe: `agent-memory-print-evidence.sh` — allowlisted hook-state stdout for agents (`pending_count` / hex HEAD / validated session id / sanitized branch). Never prints path lists. **User must re-run the hooks installer** (five shared scripts).
