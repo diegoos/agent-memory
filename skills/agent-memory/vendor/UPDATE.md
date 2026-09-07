@@ -243,10 +243,6 @@ Format:
 
 ## 0.2.1-rc.4
 
-- safe: `lint` — structural emitters live in skill `scripts/` (memory cwd + project root); `references/lint-structural.md` documents absolute `<skill-dir>` and per-script cwd. `wrong-cwd:` when cwd is wrong. Learnings slug edges count only on `- Relates:` lines (not prose `decisions.md#…`). Fence-aware scans for `missing:`, typed Relates, `log.md` `## Format` body, `legacy-path-bullet`, and root `memory-ghost-docs`. `bad-log-heading:` / `empty-log-heading:` in lint orchestrator. Re-run from `.agents/memory/` and project root after updating the skill package.
-
-## 0.2.1
-
 - safe: `agent-memory-print-evidence.sh` — allowlisted hook-state stdout for agents (`pending_count` / hex HEAD / validated session id / sanitized branch). Never prints path lists. **User must re-run the hooks installer** (five shared scripts).
 - safe: `SKILL.md` `allowed-tools` — exact `Bash(…print-evidence.sh)` paths beside consume-evidence.
 - safe: `sync` / `consolidate` / `lint` — do not Read `.hook-sync-state`; sync gathers hook fields from print-evidence; lint `hook-incomplete` expects the fifth script; missing helper is absent evidence, not a Read fallback.
@@ -262,3 +258,7 @@ Format:
 - safe: `SKILL.md` Routing — after the loaded command's Report, last assistant line `Memory: skip` (skill writes are not a write-floor row). Always-on block names triggers; _Harness parity_ stays a pointer into `instructions.md`.
 - safe: `learn` Notes — consolidate Pass A promotes incident-shaped decisions (max 3); Pass B does not scrape `log.md` into Insights. Skill hook README links use `blob/HEAD`.
 - safe: end-of-turn `agent-memory-sync.sh` — stderr resume nudge when pending paths, Checkpoint behind HEAD, or dirty tree with no `active-work`. Never Markdown; never `followup_message`. Silent when resume looks fresh. Not on sessionStart / preCompact / precommit. **User must re-run the hooks installer.**
+- safe: `lint` — structural emitters live in skill `scripts/` (memory cwd + project root); `references/lint-structural.md` documents absolute `<skill-dir>` and per-script cwd. `wrong-cwd:` when cwd is wrong. Learnings slug edges count only on `- Relates:` lines (not prose `decisions.md#…`). Fence-aware scans for `missing:`, typed Relates, `log.md` `## Format` body, `legacy-path-bullet`, and root `memory-ghost-docs`. `bad-log-heading:` / `empty-log-heading:` in lint orchestrator. `overbroad-hint:` on index `when editing:` denylist globs (`src/pages/**` and the rest of lint.md Overbroad). Re-run from `.agents/memory/` and project root after updating the skill package.
+- safe: `update` / `init` — `.agents/memory/.version` stamps this skill's `SKILL.md` `metadata.version` (not a drafted `UPDATE.md` heading newer than that string). Last `## <version>` in `vendor/UPDATE.md` equals metadata. Do not stamp downward when installed is a later SemVer than metadata.
+- safe: `lint --fix` may refresh `stale-resume:` Checkpoint (today @ HEAD short SHA) and trim `dup-progress-log:` to ≤5 Progress bullets (confirm). `overbroad-hint:` / `live-dup-identity:` / `decision-lesson-dup:` stay consolidate Pass A (default Apply; identity successor supersede+collapse). Update report: `--fix` does not slim `decisions.md`.
+- safe: hooks — `hooks/agent-memory-hooks/` derives install-site like harness dirs (stale `*_PROJECT_DIR` / `GITHUB_WORKSPACE` must not retarget state). Status `when editing:` uses lint Overbroad denylist; `*` does not cross `/`. **User must re-run the hooks installer** (shared scripts).

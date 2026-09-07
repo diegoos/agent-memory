@@ -41,6 +41,21 @@ parse_checkpoint_sha 'Checkpoint: 2026-08-02 @ abcdef1 see TEMPLATE' >/dev/null 
 ! parse_checkpoint_sha 'Checkpoint: not-a-date @ zz' >/dev/null ||
   fail "parse_checkpoint_sha should reject non-hex"
 
+amc_hint_glob_rejected 'src/**' || fail "src/** must be rejected"
+amc_hint_glob_rejected '**/*.ts' || fail "**/*.ts must be rejected as exact denylist"
+amc_hint_glob_rejected 'src/pages/**' || fail "src/pages/** must be rejected"
+amc_hint_glob_rejected './hooks/**' || fail "normalized hooks/** must be rejected"
+! amc_hint_glob_rejected 'src/modules/fn-date.ts' ||
+  fail "evidence path literal must not be rejected"
+amc_path_matches_hint_glob 'src/modules/fn-date.ts' 'src/modules/fn-date.ts' ||
+  fail "exact path must match"
+amc_path_matches_hint_glob 'src/foo.ts' 'src/*.ts' ||
+  fail "* should match one path segment"
+! amc_path_matches_hint_glob 'src/foo/bar.ts' 'src/*.ts' ||
+  fail "* must not match across /"
+! amc_path_matches_hint_glob 'src/pages/index.astro' 'src/**' ||
+  fail "overbroad src/** must not match (rejected)"
+
 # Snapshot Markdown before hooks
 md_checksum() {
   find .agents/memory -name '*.md' | sort | while read -r f; do
@@ -784,6 +799,22 @@ grep -q 'session_binding=s-env-anchor' .agents/memory/.hook-sync-state ||
   fail "stale PROJECT_DIR must not write foreign .hook-sync-state"
 grep -qi 'preferring install-site' "$TMP/env-anchor.err" ||
   fail "expected install-site preference warning"
+
+# --- security: vendor hooks/agent-memory-hooks is install-site (stale PROJECT_DIR) ---
+mkdir -p "$TMP/hooks/agent-memory-hooks"
+cp ./agent-memory-*.sh "$TMP/hooks/agent-memory-hooks/"
+chmod +x "$TMP/hooks/agent-memory-hooks"/agent-memory-*.sh
+printf '%s\n' 'session_binding=s-vendor-keep' >.agents/memory/.hook-sync-state
+printf '{"session_id":"s-vendor-anchor","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$VICTIM" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-vendor-anchor \
+  "$TMP/hooks/agent-memory-hooks/agent-memory-sync.sh" >/dev/null 2>"$TMP/vendor-anchor.err" || true
+grep -q 'session_binding=s-vendor-anchor' .agents/memory/.hook-sync-state ||
+  fail "vendor agent-memory-hooks path must win over stale PROJECT_DIR"
+! test -f "$VICTIM/.agents/memory/.hook-sync-state" ||
+  fail "vendor install-site must not write foreign .hook-sync-state"
+grep -qi 'preferring install-site' "$TMP/vendor-anchor.err" ||
+  fail "expected vendor-path install-site preference warning"
 
 # --- security: symlinked hooks dir must not retarget install-site to victim ---
 ATTACK=$(mktemp -d)

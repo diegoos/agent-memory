@@ -309,6 +309,8 @@ assert_contains "$learn" 'learnings-<topic>.md' "topic split convention in learn
 assert_contains "$learn" '**Duplicate rule**' "duplicate rule SoT in learn reference"
 assert_contains "$learn" '**Legacy one-liner**' "legacy one-liner SoT in learn reference"
 # Overbroad when-editing denylist SoT is lint (not always-load instructions)
+assert_contains "$lint" 'overbroad-hint:' "lint names overbroad-hint finding"
+assert_contains "$lint_from_memory" 'overbroad-hint:' "lint-structural emits overbroad-hint"
 assert_contains "$lint" 'companions do not redeem' "lint overbroad rejects companions"
 assert_contains "$lint" '?*/*' "lint overbroad includes ?*/*"
 assert_contains "$lint" 'to fixpoint' "lint overbroad normalize runs to fixpoint"
@@ -367,6 +369,14 @@ assert_contains "$update" '**Hook status.**' \
   "update classifies hook stamps before printing installer"
 assert_contains "$update" '/agent-memory lint' \
   "update report offers lint after memory migration"
+assert_contains "$update" 'metadata.version' \
+  "update stamps skill metadata.version not a newer UPDATE heading"
+assert_contains "$update" 'do not stamp `.version` downward' \
+  "update does not downgrade .version when installed is later SemVer"
+assert_contains "$update" 'overbroad-hint' \
+  "update report says corpus overbroad-hint waits for consolidate"
+assert_contains "$init" 'metadata.version' \
+  "init .version uses skill metadata.version"
 install_hooks="$repo_root/skills/agent-memory/references/install-hooks.md"
 assert_contains "$install_hooks" 'Stamp vs skill' \
   "install-hooks documents stamp check for update"
@@ -498,6 +508,10 @@ assert_contains "$lint_from_memory" 'closed-placeholder-resume:' \
   "lint-structural emits closed-placeholder-resume"
 assert_contains "$lint_from_memory" 'dup-progress-log:' \
   "lint-structural emits dup-progress-log on Progress > 5"
+assert_contains "$lint" '`--fix` refresh Checkpoint' \
+  "lint --fix may refresh stale-resume Checkpoint"
+assert_contains "$lint" '`--fix` trim Progress' \
+  "lint --fix may trim dup-progress-log"
 assert_contains "$lint_from_memory" 'decision-hidden:' \
   "lint-structural emits decision-hidden"
 assert_contains "$lint_from_root" 'decision-docs-map:' \
@@ -697,6 +711,10 @@ assert_contains "$consolidate" 'Progress follow-up' \
   "consolidate Progress follow-up covers dup-progress-log and closed log trim"
 assert_contains "$consolidate" 'Pass A defaults: Apply' \
   "consolidate Pass A default is Apply not Defer"
+assert_contains "$consolidate" 'overbroad-hint:' \
+  "consolidate Pass A narrows overbroad-hint globs"
+assert_contains "$consolidate" 'still-useful older body is not a Defer reason' \
+  "consolidate does not defer live-dup because the older body looks useful"
 assert_contains "$consolidate" 'Prior-day' \
   "consolidate Pass B defaults Trim on prior-day diary"
 assert_contains "$consolidate" 'closed-placeholder-resume:' \

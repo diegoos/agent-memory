@@ -49,7 +49,7 @@ disable-model-invocation: true
 
 # agent-memory
 
-Manual-only orchestrator for Workspace Memory. Skeleton and migrations are **vendor-only** (`vendor/memory/`, `vendor/UPDATE.md` beside this file). Installed copy: `.agents/memory/` (`.version` = newest `vendor/UPDATE.md` heading).
+Manual-only orchestrator for Workspace Memory. Skeleton and migrations are **vendor-only** (`vendor/memory/`, `vendor/UPDATE.md` beside this file). Installed copy: `.agents/memory/` (`.version` = this skill's `metadata.version`; last `## <version>` in `vendor/UPDATE.md` must match).
 
 Run the loaded command in this agent. Hooks are print-only (`references/install-hooks.md`); `update` prints installer commands only when the stamp is stale.
 

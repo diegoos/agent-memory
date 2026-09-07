@@ -233,15 +233,17 @@ agent_memory_init_context() {
   state_file="$memory/.hook-sync-state"
 }
 
-# When hooks live under <project>/.cursor/hooks (etc.), return <project>.
+# When hooks live under <project>/.cursor/hooks (etc.) or the vendor
+# <package>/hooks/agent-memory-hooks, return that project/package root.
 # Relies on script_dir set by the caller before sourcing this file.
 derive_install_project_dir() {
   local hooks="${script_dir:-}"
   [ -n "$hooks" ] || return 1
   case "$hooks" in
     */.cursor/hooks | */.claude/hooks | */.codex/hooks | */.gemini/hooks | \
-      */.opencode/hooks | */.github/hooks | */.git/hooks)
-      # dirname twice: .../<harness>/hooks → project root
+      */.opencode/hooks | */.github/hooks | */.git/hooks | \
+      */hooks/agent-memory-hooks)
+      # dirname twice: .../<harness>/hooks or .../hooks/agent-memory-hooks → root
       local parent project
       parent=$(dirname -- "$hooks")
       project=$(dirname -- "$parent")
@@ -1168,31 +1170,80 @@ resolve_hex_commit() {
 # Contextual sessionStart message: obligation + branch/checkpoint/path status.
 # Never writes Markdown. Safe when git or active-work is missing.
 
-# Reject untrusted when-editing globs before using them in case-glob match.
+# Normalize when-editing globs (lint.md Overbroad: strip ./ /, collapse // and **/**).
+amc_norm_hint_glob() {
+  local g=$1
+  g=$(printf '%s' "$g" | sed -E 's/^[[:space:]]+//;s/[[:space:]]+$//')
+  while [[ "$g" == ./* ]]; do g=${g#./}; done
+  while [[ "$g" == /* ]]; do g=${g#/}; done
+  while [[ "$g" == *//* ]]; do g=${g//\/\//\/}; done
+  while [[ "$g" == *'**/**'* ]]; do g=${g//\*\*\/\*\*/\*\*}; done
+  printf '%s' "$g"
+}
+
+# Reject untrusted / overbroad when-editing globs (lint.md denylist + metachar).
+# Compare denylist strings with = (do not use case glob — * in the entry would
+# match any hint, e.g. **/*.ts vs src/*.ts).
 amc_hint_glob_rejected() {
-  local g=$1 lit
+  local g lit prefix d
+  g=$(amc_norm_hint_glob "$1")
+  [[ "$g" == /* ]] && return 0
+  for d in \
+    '' '*' '**' '**/*' '**/**' '**/**/*' '*/**' '*/*' '?*/*' '*/*/*' '*/*/**' \
+    '**/*/**' '**/*/*' '*.*' '*.md' '**/*.md' '**/*.*' '*/*.*' \
+    '**/*.ts' '**/*.tsx' '**/*.js' '**/*.jsx' '**/*.py' '**/**/*.ts' '**/*/*.ts' '*/**/*.ts' \
+    'src/**' 'src/**/*' 'src/**/**' 'src/pages/**' 'pages/**' 'lib/**' 'app/**' \
+    'packages/**' 'hooks/**' 'tests/**' 'docs/**' '.agents/**'; do
+    [ "$g" = "$d" ] && return 0
+  done
   case "$g" in
-    ''|'!'*|'*'|'**'|'**/*'|'*/**'|'*/*'|'*.*'|'*.md'|'**/*.md'|'**/*.*') return 0 ;;
-  esac
-  case "$g" in
+    '!'*) return 0 ;;
     *[$'\n\r;`$()|&<>\\']*) return 0 ;;
   esac
+  if [ "${#g}" -ge 3 ] && [ "${g: -3}" = '/**' ]; then
+    prefix=${g:0:${#g}-3}
+    if [[ "$prefix" != */* ]] && [[ "$prefix" != *['*?']* ]]; then
+      return 0
+    fi
+  fi
   lit=$(printf '%s' "$g" | tr -d '*?[]/')
   [ "${#lit}" -ge 2 ] || return 0
   return 1
 }
 
-# path vs gitignore-ish glob. Bash case: * matches slashes (slightly looser than gitignore).
+# path vs gitignore-ish glob: * does not cross /; ** does.
 amc_path_matches_hint_glob() {
-  local path=$1 glob=$2
+  local path=$1 glob=$2 re="" i=0 n c
   path=${path#./}
+  glob=$(amc_norm_hint_glob "$2")
   glob=${glob#./}
   amc_hint_glob_rejected "$glob" && return 1
   [ "$path" = "$glob" ] && return 0
-  case "$path" in
-    $glob) return 0 ;;
-  esac
-  return 1
+  n=${#glob}
+  while [ "$i" -lt "$n" ]; do
+    c=${glob:i:1}
+    if [ "$c" = '*' ]; then
+      if [ $((i + 1)) -lt "$n" ] && [ "${glob:i+1:1}" = '*' ]; then
+        re="${re}.*"
+        i=$((i + 2))
+        continue
+      fi
+      re="${re}[^/]*"
+      i=$((i + 1))
+      continue
+    fi
+    if [ "$c" = '?' ]; then
+      re="${re}[^/]"
+      i=$((i + 1))
+      continue
+    fi
+    case "$c" in
+      '.'|'['|']'|'^'|'$'|'+'|'('|')'|'{'|'}'|'|') re="${re}\\${c}" ;;
+      *) re="${re}${c}" ;;
+    esac
+    i=$((i + 1))
+  done
+  [[ "$path" =~ ^${re}$ ]]
 }
 
 amc_path_hint_ok() {

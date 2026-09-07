@@ -26,9 +26,12 @@ skill_v=$(grep -E '^\s+version:\s*"' skills/agent-memory/SKILL.md | head -1 | se
 fallback=$(grep -E 'VERSION="\$\{VERSION:-' hooks/install-hooks.sh | sed -E 's/.*VERSION:-([^}]+)\}.*/\1/')
 [[ "$fallback" == "$version" ]] || fail "install-hooks fallback $fallback != $version"
 
+last_update=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+' skills/agent-memory/vendor/UPDATE.md | tail -1)
+last_update=${last_update#\#\# }
+[[ "$last_update" == "$version" ]] ||
+  fail "UPDATE.md last heading $last_update != package.json $version"
+
 if [[ "$prerelease" -eq 0 ]]; then
-  grep -Fq "## $version" skills/agent-memory/vendor/UPDATE.md ||
-    fail "UPDATE.md missing ## $version"
   grep -Fq "## [$version]" CHANGELOG.md ||
     fail "CHANGELOG.md missing ## [$version]"
 else

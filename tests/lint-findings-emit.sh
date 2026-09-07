@@ -13,7 +13,14 @@ fx2=""
 fx=$(mktemp -d)
 trap 'rm -rf "$fx" "$fx2"' EXIT
 mkdir -p "$fx/active-work"
-printf '%s\n' '# Index' >"$fx/index.md"
+cat >"$fx/index.md" <<'EOF'
+# Index
+- [learnings.md](./learnings.md) — when editing: src/pages/**, astro.config.ts; pitfalls
+- [log.md](./log.md) — when editing: src/modules/fn-date.ts; dates
+```
+- [x.md](./x.md) — when editing: src/**; fenced
+```
+EOF
 printf '%s\n' '# Current' '## In progress' '- _none_' >"$fx/current.md"
 printf '%s\n' '# Log' >"$fx/log.md"
 
@@ -221,6 +228,20 @@ if printf '%s' "$out" | grep 'relates-missing' | grep -q '2026-07-09-rollback-pa
 fi
 printf '%s' "$out" | grep -q 'live-dup-identity: 3' \
   || fail "three live docs-layout headings must emit live-dup-identity"
+printf '%s' "$out" | grep -qF 'overbroad-hint: index.md src/pages/**' \
+  || fail "src/pages/** must emit overbroad-hint"
+if printf '%s' "$out" | grep 'overbroad-hint' | grep -q 'astro.config.ts'; then
+  fail "narrow companion glob must not emit overbroad-hint"
+fi
+if printf '%s' "$out" | grep 'overbroad-hint' | grep -q 'src/modules/fn-date.ts'; then
+  fail "evidence path literal must not emit overbroad-hint"
+fi
+if printf '%s' "$out" | grep -qF 'overbroad-hint: index.md src/**'; then
+  fail "fenced src/** must not emit overbroad-hint"
+fi
+if printf '%s' "$out" | grep -q 'missing: x.md'; then
+  fail "fenced index links must not emit missing:"
+fi
 printf '%s' "$out" | grep -q "hold-overflow: active-work/x'y.md" \
   || fail "hold-overflow must emit with quote in active-work basename"
 printf '%s\n' "$out" | grep -q 'hold-overflow: active-work/foo\\nbar.md' \

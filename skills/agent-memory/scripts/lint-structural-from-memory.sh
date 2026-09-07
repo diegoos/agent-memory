@@ -610,3 +610,54 @@ awk '
     print "learning-hidden: " $0 " — path-scoped split needs when editing:"
   }
 ' index.md
+
+# Index when editing: globs on the Overbroad denylist (lint.md). Companions do not redeem.
+awk '
+  function trim(s) {
+    gsub(/^[ \t]+|[ \t]+$/, "", s)
+    return s
+  }
+  function norm(g) {
+    g = trim(g)
+    while (g ~ /^\.\//) sub(/^\.\//, "", g)
+    while (g ~ /^\//) sub(/^\//, "", g)
+    while (index(g, "//")) gsub(/\/\//, "/", g)
+    while (index(g, "**/**")) gsub(/\*\*\/\*\*/, "**", g)
+    return g
+  }
+  function denied(g) {
+    if (g == "**" || g == "**/*" || g == "**/**" || g == "**/**/*" || g == "*/**" || g == "*/*" || g == "?*/*" || g == "*/*/*" || g == "*/*/**" || g == "**/*/**" || g == "**/*/*" || g == "*" || g == "*.*" || g == "*.md" || g == "**/*.md" || g == "**/*.*" || g == "*/*.*" || g == "**/*.ts" || g == "**/*.tsx" || g == "**/*.js" || g == "**/*.jsx" || g == "**/*.py" || g == "**/**/*.ts" || g == "**/*/*.ts" || g == "*/**/*.ts") return 1
+    if (g == "src/**" || g == "src/**/*" || g == "src/**/**" || g == "src/pages/**" || g == "pages/**" || g == "lib/**" || g == "app/**" || g == "packages/**" || g == "hooks/**" || g == "tests/**" || g == "docs/**" || g == ".agents/**") return 1
+    if (g ~ /^\*\*\/\*\./) return 1
+    n = split(g, p, "/")
+    if (n == 2 && p[2] == "**" && p[1] !~ /[*?]/) return 1
+    if (n == 3 && p[2] == "**" && p[3] == "*" && p[1] !~ /[*?]/) return 1
+    allw = 1
+    lit = 0
+    for (i = 1; i <= n; i++) {
+      if (p[i] !~ /^(\*|\?\*|\*\*)$/) allw = 0
+      if (p[i] ~ /[A-Za-z0-9._-]/ && p[i] !~ /^(\*\.[A-Za-z0-9]+|\*\.\*)$/) lit++
+    }
+    if (n >= 2 && allw) return 1
+    if (lit == 0) return 1
+    return 0
+  }
+  /^```/ { fence = !fence; next }
+  fence { next }
+  {
+    line = $0
+    key = "when editing:"
+    k = index(line, key)
+    if (!k) next
+    rest = substr(line, k + length(key))
+    sc = index(rest, ";")
+    if (sc) rest = substr(rest, 1, sc - 1)
+    n = split(rest, globs, ",")
+    for (i = 1; i <= n; i++) {
+      g = norm(globs[i])
+      if (g == "") continue
+      if (denied(g))
+        print "overbroad-hint: index.md " g " — replace with Evidence path literals (lint.md Overbroad; companions do not redeem)"
+    }
+  }
+' index.md

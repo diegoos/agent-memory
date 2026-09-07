@@ -35,7 +35,7 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
    **Dotfiles (required):** hosts often hide dotfiles from `Glob`, and npm omits files named `.gitignore` from published packs. After the copy, **explicitly** Read `vendor/memory/gitignore` (pack-safe name; same rules as a local `.gitignore` sibling when present) and Write it to `.agents/memory/.gitignore` (create/overwrite to match vendor). Contents must ignore `.hook-sync-state`, `.hook-sync-state.lock`, and `.hook-sync-state.*`. Then verify `.agents/memory/.gitignore` exists before continuing.
 
-3. **Write the version anchor.** Create `.agents/memory/.version` containing the latest version — the newest version section in this skill's `vendor/UPDATE.md`, e.g. `0.2.0`.
+3. **Write the version anchor.** Create `.agents/memory/.version` containing this skill's `SKILL.md` `metadata.version` (same string as `package.json` in the skill repo). The last `## <version>` heading in this skill's `vendor/UPDATE.md` must equal that string — if it does not, stop and tell the user. Do not stamp a newer drafted UPDATE heading (e.g. `0.2.1` while metadata is `0.2.1-rc.4`).
 
 4. **Parse the harness target.** From the invocation, read optional `<harness>`. Normalize aliases (`claude-code` → `claude`, `github` → `copilot`). If omitted, set mode to `auto` and **detect harnesses** (see **Auto-detection** below).
 
