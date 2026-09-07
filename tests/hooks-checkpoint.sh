@@ -44,10 +44,17 @@ parse_checkpoint_sha 'Checkpoint: 2026-08-02 @ abcdef1 see TEMPLATE' >/dev/null 
 amc_hint_glob_rejected 'src/**' || fail "src/** must be rejected"
 amc_hint_glob_rejected '**/*.ts' || fail "**/*.ts must be rejected as exact denylist"
 amc_hint_glob_rejected 'src/pages/**' || fail "src/pages/** must be rejected"
+amc_hint_glob_rejected 'src/pages/**/index.astro' || fail "src/pages/**/index.astro must be rejected"
+amc_hint_glob_rejected 'src/pages/blog/**' || fail "src/pages/blog/** must be rejected"
+amc_hint_glob_rejected 'src/modules/**' || fail "src/modules/** must be rejected"
+! amc_hint_glob_rejected 'src/pages/[slug]/index.astro' ||
+  fail "evidence path literal under pages must not be rejected"
+! amc_path_matches_hint_glob 'src/pages/foo/index.astro' 'src/pages/**/index.astro' ||
+  fail "covering src/pages/**/index.astro must not match (rejected)"
 amc_hint_glob_rejected './hooks/**' || fail "normalized hooks/** must be rejected"
-! amc_hint_glob_rejected 'src/modules/fn-date.ts' ||
+! amc_hint_glob_rejected 'src/lib/dates.ts' ||
   fail "evidence path literal must not be rejected"
-amc_path_matches_hint_glob 'src/modules/fn-date.ts' 'src/modules/fn-date.ts' ||
+amc_path_matches_hint_glob 'src/lib/dates.ts' 'src/lib/dates.ts' ||
   fail "exact path must match"
 amc_path_matches_hint_glob 'src/foo.ts' 'src/*.ts' ||
   fail "* should match one path segment"

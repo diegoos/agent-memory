@@ -329,6 +329,10 @@ assert_contains "$lint" '**/*.ts' "lint overbroad denylist includes **/*.ts"
 assert_contains "$lint" '**/**/*.ts' "lint overbroad denylist includes **/**/*.ts"
 assert_contains "$lint" 'src/**/*' "lint overbroad denylist includes src/**/*"
 assert_contains "$lint" 'src/pages/**' "lint overbroad denylist includes src/pages/**"
+assert_contains "$lint" 'src/pages/**/index.astro' \
+  "lint overbroad covering includes src/pages/**/index.astro"
+assert_contains "$lint" 'src/pages/blog/**' \
+  "lint overbroad covering includes src/pages/blog/**"
 assert_contains "$lint" '*/*' "lint overbroad denylist includes */*"
 assert_contains "$lint" '**/*/*' "lint overbroad denylist includes **/*/*"
 assert_contains "$lint" '*/*/*' "lint overbroad denylist includes */*/*"
@@ -373,8 +377,14 @@ assert_contains "$update" 'metadata.version' \
   "update stamps skill metadata.version not a newer UPDATE heading"
 assert_contains "$update" 'do not stamp `.version` downward' \
   "update does not downgrade .version when installed is later SemVer"
+assert_contains "$update" 'will not run on this tree' \
+  "update report names that stable-core migrations skip when stamp is ahead"
+assert_contains "$update" 'always-on (gitignore, graph reshape, instruction blocks) still run' \
+  "update report names always-on work when stamp is ahead"
 assert_contains "$update" 'overbroad-hint' \
   "update report says corpus overbroad-hint waits for consolidate"
+assert_contains "$update" 'memory-ghost-docs' \
+  "update report says memory-ghost-docs waits for consolidate Pass A"
 assert_contains "$init" 'metadata.version' \
   "init .version uses skill metadata.version"
 install_hooks="$repo_root/skills/agent-memory/references/install-hooks.md"
@@ -496,6 +506,8 @@ assert_contains "$lint" 'closed-placeholder-resume:' \
   "lint flags Closed Task active-work placeholders"
 assert_contains "$instructions" 'Identity is the approach noun' \
   "method defines identity as approach noun not heading"
+assert_contains "$instructions" 'max **5** bullets (historical reviews belong in `log.md`)' \
+  "instructions cap Validation at 5 bullets"
 assert_contains "$lint" 'decision-hidden:' \
   "lint flags decisions index line missing when editing"
 assert_contains "$lint" 'plus **no** `when editing:` anywhere on `index.md`' \
@@ -508,10 +520,14 @@ assert_contains "$lint_from_memory" 'closed-placeholder-resume:' \
   "lint-structural emits closed-placeholder-resume"
 assert_contains "$lint_from_memory" 'dup-progress-log:' \
   "lint-structural emits dup-progress-log on Progress > 5"
+assert_contains "$lint_from_memory" 'dup-validation:' \
+  "lint-structural emits dup-validation on Validation > 5"
 assert_contains "$lint" '`--fix` refresh Checkpoint' \
   "lint --fix may refresh stale-resume Checkpoint"
 assert_contains "$lint" '`--fix` trim Progress' \
   "lint --fix may trim dup-progress-log"
+assert_contains "$lint" '`--fix` trim Validation' \
+  "lint --fix may trim dup-validation"
 assert_contains "$lint_from_memory" 'decision-hidden:' \
   "lint-structural emits decision-hidden"
 assert_contains "$lint_from_root" 'decision-docs-map:' \
@@ -707,8 +723,12 @@ assert_contains "$consolidate" 'Never propose a Discard set that would leave `lo
   "consolidate never empties log.md"
 assert_contains "$consolidate" '**Trim**' \
   "consolidate can trim closed-session bullets"
-assert_contains "$consolidate" 'Progress follow-up' \
-  "consolidate Progress follow-up covers dup-progress-log and closed log trim"
+assert_contains "$consolidate" 'Progress / Validation follow-up' \
+  "consolidate Progress/Validation follow-up covers dup-progress-log and dup-validation"
+assert_contains "$consolidate" 'Second Pass A' \
+  "consolidate re-runs Pass A when decisions.md stays over budget with live ghosts"
+assert_contains "$consolidate" 'Do not leave `Status: live` plus a missing `docs/` path' \
+  "consolidate Apply on live memory-ghost-docs missing docs path"
 assert_contains "$consolidate" 'Pass A defaults: Apply' \
   "consolidate Pass A default is Apply not Defer"
 assert_contains "$consolidate" 'overbroad-hint:' \

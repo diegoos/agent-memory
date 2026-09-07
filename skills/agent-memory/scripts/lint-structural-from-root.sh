@@ -194,6 +194,29 @@ done | while IFS=$'\t' read -r f file_part; do
   fi
 done
 
+# Live decision backtick `docs/…` paths are repo-relative (missing file → memory-ghost-docs).
+if [ -f .agents/memory/decisions.md ]; then
+  awk '
+    /^```/ { fence = !fence; next }
+    fence { next }
+    /^## \[[0-9]{4}-[0-9]{2}-[0-9]{2}\]/ { in_e = 1; live = 0; next }
+    /^## / { in_e = 0; next }
+    in_e && /\*\*Status:\*\*[[:space:]]*live/ { live = 1 }
+    in_e && live {
+      s = $0
+      while (match(s, /`docs\/[^`]+`/)) {
+        p = substr(s, RSTART + 1, RLENGTH - 2)
+        sub(/#.*$/, "", p)
+        print p
+        s = substr(s, RSTART + RLENGTH)
+      }
+    }
+  ' .agents/memory/decisions.md | sort -u | while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    test -e "$p" || echo "memory-ghost-docs: .agents/memory/decisions.md -> $p"
+  done
+fi
+
 # Project-docs index exists but AGENTS.md omits it
 if [ -f AGENTS.md ]; then
   agents_txt=$(cat AGENTS.md)

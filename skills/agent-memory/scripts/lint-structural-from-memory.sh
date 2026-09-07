@@ -199,6 +199,16 @@ find active-work -name '*.md' ! -name 'TEMPLATE.md' 2>/dev/null | while read -r 
   ' "$f"
   AM_LINT_FILE="$f" awk '
     BEGIN { file = ENVIRON["AM_LINT_FILE"] }
+    /^## Validation$/ { in_v=1; next }
+    /^## / { in_v=0 }
+    in_v && /^- / && $0 !~ /^- _none_$/ { n++ }
+    END {
+      if (n > 5)
+        print "dup-validation: " file " — Validation has " n " bullets (max 5); keep the closure command + expected result; historical reviews belong in log.md"
+    }
+  ' "$f"
+  AM_LINT_FILE="$f" awk '
+    BEGIN { file = ENVIRON["AM_LINT_FILE"] }
     /^## Task$/ { in_t=1; next }
     /^## Next step$/ { in_n=1; in_t=0; next }
     /^## / { in_t=0; in_n=0 }
@@ -356,7 +366,7 @@ awk '
     live = 0
     layout = 0
     has_sup = 0
-    if (tolower(heading) ~ /reorganiz|spec-docs|make-docs|docs\/specs|docs suite|docs\/ follows/) layout = 1
+    if (tolower(heading) ~ /reorganiz|docs layout|docs suite|docs tree|docs\/specs|docs\/ follows/) layout = 1
     next
   }
   /^## / { flush(); in_e = 0; next }
@@ -625,7 +635,7 @@ awk '
     while (index(g, "**/**")) gsub(/\*\*\/\*\*/, "**", g)
     return g
   }
-  function denied(g) {
+  function denied(g,   n, i, allw, lit, pos, prefix, p) {
     if (g == "**" || g == "**/*" || g == "**/**" || g == "**/**/*" || g == "*/**" || g == "*/*" || g == "?*/*" || g == "*/*/*" || g == "*/*/**" || g == "**/*/**" || g == "**/*/*" || g == "*" || g == "*.*" || g == "*.md" || g == "**/*.md" || g == "**/*.*" || g == "*/*.*" || g == "**/*.ts" || g == "**/*.tsx" || g == "**/*.js" || g == "**/*.jsx" || g == "**/*.py" || g == "**/**/*.ts" || g == "**/*/*.ts" || g == "*/**/*.ts") return 1
     if (g == "src/**" || g == "src/**/*" || g == "src/**/**" || g == "src/pages/**" || g == "pages/**" || g == "lib/**" || g == "app/**" || g == "packages/**" || g == "hooks/**" || g == "tests/**" || g == "docs/**" || g == ".agents/**") return 1
     if (g ~ /^\*\*\/\*\./) return 1
@@ -640,6 +650,14 @@ awk '
     }
     if (n >= 2 && allw) return 1
     if (lit == 0) return 1
+    pos = index(g, "**")
+    if (pos) {
+      prefix = substr(g, 1, pos - 1)
+      if (substr(prefix, length(prefix), 1) == "/")
+        prefix = substr(prefix, 1, length(prefix) - 1)
+      if (prefix == "src/pages" || index(prefix, "src/pages/") == 1) return 1
+      if (prefix ~ /^src\/[^\/]+$/) return 1
+    }
     return 0
   }
   /^```/ { fence = !fence; next }

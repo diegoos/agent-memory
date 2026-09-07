@@ -142,7 +142,7 @@ For `/agent-memory help` (and for any empty or unknown invocation), output the f
 | `/agent-memory bootstrap`     | Inventory canonical sources and gaps (up to 3 subagents); populate pointers — not doc copies.                                                                       |
 | `/agent-memory update`        | Migrate scaffolding; delete leftover mirrors; refresh the harness block; patch the AGENTS.md docs map; print hook installer commands only when stamps are stale.    |
 | `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md` from repo state. `--auto` applies all diffs without per-file prompts.                                    |
-| `/agent-memory lint`          | Check consistency, dead paths, typos, instruction contradictions, cold-session quality, and hook wiring. `--fix` also deletes stale per-branch `active-work` files and closed-placeholder resumes (not the current git branch). |
+| `/agent-memory lint`          | Check consistency, dead paths, typos, instruction contradictions, cold-session quality, and hook wiring. `--fix` also deletes stale per-branch `active-work` files and closed-placeholder resumes (not the current git branch), refreshes Checkpoint, and trims Progress / Validation >5. |
 | `/agent-memory consolidate`   | Pass A (decisions/index/learnings) even when Pass B log prune is empty; default Apply on Pass A findings; prior-day log Trim (not Retain); confirm each diff; no `--auto`. `lint --fix` and `sync` do not replace this.                |
 | `/agent-memory learn`         | Capture one gated learning/pitfall (`learn [>topic] <clue>`). Confirm before write; no `--auto`.                                                                    |
 

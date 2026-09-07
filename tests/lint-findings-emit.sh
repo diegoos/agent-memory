@@ -15,8 +15,8 @@ trap 'rm -rf "$fx" "$fx2"' EXIT
 mkdir -p "$fx/active-work"
 cat >"$fx/index.md" <<'EOF'
 # Index
-- [learnings.md](./learnings.md) — when editing: src/pages/**, astro.config.ts; pitfalls
-- [log.md](./log.md) — when editing: src/modules/fn-date.ts; dates
+- [learnings.md](./learnings.md) — when editing: src/pages/**, src/pages/**/index.astro, src/pages/blog/**, src/lib/config.ts; pitfalls
+- [log.md](./log.md) — when editing: src/lib/dates.ts; dates
 ```
 - [x.md](./x.md) — when editing: src/**; fenced
 ```
@@ -27,23 +27,23 @@ printf '%s\n' '# Log' >"$fx/log.md"
 cat >"$fx/decisions.md" <<'EOF'
 # Decisions
 
-## [2026-07-07] Astro 7 named-slot workaround: wrap multiple children in `Fragment`
+## [2026-07-07] Slot workaround: wrap children in `Fragment`
 
 **Status:** live
 
 **Context:** slots missing.
 
-**Decision:** Wrap in Fragment in `src/pages/[category]/[postSlug]/index.astro`.
+**Decision:** Wrap in Fragment in `src/pages/[slug]/index.astro`.
 
-**Why:** Astro 7 workaround.
+**Why:** slot workaround.
 
-- Relates: see [Astro 7 named-slot pitfall](./learnings.md#2026-07-07-astro-7-named-slot-workaround-wrap-multiple-children-in-fragment)
+- Relates: see [Slot pitfall](./learnings.md#2026-07-07-slot-workaround-wrap-children-in-fragment)
 
-## [2026-07-09] Rollback para TypeScript 6.0.3 único
+## [2026-07-09] Rollback para TypeScript único
 
 **Status:** live
 
-**Context:** Dual-package TS6+TS7 failed.
+**Context:** two compiler versions failed.
 
 **Decision:** Pin typescript in `src/package.json`.
 
@@ -59,7 +59,7 @@ cat >"$fx/decisions.md" <<'EOF'
 
 **Why:** revert.
 
-- Relates: see [pin](./decisions.md#2026-07-09-rollback-para-typescript-6-0-3-unico)
+- Relates: see [pin](./decisions.md#2026-07-09-rollback-para-typescript-unico)
 - Relates: see [gone](./decisions.md#no-such-decision-heading)
 
 ## [2026-07-12] Rollback
@@ -86,34 +86,34 @@ cat >"$fx/decisions.md" <<'EOF'
 
 **Status:** live
 
-**Decision:** Use `docs/domains/*`.
+**Decision:** Use `docs/topics/*`.
 
-## [2026-07-09] docs/ follows spec-docs layout (English)
-
-**Status:** live
-
-**Decision:** Adopt spec-docs.
-
-## [2026-07-10] Docs suite follows make-docs (not spec-docs)
+## [2026-07-09] docs/ follows layout (English)
 
 **Status:** live
 
-**Decision:** Keep make-docs.
+**Decision:** Adopt a docs layout.
+
+## [2026-07-10] Docs suite follows templates
+
+**Status:** live
+
+**Decision:** Keep the docs suite templates.
 EOF
 
 cat >"$fx/learnings.md" <<'EOF'
 # Learnings
 
-## [2026-09-01] [pitfall] Astro 7 multiple named-slot children
+## [2026-09-01] [pitfall] Slot wrap children
 
 - Insight: Wrap slot children in Fragment.
-- Evidence: `src/pages/[category]/[postSlug]/index.astro`
-- Relates: caused_by [workaround](./decisions.md#2026-07-07-astro-7-named-slot-workaround-wrap-multiple-children-in-fragment)
+- Evidence: `src/pages/[slug]/index.astro`
+- Relates: caused_by [workaround](./decisions.md#2026-07-07-slot-workaround-wrap-children-in-fragment)
 
 ## [2026-09-01] [pitfall] TS pin
 
 - Insight: One TypeScript version.
-- Relates: caused_by [rollback](./decisions.md#2026-07-09-rollback-para-typescript-6-0-3-único)
+- Relates: caused_by [rollback](./decisions.md#2026-07-09-rollback-para-typescript-único)
 
 ## [2026-09-01] [pitfall] Rollback and more
 
@@ -182,11 +182,26 @@ Checkpoint: 2026-09-01 @ abcd1234
 - four
 EOF
 
+cat >"$fx/active-work/val.md" <<'EOF'
+## Task
+- pin
+## Next step
+- ship
+## Validation
+- bun test
+- browser 2026-08-23
+- browser 2026-08-24
+- pnpm build
+- e2e 139
+- staging 2026-08-25
+Checkpoint: 2026-09-01 @ abcd1234
+EOF
+
 out=$(cd "$fx" && bash "$memory_script")
 
-printf '%s' "$out" | grep -q 'decision-lesson-dup: ## \[2026-07-07\] Astro 7 named-slot workaround' \
+printf '%s' "$out" | grep -q 'decision-lesson-dup: ## \[2026-07-07\] Slot workaround' \
   || fail "Relates on the decision must emit decision-lesson-dup"
-printf '%s' "$out" | grep -q 'decision-lesson-dup: ## \[2026-07-09\] Rollback para TypeScript 6.0.3' \
+printf '%s' "$out" | grep -q 'decision-lesson-dup: ## \[2026-07-09\] Rollback para TypeScript único' \
   || fail "learnings-only accented Relates must emit decision-lesson-dup"
 printf '%s' "$out" | grep -q 'decision-lesson-dup: ## \[2026-07-12\] Rollback and more' \
   || fail "exact longer slug must emit decision-lesson-dup"
@@ -200,8 +215,8 @@ if printf '%s' "$out" | grep 'incident-unpromoted' | grep -q 'Rollback and more'
 fi
 printf '%s' "$out" | grep -q 'incident-unpromoted: ## \[2026-07-11\] Revert broken parser' \
   || fail "unpromoted revert with src/ must emit incident-unpromoted"
-if printf '%s' "$out" | grep 'incident-unpromoted' | grep -q 'named-slot workaround'; then
-  fail "promoted named-slot must not emit incident-unpromoted"
+if printf '%s' "$out" | grep 'incident-unpromoted' | grep -q 'Slot workaround'; then
+  fail "promoted slot workaround must not emit incident-unpromoted"
 fi
 if printf '%s' "$out" | grep 'incident-unpromoted' | grep -q 'Rollback para TypeScript'; then
   fail "accented slug match must not emit incident-unpromoted"
@@ -230,10 +245,16 @@ printf '%s' "$out" | grep -q 'live-dup-identity: 3' \
   || fail "three live docs-layout headings must emit live-dup-identity"
 printf '%s' "$out" | grep -qF 'overbroad-hint: index.md src/pages/**' \
   || fail "src/pages/** must emit overbroad-hint"
-if printf '%s' "$out" | grep 'overbroad-hint' | grep -q 'astro.config.ts'; then
+printf '%s' "$out" | grep -qF 'overbroad-hint: index.md src/pages/**/index.astro' \
+  || fail "src/pages/**/index.astro must emit overbroad-hint"
+printf '%s' "$out" | grep -qF 'overbroad-hint: index.md src/pages/blog/**' \
+  || fail "src/pages/blog/** must emit overbroad-hint"
+printf '%s' "$out" | grep -q 'dup-validation: active-work/val.md' \
+  || fail "Validation >5 must emit dup-validation"
+if printf '%s' "$out" | grep 'overbroad-hint' | grep -q 'src/lib/config.ts'; then
   fail "narrow companion glob must not emit overbroad-hint"
 fi
-if printf '%s' "$out" | grep 'overbroad-hint' | grep -q 'src/modules/fn-date.ts'; then
+if printf '%s' "$out" | grep 'overbroad-hint' | grep -q 'src/lib/dates.ts'; then
   fail "evidence path literal must not emit overbroad-hint"
 fi
 if printf '%s' "$out" | grep -qF 'overbroad-hint: index.md src/**'; then
@@ -324,6 +345,26 @@ EOF
 root_out2=$(cd "$root_fx" && bash "$root_script")
 if printf '%s' "$root_out2" | grep -q 'memory-ghost-docs:'; then
   fail "fenced docs links must not emit memory-ghost-docs"
+fi
+
+cat >"$root_fx/.agents/memory/decisions.md" <<'EOF'
+# Decisions
+
+## [2026-07-06] Fold checks into a missing spec
+
+**Status:** live
+
+**Decision:** Move checks into `docs/missing-spec.md`.
+
+```
+`docs/fenced-missing.md`
+```
+EOF
+root_out3=$(cd "$root_fx" && bash "$root_script")
+printf '%s' "$root_out3" | grep -qF 'memory-ghost-docs: .agents/memory/decisions.md -> docs/missing-spec.md' \
+  || fail "live decision backtick docs/missing-spec.md must emit memory-ghost-docs"
+if printf '%s' "$root_out3" | grep -q 'docs/fenced-missing.md'; then
+  fail "fenced backtick docs path must not emit memory-ghost-docs"
 fi
 
 fx3=$(mktemp -d)

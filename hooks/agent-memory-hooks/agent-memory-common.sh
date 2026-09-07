@@ -1206,6 +1206,20 @@ amc_hint_glob_rejected() {
       return 0
     fi
   fi
+  # Covering ** trees: src/pages/**… and src/<one-seg>/** (route/module trees).
+  if [[ "$g" == *'**'* ]]; then
+    prefix=${g%%\*\*}
+    prefix=${prefix%/}
+    case "$prefix" in
+      src/pages|src/pages/*) return 0 ;;
+      src/*)
+        case "$prefix" in
+          src/*/*) ;;
+          *) return 0 ;;
+        esac
+        ;;
+    esac
+  fi
   lit=$(printf '%s' "$g" | tr -d '*?[]/')
   [ "${#lit}" -ge 2 ] || return 0
   return 1
