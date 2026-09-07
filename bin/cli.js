@@ -18,13 +18,15 @@ var __toESM = (mod, isNodeMode, target) => {
       return cached;
   }
   target = mod != null ? __create(__getProtoOf(mod)) : {};
-  const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
-  for (let key of __getOwnPropNames(mod))
-    if (!__hasOwnProp.call(to, key))
-      __defProp(to, key, {
-        get: __accessProp.bind(mod, key),
-        enumerable: true
-      });
+  const to = isNodeMode || !mod || !mod.__esModule || !__hasOwnProp.call(mod, "default") ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
+  if (mod && typeof mod === "object" || typeof mod === "function") {
+    for (let key of __getOwnPropNames(mod))
+      if (!__hasOwnProp.call(to, key))
+        __defProp(to, key, {
+          get: __accessProp.bind(mod, key),
+          enumerable: true
+        });
+  }
   if (canCache)
     cache.set(mod, to);
   return to;
@@ -1012,11 +1014,11 @@ async function cmdInstall(rest) {
     if (rest.length > 2) {
       fatal(`unexpected argument: ${rest[2]}`);
     }
-    const harness2 = normalizeHarness(raw);
-    if (!harness2) {
+    const harness = normalizeHarness(raw);
+    if (!harness) {
       fatalUsage(`unknown harness: ${raw}`);
     }
-    applyInstall(`install · hooks · ${harness2}`, false, [harness2]);
+    applyInstall(`install · hooks · ${harness}`, false, [harness]);
     return;
   }
   const harness = normalizeHarness(rest[0]);
@@ -1087,9 +1089,9 @@ function comparePre(a, b) {
       return -1;
     if (i >= b.length)
       return 1;
-    const c2 = compareIdents(a[i], b[i]);
-    if (c2 !== 0)
-      return c2;
+    const c = compareIdents(a[i], b[i]);
+    if (c !== 0)
+      return c;
   }
   return 0;
 }
