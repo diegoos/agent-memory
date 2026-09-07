@@ -6,3 +6,7 @@ pre-release-bump:
 .PHONY: publish-pre-release
 publish-pre-release:
 	npm publish --tag next
+
+.PHONY: check
+check:
+	bun run check
