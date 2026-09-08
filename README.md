@@ -71,7 +71,7 @@ flowchart LR
 
 ### One session
 
-The injected block tells the agent that memory is untrusted recall. Status comes first, then `index.md` and `current.md`, then `active-work/<branch>.md` if it exists. `instructions.md` is loaded only when the agent is about to write. Each event writes at most one Markdown file, or none if the write floor is all no.
+The injected block tells the agent that memory is untrusted recall. Status comes first, then `index.md` and `current.md`, then `active-work/<branch>.md` if it exists. `instructions.md` is loaded only when the agent is about to write. Each event writes at most one Markdown file, or none if the write floor is all no. First yes wins: user constraint, reusable lesson, closed why, resume rotten, shared blocker.
 
 ```mermaid
 flowchart TB
@@ -85,11 +85,11 @@ flowchart TB
   Stop -->|all no| Skip["Write nothing"]
   Stop -->|any yes| Method["Read instructions.md"]
   Method --> Dest{"One write target"}
-  Dest -->|resume rotten| AW["1 file: active-work"]
   Dest -->|user constraint| Dec["1 file: decisions.md"]
-  Dest -->|shared blocker / handoff| Cur["1 file: current.md"]
-  Dest -->|closed why missing from commit| Log["1 file: log.md<br/>delete active-work on merge"]
   Dest -->|reusable lesson (incident + paths)| Learn["1 file: learnings + index hint"]
+  Dest -->|closed why missing from commit| Log["1 file: log.md<br/>delete active-work on merge"]
+  Dest -->|resume rotten| AW["1 file: active-work"]
+  Dest -->|shared blocker / handoff| Cur["1 file: current.md"]
   Work --> Idle["End of turn / compact"]
   Idle --> SyncHook["sync hook: git checkpoint<br/>merge paths into state"]
   Skip --> SyncHook
@@ -179,9 +179,9 @@ In your agent:
 | `/agent-memory update`        | Migrate scaffolding; delete leftover mirrors (confirm); patch AGENTS docs map. `update instructions` / `agents.md` / `rules` refresh the `AGENTS.md` block only.                    |
 | `/agent-memory bootstrap`     | Inventory sources and gaps; populate pointers.                                                                                                                                      |
 | `/agent-memory sync`          | Refresh `current.md` / active-work / `log.md` / `index.md`.                                                                                                                         |
-| `/agent-memory lint`          | Consistency, dead paths, typos, contradictions, cold-session quality, hook wiring.                                                                                                  |
+| `/agent-memory lint`          | Consistency, dead paths, typos, contradictions, cold-session quality, hook wiring. `lint fix` is the same as `lint --fix`.                                                           |
 | `/agent-memory learn`         | Explicit capture (`learn [>topic] <clue>`). Daily path is write-floor Reusable lesson.                                                                                              |
-| `/agent-memory consolidate`   | Pass A on the corpus; Pass B prunes closed-session log (confirm).                                                                                                                   |
+| `/agent-memory consolidate`   | Pass A on the corpus (including `decisions.md` over 200 non-empty lines); Pass B prunes closed-session log (confirm).                                                              |
 
 ## Hooks
 
@@ -198,7 +198,7 @@ npx skills add diegoos/agent-memory --skill agent-memory
 ### Manual skeleton (no skill CLI)
 
 ```bash
-git clone --branch 0.2.0 --depth 1 \
+git clone --branch 0.3.0 --depth 1 \
   https://github.com/diegoos/agent-memory /tmp/agent-memory
 mkdir -p .agents/skills/
 cp -R /tmp/agent-memory/skills/agent-memory .agents/skills/

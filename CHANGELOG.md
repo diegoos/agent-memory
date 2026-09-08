@@ -8,35 +8,37 @@ Human release notes. Machine migrations (`safe` / `sensitive`) live in [`skills/
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-08
+
 ### Added
 
 - `init instructions` / `update instructions` (also `agents.md`, `rules`) restore the delimited block in `AGENTS.md`.
 - `--fix`/`fix`, `--auto`/`auto`, `--force`/`force` mean the same. `learn` and `consolidate` reject `auto`.
-- Lint: `overbroad-hint:` (denylist and covering trees such as `src/pages/**/index.astro`); `dup-validation:` when Validation has more than 5 bullets.
-- Git `post-commit` stamps `last_processed_head` and drops pending paths that are in that commit and clean. Fail-open; no Markdown. Install next to `pre-commit`.
+- Lint: `overbroad-hint:` (denylist and covering trees such as `src/pages/**` and `src/<seg>/**`); `dup-validation:` when Validation has more than 5 bullets.
+- Git `post-commit` stamps `last_processed_head` and drops pending paths that are in that commit and clean. Fail-open; no Markdown. Copy next to `pre-commit`; `install-hooks.sh` does not copy git hooks.
 - Typed Relates (`- Relates: <verb> [target](path)`). Recall hop only for durable why when there is no path hit.
 - Session Status: `Next=` from active-work, and `load:` when an index `when editing:` glob matches pending or dirty paths.
 - `agent-memory-print-evidence.sh` prints allowlisted hook fields (count, SHA, session id, branch). It never prints path lists. Re-run the hooks installer so the fifth script is copied.
+
+### Changed
+
+- Write floor: one file or skip. A git commit does not skip the floor. Cold session is four questions; Validation is the done signal. Resume rotten also when Validation has no exact command. A flipped lasting assumption is a user constraint. Always-load is `index.md` and `current.md`; `AGENTS.md` is the docs map. After a turn that changed repo files, last line `Memory: skip` or `Memory: <file>`. After a skill command, `Memory: skip`. Opposite Insight: `- Relates: contradicts` on the new H2. Winner (first yes): User constraint, then Reusable lesson, then closed why, then resume rotten, then shared blocker.
+- `update` deletes leftover vision/architecture/domains mirrors and patches the `AGENTS.md` docs map. It prints hook installer commands when the stamp is missing, incomplete, or older than the skill. A matching or later stamp skips the installer. `update` does not invent learnings. If those mirror files remain, run `update` again. Installed memory has no `TEMPLATE.md`; copy from `references/active-work-template.md`.
+- `lint --fix` (confirm) refreshes Checkpoint, trims Progress/Validation to 5 bullets, and deletes closed-placeholder resumes that are not the current branch. Overbroad globs and `decisions.md` slim belong to `consolidate`.
+- `consolidate` always runs Pass A (docs-map, ghosts, overbroad, `double-injection` / `delegation-canary` in the same run). `decisions.md` non-empty > 200 is a candidate; the Report prints `decisions.md non-empty N (budget 200)`. Leftover live Context/Why while N > 200 is a failed run. Pass B trims prior-day log. At most three learnings, from incident-shaped decisions already on disk, not from `log.md`.
+- CLI source is `src/` (published packs omit it). Hook README links use `blob/HEAD`. Non-TTY update is `npx @dosx/agent-memory update --yes`. `--force --yes` reinstalls when SemVer matches. Post-install Next steps print `/agent-memory update` or `init`, then optional `help`. End-of-turn hooks may print a stderr resume nudge; they do not write Markdown or send `followup_message`.
 
 ### Fixed
 
 - Checkpoint matching HEAD looked stale on Git 2.55. Hex SHAs use `git rev-parse --verify`. Lint strips the newline from `git branch` so it is not a trailing `-`.
 - CLI `update` does not overwrite a newer hooks `.version` (`--force` / local checkout included). Missing shared scripts still refresh. Skill install follows a symlink project root the same way as `install-hooks.sh`.
-- Sync checkpoints tracked dirty files only (no untracked walk on the 15s stop path). The session-id sed fallback binds the first `"session_id"` key, not the last substring.
+- Sync checkpoints tracked dirty files only. The session-id fallback binds the first `"session_id"` key.
 - Lint emitters run from the documented cwd (`wrong-cwd:` otherwise), read paths via `ENVIRON`, transliterate heading slugs, and resolve Relates `#fragment` against target H2s. `decision-hidden` is once per index line. `decision-lesson-dup` also fires from a learnings back-link.
-- `.version` comes from `SKILL.md` `metadata.version`. No downgrade if installed SemVer is ahead; gitignore, graph reshape, and instruction blocks still run. Last `## <version>` in `UPDATE.md` must equal `package.json`. Prereleases sort below the same core.
+- `.version` comes from `SKILL.md` `metadata.version`. If installed SemVer is ahead of the skill, the stamp stays; gitignore, graph reshape, and instruction blocks still run. Last `## <version>` in `UPDATE.md` must equal `package.json`.
 
 ### Security
 
 - `sync` and consolidate call `print-evidence` instead of reading `.hook-sync-state` (Snyk W011). If the helper is missing, there is no hook evidence.
-
-### Changed
-
-- Daily method: write floor (one file or skip; a git commit does not skip). Cold session is four questions; Validation is the done signal. Resume rotten also when Validation has no exact command. Flipped lasting assumption is a user constraint. Always-load is `index.md` and `current.md`; `AGENTS.md` is the docs map. After a turn that changed repo files, last line `Memory: skip` or `Memory: <file>`. After a skill command, `Memory: skip`. Opposite Insight: `- Relates: contradicts` on the new H2. Write-floor winner (first yes): User constraint, then Reusable lesson, then closed why, then resume rotten, then shared blocker.
-- `update` deletes leftover vision/architecture/domains mirrors, patches the `AGENTS.md` docs map, and skips hook installer commands when stamps match. It does not invent learnings. Re-run on installs already at `0.2.1-rc.0`–`rc.4` if mirrors remain. Installed memory has no `TEMPLATE.md`; copy from `references/active-work-template.md`.
-- `lint --fix` (confirm) refreshes Checkpoint, trims Progress/Validation to 5 bullets, and deletes closed-placeholder resumes that are not the current branch. Overbroad globs and `decisions.md` slim belong to `consolidate`.
-- `consolidate` always runs Pass A (docs-map, ghosts, overbroad, `double-injection` / `delegation-canary` in the same run). `decisions.md` non-empty > 200 is a candidate; the Report prints `decisions.md non-empty N (budget 200)`. Leftover live Context/Why while N > 200 is a failed run. Pass B trims prior-day log. At most three learnings, from incident-shaped decisions already on disk, not from `log.md`.
-- CLI source is `src/` (published packs omit it). Hook README links use `blob/HEAD`; npx examples still pin the last released tag. Post-install Next steps print `update` or `init` only. End-of-turn hooks may print a stderr resume nudge; they do not write Markdown or send `followup_message`.
 
 ## [0.2.0] - 2026-08-04
 
@@ -481,7 +483,8 @@ Human release notes. Machine migrations (`safe` / `sensitive`) live in [`skills/
 
 - Initial Agent Memory method, skill, and `.agents/memory/` skeleton.
 
-[unreleased]: https://github.com/diegoos/agent-memory/compare/0.2.0...HEAD
+[unreleased]: https://github.com/diegoos/agent-memory/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/diegoos/agent-memory/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/diegoos/agent-memory/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/diegoos/agent-memory/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/diegoos/agent-memory/compare/0.0.14...0.1.0

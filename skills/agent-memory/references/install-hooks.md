@@ -34,7 +34,7 @@ Canonical hook sources live under `hooks/` in the [agent-memory](https://github.
 
 3. **Prerequisite dir.** The user-run installer (`install-hooks.sh` / `npx`) **creates** the harness prerequisite directory if missing (e.g. `.cursor/`, `.opencode/`). The skill itself still must **not** create those dirs — only print the install commands.
 
-4. **Print install instructions (do not execute).** Read this skill's `metadata.version` (e.g. `0.2.0`). Tell the user to review and run **one** of the following from the **project root** (never embed `raw.githubusercontent.com` URLs):
+4. **Print install instructions (do not execute).** Read this skill's `metadata.version` (e.g. `0.3.0`). Tell the user to review and run **one** of the following from the **project root** (never embed `raw.githubusercontent.com` URLs):
 
    **Preferred — npx:**
 
@@ -45,12 +45,12 @@ Canonical hook sources live under `hooks/` in the [agent-memory](https://github.
    **Pinned tag (optional):**
 
    ```bash
-   npx --yes github:diegoos/agent-memory#0.2.0 -- install hooks <harness>
+   npx --yes github:diegoos/agent-memory#0.3.0 -- install hooks <harness>
    ```
 
-   (Replace `0.2.0` with this skill's `metadata.version` when it differs.)
+   (Replace `0.3.0` with this skill's `metadata.version` when it differs.)
 
-   **Alternative — shell script:** open the GitHub release page for the matching tag (Releases → `0.2.0`, or the tag tree on GitHub), review `hooks/install-hooks.sh`, then from a checkout of that tag:
+   **Alternative — shell script:** open the GitHub release page for the matching tag (Releases → `0.3.0`, or the tag tree on GitHub), review `hooks/install-hooks.sh`, then from a checkout of that tag:
 
    ```bash
    bash hooks/install-hooks.sh <harness>
