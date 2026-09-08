@@ -10,8 +10,10 @@ Use sync when hook Status shows a stale Checkpoint or pending paths **and** ther
 
 ## Flags
 
-- `--auto` — apply all proposed diffs without the per-file `AskQuestion` prompt. Use at routine checkpoints (where you would approve everything anyway) to keep the flush low-friction; without it, sync is the careful, per-file-confirm form suited to the first run or a manual review. `--auto` still shows the diffs in the report after applying, and still skips fields for which it has no evidence (it never invents progress or log bullets).
-- `--force` — reserved for explicit user override.
+`--auto` and `auto` are the same (`SKILL.md` Routing). `--force` and `force` are the same. A leading `--` stays valid.
+
+- `--auto` / `auto` — apply all proposed diffs without the per-file `AskQuestion` prompt. Use at routine checkpoints (where you would approve everything anyway) to keep the flush low-friction; without it, sync is the careful, per-file-confirm form suited to the first run or a manual review. `--auto` still shows the diffs in the report after applying, and still skips fields for which it has no evidence (it never invents progress or log bullets).
+- `--force` / `force` — reserved for explicit user override.
 
 ## Boundary
 
@@ -85,7 +87,7 @@ Hooks never write Markdown. They may populate `.hook-sync-state` (gitignored) wi
 
    The helper locks, clears `session_touched_files`, and leaves other state intact. If hooks are not installed, skip consume and report that print-evidence/consume helpers are missing — do **not** hand-edit `.hook-sync-state`. Skip consume **only** when you skipped all meaning writes **and** `pending_count` still lacks outcomes (real `evidence-pending`). In the Report, state explicitly whether consume ran or why it was skipped.
 
-8. **Report.** List each file: updated, skipped, or unchanged — whether evidence was consumed — and one line on what the next agent should read to continue (the branch's active-work file plus `current.md`). If a **User constraint** fired this session (user rejected an approach), remind the agent to write `decisions.md` in-turn and **supersede** the prior live entry — sync does not write that file. If a **Reusable lesson** fired (incident + 1–3 paths), remind in-turn learnings + `index.md` `when editing:` — sync does not write those files. Suggest `/agent-memory consolidate` **only** when `log.md` has **closed**-session noise (prior days, or the user confirmed this work stream ended). Do **not** recommend prune consolidate on the same calendar day as a founding bootstrap/dogfood heading — that log is current session (report-only consolidate is fine).
+8. **Report.** List each file: updated, skipped, or unchanged — whether evidence was consumed — and one line on what the next agent should read to continue (the branch's active-work file plus `current.md`). **Done when:** a **cold session** (`instructions.md`) could answer Next step, what must not break, where to edit, and how to prove it from always-on files — or this run was a no-op. If a **User constraint** fired this session (user rejected an approach), remind the agent to write `decisions.md` in-turn and **supersede** the prior live entry — sync does not write that file. If a **Reusable lesson** fired (incident + 1–3 paths), remind in-turn learnings + `index.md` `when editing:` — sync does not write those files. Suggest `/agent-memory consolidate` **only** when `log.md` has **closed**-session noise (prior days, or the user confirmed this work stream ended). Do **not** recommend prune consolidate on the same calendar day as a founding bootstrap/dogfood heading — that log is current session (report-only consolidate is fine).
 
 ## Notes
 

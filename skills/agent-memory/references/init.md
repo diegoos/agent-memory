@@ -7,7 +7,12 @@ Create the agent-memory structure in the target project and wire it into the har
 ```text
 /agent-memory init                  # auto-detect harnesses from the project
 /agent-memory init <harness>        # wire one harness only
+/agent-memory init instructions     # insert or refresh the block in AGENTS.md
+/agent-memory init agents.md        # same
+/agent-memory init rules            # same
 ```
+
+**`AGENTS.md` block tokens** (not harness names; case-insensitive): `instructions`, `instruction`, `agents.md`, `rules`, `rule`. These write the canonical block into **`AGENTS.md` only** — see **AGENTS.md block** below.
 
 Accepted `<harness>` values (aliases in parentheses):
 
@@ -20,7 +25,7 @@ Accepted `<harness>` values (aliases in parentheses):
 | `copilot`  | `github`      | `.github/instructions/agent-memory.instructions.md` | `.github/` — lifecycle hooks        |
 | `gemini`   | —             | `GEMINI.md`                                         | `.gemini/` — lifecycle hooks        |
 
-If `<harness>` is missing, **auto-detect** (see step 4). If it is unknown, stop and list the accepted values.
+If the extra token is an **AGENTS.md block token**, follow **AGENTS.md block** (and, when memory is missing, the scaffold steps first). If `<harness>` is missing, **auto-detect** (see step 4). If it is unknown and not a block token, stop and list the accepted values.
 
 Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
@@ -29,7 +34,10 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
 ## Steps
 
-1. **Guard.** If `.agents/memory/` already exists, stop and tell the user the project is already initialized — suggest `/agent-memory update` or `/agent-memory install hooks <harness>` to refresh hooks. Do not overwrite anything.
+1. **Guard.** If `.agents/memory/` is missing, continue. If it exists:
+   - **AGENTS.md block token** (`instructions` / `agents.md` / `rules`): skip steps 2–4 and 6–8; run **AGENTS.md block** only.
+   - **Harness token** (`cursor`, `claude`, …): skip steps 2–3 (do not recopy the skeleton). Run step 4 targeted, step 5 for that harness, step 7 print hooks, step 8 report. Docs map (step 6) still applies.
+   - **No extra token:** stop — already initialized. Suggest `/agent-memory update`, `update instructions` when `AGENTS.md` lost the block, or `/agent-memory install hooks <harness>`. Do not overwrite memory.
 
 2. **Copy the skeleton.** Read this skill's `vendor/memory/` (see `SKILL.md` → Vendor source) and copy that directory into the project as `.agents/memory/` (the entire directory, including the hook-state ignore template). Do **not** copy `references/active-work-template.md` into project memory — that file stays in the skill. Do not clone or fetch remotely. Copy the skeleton as-is — **zero invented content**.
 
@@ -37,7 +45,7 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
 3. **Write the version anchor.** Create `.agents/memory/.version` containing this skill's `SKILL.md` `metadata.version` (same string as `package.json` in the skill repo). The last `## <version>` heading in this skill's `vendor/UPDATE.md` must equal that string — if it does not, stop and tell the user. Do not stamp a newer drafted UPDATE heading (e.g. `0.2.1` while metadata is `0.2.1-rc.6`).
 
-4. **Parse the harness target.** From the invocation, read optional `<harness>`. Normalize aliases (`claude-code` → `claude`, `github` → `copilot`). If omitted, set mode to `auto` and **detect harnesses** (see **Auto-detection** below).
+4. **Parse the harness target.** From the invocation, read optional extra token. If it is an AGENTS.md block token, do not treat it as a harness. Normalize aliases (`claude-code` → `claude`, `github` → `copilot`). If omitted, set mode to `auto` and **detect harnesses** (see **Auto-detection** below).
 
 5. **Resolve carriers and wire instruction files.** Use the **canonical block** from [`references/agent-block.md`](./agent-block.md) — copy it verbatim (the `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` delimiters and everything between them).
 
@@ -71,7 +79,22 @@ Canonical sources live under `skills/agent-memory/` in the agent-memory repo:
 
 7. **Print hook-install instructions.** Follow [`references/install-hooks.md`](./install-hooks.md) for each harness that applies (targeted: that harness only; auto: every detected harness whose prerequisite dir exists). In `init`, run those steps **without** the memory guard (step 1 of that reference). **Do not** copy hook scripts or merge harness hook configs — only print the user-run `npx` / shell commands. Note: the skill never creates harness roots; the user-run installer **does** create them if missing when the user runs the printed command.
 
-8. **Report.** List: mode (auto or targeted harness), detected harness(es), skeleton created, carrier file(s) wired or skipped (and why — delegation, copilot coexistence, idempotency), orphan-block offers, **docs-map** patches or skips, hook-install commands printed (or skipped for missing harness dirs), and suggest `bootstrap` (source inventory / gaps — not doc copies) / `sync` next steps. For Cursor, note that **hooks are the recommended checkpoint integration** (user-installed) and **`.mdc` is the context layer**. For OpenCode, note carrier is usually `AGENTS.md` and hooks are the Bun plugin under `.opencode/plugins/` (plus `.opencode/hooks/*.sh`). **After the user installs hooks**, tell them to **re-run `/agent-memory sync`** (or `--auto`) so `current.md` blockers and evidence catch up — memory written before hooks install will otherwise claim state is absent.
+8. **Report.** List: mode (auto or targeted harness), detected harness(es), skeleton created, carrier file(s) wired or skipped (and why — delegation, copilot coexistence, idempotency), orphan-block offers, **docs-map** patches or skips, hook-install commands printed (or skipped for missing harness dirs), and suggest `bootstrap` (source inventory / gaps — not doc copies) / `sync` next steps. For Cursor, note that **hooks are the recommended checkpoint integration** (user-installed) and **`.mdc` is the context layer**. For OpenCode, note carrier is usually `AGENTS.md` and hooks are the Bun plugin under `.opencode/plugins/` (plus `.opencode/hooks/*.sh`). **After the user installs hooks**, tell them to **re-run `/agent-memory sync`** (or `sync --auto` / `sync auto`) so `current.md` blockers and evidence catch up — memory written before hooks install will otherwise claim state is absent.
+
+When the invocation used an AGENTS.md block token and memory was missing: after steps 2–3, skip native carriers (step 5) and hook print (step 7); run **AGENTS.md block**, then docs map (step 6) if it applies.
+
+## AGENTS.md block
+
+Used by `init` / `update` when the extra token is `instructions`, `instruction`, `agents.md`, `rules`, or `rule`. Target is **`AGENTS.md` only** (not `.mdc` / `.instructions.md` / `CLAUDE.md` / `GEMINI.md`). Canonical text: [`references/agent-block.md`](./agent-block.md).
+
+1. If `.agents/memory/` is missing: `init` creates the skeleton first (steps 2–3); `update` stops and suggests `/agent-memory init`.
+2. If `AGENTS.md` is missing, create it with the canonical block.
+3. If a delimited block exists: identical → skip; different → replace the delimited body (comment tags). **Sensitive** — show the unified diff, confirm first.
+4. If a legacy `## Agent Memory` section exists without delimiters: replace that section with the canonical block (same confirm).
+5. If the file exists with no block and no legacy section: **insert** the canonical block (same confirm). Do not skip.
+   **Done when:** `AGENTS.md` holds the canonical delimited block, or the user declined the diff.
+
+Do not print hooks, migrate memory, or edit other carriers in this path.
 
 ## Auto-detection (`init` without `<harness>`)
 

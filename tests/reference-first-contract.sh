@@ -159,8 +159,18 @@ assert_contains "$agent_block" 'Status `load:`' \
   "always-on follows Status load with one Read"
 assert_contains "$agent_block" '**Status**' \
   "always-on points at session Status"
-assert_contains "$instructions" '## Write floor' \
-  "instructions define write floor as SoT"
+assert_contains "$instructions" '## Cold session' \
+  "instructions define cold-session quality bar"
+assert_contains "$instructions" 'next concrete **product** step' \
+  "cold session names the four resume questions"
+assert_contains "$agent_block" '_Cold session_' \
+  "always-on block points at Cold session for write quality"
+assert_contains "$lint" 'instructions.md` → _Cold session_' \
+  "lint quality pass checks the method Cold session bar"
+assert_contains "$bootstrap" 'references/learn.md' \
+  "bootstrap H2 format SoT is learn.md"
+assert_contains "$sync" 'cold session' \
+  "sync Report is done when a cold session could resume"
 assert_contains "$instructions" 'Resume rotten' \
   "write floor includes resume rotten"
 assert_contains "$instructions" 'User constraint' \
@@ -288,6 +298,8 @@ assert_contains "$instructions" '**Catch-up (`/agent-memory sync`):**' \
 assert_contains "$instructions" 'without invoking the skill command' \
   "sync may be followed without skill invoke"
 assert_contains "$instructions" '## Memory lint boundaries' "lint boundaries summary"
+assert_contains "$instructions" '`/agent-memory update instructions`' \
+  "instructions names update instructions for a missing AGENTS.md block"
 assert_contains "$instructions" 'when editing:' "scope hint convention"
 assert_contains "$instructions" '## When starting or resuming work' "task-organized resume section"
 assert_contains "$instructions" 'strip section blurbs' \
@@ -396,6 +408,18 @@ assert_contains "$install_hooks" 'hooks <harness> current' \
   "install-hooks current report line"
 assert_contains "$install_hooks" '`update` only' \
   "stamp check is update-only not init"
+assert_contains "$update" '`/agent-memory update instructions`' \
+  "update missing-block skip points at update instructions"
+assert_contains "$init" '## AGENTS.md block' \
+  "init defines AGENTS.md block token path"
+assert_contains "$init" 'init agents.md' \
+  "init accepts agents.md token"
+assert_contains "$init" 'init rules' \
+  "init accepts rules token"
+assert_contains "$init" '**Harness token**' \
+  "init with harness token re-wires carrier when memory exists"
+assert_contains "$update" 'update rules' \
+  "update accepts rules token"
 update_graph="$repo_root/skills/agent-memory/references/update-graph.md"
 assert_contains "$update_graph" 'Pointer-only file' \
   "graph reshape defines pointer-only"
@@ -726,7 +750,13 @@ assert_contains "$consolidate" '**Trim**' \
 assert_contains "$consolidate" 'Progress / Validation follow-up' \
   "consolidate Progress/Validation follow-up covers dup-progress-log and dup-validation"
 assert_contains "$consolidate" 'Second Pass A' \
-  "consolidate re-runs Pass A when decisions.md stays over budget with live ghosts"
+  "consolidate re-runs Pass A when decisions.md stays over budget"
+assert_contains "$consolidate" 'pointer-only' \
+  "second Pass A collapses leftover live wiki bodies not only ghosts"
+assert_contains "$consolidate" 'double-injection:' \
+  "consolidate Pass A deletes double-injection in the same run"
+assert_contains "$consolidate" 'Do **not** stop with an optional second pass' \
+  "consolidate does not defer slim or block delete to a later edit"
 assert_contains "$consolidate" 'Do not leave `Status: live` plus a missing `docs/` path' \
   "consolidate Apply on live memory-ghost-docs missing docs path"
 assert_contains "$consolidate" 'Pass A defaults: Apply' \
@@ -788,9 +818,29 @@ assert_contains "$learn" '- Relates: caused_by [target](path)' \
 assert_contains "$learn" 'Evidence is already a recall file' \
   "learn Relates is required when Evidence is recall"
 skill="$repo_root/skills/agent-memory/SKILL.md"
+assert_contains "$skill" 'a leading `--` is optional, not forbidden' \
+  "flag tokens keep -- forms valid"
+assert_contains "$skill" '`--fix` and `fix` are the same' \
+  "lint --fix and lint fix are aliases"
+assert_contains "$skill" '`--auto` and `auto` are the same' \
+  "sync --auto and sync auto are aliases"
+assert_contains "$skill" '`lint --fix` / `lint fix`' \
+  "help keeps both lint --fix and lint fix"
+assert_contains "$sync" '`--auto` and `auto` are the same' \
+  "sync Flags accept --auto and auto"
+assert_contains "$lint" '`--fix` and `fix` are the same' \
+  "lint Flags accept --fix and fix"
 assert_contains "$skill" '`learn`' "SKILL routes learn"
 assert_contains "$skill" 'references/learn.md' "SKILL points at learn reference"
 assert_contains "$skill" '| `/agent-memory learn`' "SKILL help lists learn"
+assert_absent "$skill" 'install-instructions.md' \
+  "SKILL does not route a separate install-instructions command"
+assert_absent "$skill" '| `/agent-memory install instructions`' \
+  "SKILL help does not list install instructions"
+assert_contains "$skill" 'init instructions' \
+  "SKILL help names init instructions"
+assert_contains "$skill" 'update instructions' \
+  "SKILL help names update instructions"
 assert_contains "$skill" '**Exception:** primary write in-turn' \
   "SKILL allows in-turn gated capture"
 assert_contains "$skill" 'Never edit `instructions.md` except' \

@@ -1,6 +1,6 @@
 # `/agent-memory learn`
 
-Capture one gated learning or pitfall into Workspace Memory. Applies the retention gate in `instructions.md`, writes the canonical H2 entry, and links the file from `index.md` when needed. Confirm before writing. Does **not** accept `--auto`. Daily capture is write-floor **Reusable lesson** in-turn (no this command). This command is explicit capture when the user asks now.
+Capture one gated learning or pitfall into Workspace Memory. Applies the retention gate in `instructions.md`, writes the canonical H2 entry, and links the file from `index.md` when needed. Confirm before writing. Does **not** accept `--auto` / `auto`. Daily capture is write-floor **Reusable lesson** in-turn (no this command). This command is explicit capture when the user asks now.
 
 ## Syntax
 
@@ -39,7 +39,7 @@ Examples:
 
 5. **Dedupe.** Read the target file first. Skip and report the existing entry — without writing — when the **Duplicate rule** (step 6) matches: same normalized topic + equivalent Insight in an H2 entry, or a legacy one-liner covering the same insight. When a legacy one-liner duplicates the lesson, offer to convert it to H2 in the same confirmed diff instead of appending. **On any skip** (dedupe or gate failure): print a clear report naming the rule/step, the matching existing heading or reason, and what to do instead — do **not** silently no-op. Optionally add one Progress bullet in the branch `active-work` (host may prompt — outside learn Boundary) such as `learn skipped: dup of "[topic]"` so the hot path records the attempt.
 
-6. **Draft the entry** in the canonical H2 form (concise Insight — prefer what to do; generalize beyond this incident):
+6. **Draft the entry** in the canonical H2 form (concise Insight — prefer what to do; generalize beyond this incident). The Insight is what a **cold session** must do when this incident happens again:
 
    ```md
    ## [YYYY-MM-DD] [learning|pitfall] Short topic

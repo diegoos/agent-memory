@@ -403,7 +403,7 @@ awk '
     in_e = 0
     next
   }
-  in_e && /(src\/|astro\.config)/ { pathish = 1 }
+  in_e && /(src\/|\.config\.)/ { pathish = 1 }
   in_e && /(rollback|workaround|[Ff]ragment|revert)/ { incident = 1 }
   END { flush() }
   function flush() {
@@ -429,7 +429,7 @@ if awk '
   }
   /^## / { flush(); in_e = 0; next }
   in_e && /\*\*Status:\*\*[[:space:]]*live/ { live = 1 }
-  in_e && /(src\/|astro\.config)/ { pathish = 1 }
+  in_e && /(src\/|\.config\.)/ { pathish = 1 }
   END { flush(); exit found ? 0 : 1 }
   function flush() {
     if (in_e && live && pathish) found = 1

@@ -2,7 +2,7 @@
 
 Print how to install or refresh lifecycle hooks for one harness. **This skill does not copy scripts, merge configs, or run installers** — the user must run the shell script or `npx` CLI themselves (trust boundary for security audits).
 
-Does **not** create `.agents/memory/`, touch project memory content, or wire agent instruction files — use `init` for that.
+Does **not** create `.agents/memory/`, touch project memory content, or wire agent instruction files — use `init` (new memory) or `update instructions` / `init instructions` (block missing on `AGENTS.md`).
 
 Also used by `init` (step 7) and `update` (refresh already-installed harnesses) to print the same instructions.
 
