@@ -411,6 +411,8 @@ assert_contains "$update" 'overbroad-hint' \
   "update report says corpus overbroad-hint waits for consolidate"
 assert_contains "$update" 'memory-ghost-docs' \
   "update report says memory-ghost-docs waits for consolidate Pass A"
+assert_contains "$update" 'decisions.md non-empty N (budget 200)' \
+  "update report names consolidate non-empty budget"
 assert_contains "$init" 'metadata.version' \
   "init .version uses skill metadata.version"
 install_hooks="$repo_root/skills/agent-memory/references/install-hooks.md"
@@ -574,8 +576,10 @@ assert_contains "$lint" 'memory-ghost-docs:' \
   "lint flags memory links to missing docs/ADR"
 assert_contains "$lint" 'agents-docs-gap:' \
   "lint flags docs on disk omitted from AGENTS.md"
-assert_contains "$lint" 're-run `/agent-memory consolidate` until that band is empty' \
-  "lint tells the user to re-run consolidate"
+assert_contains "$lint" 'one invocation; Report `decisions.md non-empty N (budget 200)`' \
+  "lint points consolidate at one-run non-empty budget"
+assert_contains "$lint" 'Re-run only if Pass A finding IDs remain' \
+  "lint does not treat a later consolidate as the slim plan"
 assert_contains "$lint_from_memory" 'if (n > 3)' \
   "index-catalog cap is 3"
 assert_contains "$lint" 'empty-log:' "lint warns when log has no session headings"
@@ -765,11 +769,21 @@ assert_contains "$consolidate" 'Progress / Validation follow-up' \
   "consolidate Progress/Validation follow-up covers dup-progress-log and dup-validation"
 assert_contains "$consolidate" 'Second Pass A' \
   "consolidate re-runs Pass A when decisions.md stays over budget"
+assert_contains "$consolidate" 'non-empty N (budget 200)' \
+  "consolidate Report counts non-empty decisions.md lines against budget 200"
+assert_contains "$consolidate" 'even when step 6 had no approved corpus diffs' \
+  "second Pass A counts even when earlier Pass A diffs were empty"
+assert_contains "$consolidate" 'Pass A slim even when no other finding ID fired' \
+  "over-budget decisions.md is a Pass A candidate without another finding ID"
+assert_contains "$consolidate" 'blank lines do not count' \
+  "consolidate second Pass A ignores blank lines like lint Soft budgets"
+assert_contains "$consolidate" 'N > 200 and any live heading still has Context' \
+  "over-budget live wiki remaining is failed consolidate"
 assert_contains "$consolidate" 'pointer-only' \
   "second Pass A collapses leftover live wiki bodies not only ghosts"
 assert_contains "$consolidate" 'double-injection:' \
   "consolidate Pass A deletes double-injection in the same run"
-assert_contains "$consolidate" 'Do **not** stop with an optional second pass' \
+assert_contains "$consolidate" 'do not offer a later pass' \
   "consolidate does not defer slim or block delete to a later edit"
 assert_contains "$consolidate" 'Do not leave `Status: live` plus a missing `docs/` path' \
   "consolidate Apply on live memory-ghost-docs missing docs path"
@@ -825,6 +839,8 @@ assert_contains "$learn" 'already listed **without** a `when editing:` hint' \
   "learn updates existing index line"
 assert_contains "$learn" 'do not widen to `src/pages/**`' \
   "learn hints stay Evidence path literals"
+assert_contains "$learn" 'learnings.md` **non-empty** > 200' \
+  "learn topic-split trigger uses lint non-empty budget"
 assert_contains "$learn" '## [YYYY-MM-DD] [learning|pitfall] Short topic' \
   "learn uses canonical H2 entry"
 assert_contains "$learn" '- Relates: caused_by [target](path)' \

@@ -4,10 +4,10 @@ Guided, conservative promotion and pruning of memory. Turns closed-session noise
 
 Two passes, always both:
 
-- **Pass A — corpus** (decisions / index / AGENTS docs map / learnings / redundant harness blocks). Run even when Pass B is empty (open branch, today's log only). Candidates: `decision-docs-map`, `decision-canonical-dup`, `decision-stale-live`, `decision-lesson-dup`, `live-dup-identity`, `incident-unpromoted`, `decision-hidden`, `decision-body-bloat`, `memory-ghost-docs`, `agents-docs-gap`, `overbroad-hint`, `double-injection`, `delegation-canary`.
+- **Pass A — corpus** (decisions / index / AGENTS docs map / learnings / redundant harness blocks). Run even when Pass B is empty (open branch, today's log only). Candidates: `decision-docs-map`, `decision-canonical-dup`, `decision-stale-live`, `decision-lesson-dup`, `live-dup-identity`, `incident-unpromoted`, `decision-hidden`, `decision-body-bloat`, `memory-ghost-docs`, `agents-docs-gap`, `overbroad-hint`, `double-injection`, `delegation-canary`, and `decisions.md` **non-empty** > 200 (lint _Soft budgets_).
 - **Pass B — closed log prune.** Current session = session id **or** today's calendar date (below). **An open branch is not the current session.** Prior-day `log.md` headings are Trim/Discard candidates even when `active-work` exists.
 
-report **no-op** and stop only when **both** passes have zero candidates — do not invent promotions. If lint (or step 3) marked a Pass A finding ID, an empty plan is a **failed consolidate**, not no-op. Defer only with one reason line per ID.
+report **no-op** and stop only when **both** passes have zero candidates — do not invent promotions. If lint (or step 3) marked a Pass A finding ID **or** `decisions.md` is non-empty > 200, an empty plan is a **failed consolidate**, not no-op. Defer only with one reason line per ID.
 
 Learning promotions: at most **3** per run (confirm each). Do not scrape `log.md` diary bullets into Insights. Promote Learning only from an **incident-shaped decision** that still has **no matching** learnings Relates/slug (lint `incident-unpromoted:` is per heading). Skip a row that already has a matching H2.
 
@@ -67,6 +67,7 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    - **Ghost docs** — memory links `docs/` or an ADR path that does not exist: drop the link (do not invent the tree).
    - **AGENTS docs gap** — a project-docs index exists and `AGENTS.md` does not link it: patch AGENTS (`references/docs-map.md`), then drop the duplicate from memory.
    - **`double-injection:` / `delegation-canary:`** — remove the redundant delimited block in this run (confirm). Cursor/Copilot native keeps the block; drop the extra copy from `AGENTS.md` when that file is **not** a shared carrier. Delegator (`CLAUDE.md` / `GEMINI.md` with `@AGENTS.md`) drops its copy; `AGENTS.md` keeps it. Do not leave this as a follow-up edit.
+   - **`decisions.md` non-empty > 200** (lint _Soft budgets_; blank lines do not count) — Pass A slim even when no other finding ID fired. Count now; keep the row through Second Pass A.
 
    **Pass B — closed log / stale resume** (exclude current-session headings and current branch active-work from prune/Discard):
    - Stale `active-work/*.md` whose branch no longer exists.
@@ -98,7 +99,7 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
 5. **Show the classification plan** to the user (table or grouped list). Group Pass A vs Pass B. Do not write yet.
    - **Pass A defaults: Apply.** Recommend Reference / supersede / collapse / Learning for each finding ID. Defer only with one reason line that names missing evidence (path not on disk, no ADR tree, Duplicate rule hit). “Looks durable” is not a reason.
    - **Pass B defaults:** current-session / founding / sole heading → **Retained**. Same-day borderline Discard → recommend **Retain**. **Prior-day** heading (date < today) → default **Trim** to heading + one outcome bullet when bullets are `source:` to spec/ADR/README, cite a git SHA, or replay Progress/diary; default **Discard** only when that outcome already lives in decisions/learnings **and** at least one other heading remains. Do not default Retain on prior-day diary.
-   In the plan table, mark current-session log rows as **Retained** (reason: current session / founding day) — do not list them as Discard candidates. If Pass A findings exist, the table must include a row per ID (Reference / Learning / Defer+reason) — empty Pass A while those IDs exist is a failed consolidate.
+   In the plan table, mark current-session log rows as **Retained** (reason: current session / founding day) — do not list them as Discard candidates. If Pass A findings exist **or** `decisions.md` is non-empty > 200, the table must include a row per ID (and a slim row when over budget: Reference / collapse) — empty Pass A while those rows exist is a failed consolidate.
 
 6. **Apply in safe order** — confirm each diff (approve / skip / abort):
    1. Additions/promotions first: `decisions.md`, `learnings.md` / `learnings-*.md`, `current.md` (shared blockers only if still active), `index.md` (recall links and `when editing:` hints — not a docs catalog), `AGENTS.md` docs-map bullets when a project-docs index exists and AGENTS omits it.
@@ -109,7 +110,8 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    6. **Progress / Validation follow-up** — offer to Trim `dup-progress-log:` and `dup-validation:` on the current branch file, or refresh Progress so it does not point at removed log headings after an approved closed-session log Discard/Trim. Skip this AskQuestion only when none apply.
    7. **Redundant block** — apply approved `double-injection:` / `delegation-canary:` deletes in this same invocation. Confirm the carrier diff. Do not defer to a later edit.
 
-   **Second Pass A.** After the approved diffs in this run, if `decisions.md` still has more than **200** non-empty lines, keep applying Pass A **in this invocation** (confirm each extra diff) until the file is ≤ 200 **or** every remaining live heading is already pointer-only (heading + Status + optional Source / Relates / one Relevance line — no Context / Decision / Why). Collect remaining `memory-ghost-docs:`, `decision-stale-live:`, `decision-body-bloat:`, `decision-canonical-dup:`, `decision-docs-map:`, and any `Status: live` that still has Context / Decision / Why. Collapse those wiki bodies to pointer-only (default Apply). Defer a live wiki body only when it is the sole record of a write-floor **User constraint** (approach) with no Source and no Relates — then keep **one** Decision sentence, drop Context / Why / Consequences. Apply any leftover `double-injection:` / `delegation-canary:` here if step 7 has not run. Do **not** stop with an optional second pass or a separate-edit offer while those rows remain.
+   **Second Pass A.** Count **non-empty** lines in `decisions.md` (lint _Soft budgets_ — blank lines do not count) **even when step 6 had no approved corpus diffs**. If that count is still **> 200**, keep applying Pass A **in this invocation** (confirm each extra diff) until **non-empty ≤ 200** **or** every remaining live heading is pointer-only (heading + Status + optional Source / Relates / one Relevance line — no Context / Decision / Why). Collect remaining `memory-ghost-docs:`, `decision-stale-live:`, `decision-body-bloat:`, `decision-canonical-dup:`, `decision-docs-map:`, and any `Status: live` that still has Context / Decision / Why. Collapse those wiki bodies to pointer-only (default Apply). Defer a live wiki body only when it is the sole record of a write-floor **User constraint** (approach) with no Source and no Relates — then keep **one** Decision sentence, drop Context / Why / Consequences. Apply leftover `double-injection:` / `delegation-canary:` here if step 7 has not run.
+   **Done when:** the Report line `decisions.md non-empty N (budget 200)` has **N ≤ 200**, or every live heading is pointer-only. **Failed consolidate** (do not call the run done): N > 200 and any live heading still has Context / Decision / Why — keep applying in this invocation; do not offer a later pass.
 
 7. **Report.** Summarize separately:
    - **promoted** — decision or learning/pitfall bodies added;
@@ -121,6 +123,7 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    - **retained** — kept as-is. **Always name current-session log headings** that the prune-exclusion guard kept (e.g. `retained: current-session founding log — ## [YYYY-MM-DD] [docs] …`) so the user can see the contract working — even when nothing else changed. If Pass A applied and Pass B retained, say both;
    - **deferred** — `pending-doc` or user skip;
    - **block removed** — redundant agent-memory delimiters deleted (`double-injection:` / `delegation-canary:`);
+   - **budget** — required line: `decisions.md non-empty N (budget 200)` (same count as lint _Soft budgets_). N > 200 with any live Context / Decision / Why remaining is a **failed consolidate**;
    - **external promotions suggested** — paths the user should update outside the skill (not wiring leftovers from this run).
 
 ## Notes
