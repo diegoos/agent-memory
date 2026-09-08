@@ -59,7 +59,8 @@ flowchart TB
 ```mermaid
 flowchart LR
   A["npx @dosx/agent-memory install"] --> B["skill → .agents/skills/agent-memory"]
-  A --> C["hooks → harness dir + .git/hooks/pre-commit + post-commit"]
+  A --> C["hooks → harness dir"]
+  A -.-> Githooks["optional: git pre-commit + post-commit"]
   B --> D["/agent-memory init"]
   D --> E[".agents/memory/ skeleton"]
   D --> F["block in .mdc / AGENTS.md / CLAUDE.md / …"]
@@ -99,7 +100,7 @@ flowchart TB
   Learn --> Consume
   Consume -->|yes| Clear["agent-memory-consume-evidence.sh<br/>clear session_touched_files"]
   Consume -->|no| Leave["leave pending paths"]
-  SyncHook --> Git["git pre-commit: checkpoint + reminder<br/>post-commit: stamp HEAD, drop clean paths"]
+  SyncHook --> Git["optional git pre-commit: checkpoint + reminder<br/>post-commit: stamp HEAD, drop clean paths"]
 ```
 
 Session-start: Cursor `sessionStart`, Claude/Codex `SessionStart`, Copilot `sessionStart`, Gemini `SessionStart`. OpenCode uses the `AGENTS.md` block.
@@ -153,7 +154,8 @@ npx @dosx/agent-memory install codex
 # or: npx @dosx/agent-memory install
 
 # Later: refresh skill + installed hooks (then run /agent-memory update in-agent)
-npx @dosx/agent-memory update
+npx @dosx/agent-memory update --yes
+# Same-SemVer reinstall from a published pack: update --force --yes
 ```
 
 In your agent:

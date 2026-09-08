@@ -55,43 +55,19 @@ export function installSkillAtomic(opts: {
     }
   }
 
-  try {
-    fs.renameSync(staging, dest);
-  } catch {
-    // Cross-device / platform: fall back to copy then remove staging.
-    try {
-      fs.cpSync(staging, dest, { recursive: true, force: true });
+  const promoted = promoteStaging(staging, dest);
+  if (!promoted.ok) {
+    if (movedAside) {
+      const ok = restoreBackup(backup, dest);
       fs.rmSync(staging, { recursive: true, force: true });
-    } catch (err) {
-      if (movedAside) {
-        const ok = restoreBackup(backup, dest);
-        fs.rmSync(staging, { recursive: true, force: true });
-        if (!ok) {
-          onError(
-            `skill install failed and restore failed; previous skill left at ${backup}`,
-          );
-        }
-        onError(`skill install failed: ${errorMessage(err)}`);
+      if (!ok) {
+        onError(
+          `skill install failed and restore failed; previous skill left at ${backup}`,
+        );
       }
-      // First install: leave staging contents in place as dest if possible.
-      if (!fs.existsSync(dest) && fs.existsSync(staging)) {
-        try {
-          fs.renameSync(staging, dest);
-        } catch {
-          try {
-            fs.cpSync(staging, dest, { recursive: true, force: true });
-            fs.rmSync(staging, { recursive: true, force: true });
-          } catch {
-            fs.rmSync(staging, { recursive: true, force: true });
-            onError(`skill install failed: ${errorMessage(err)}`);
-          }
-        }
-        // Dest recovered via fallback — treat as success.
-      } else {
-        fs.rmSync(staging, { recursive: true, force: true });
-        onError(`skill install failed: ${errorMessage(err)}`);
-      }
+      onError(`skill install failed: ${errorMessage(promoted.err)}`);
     }
+    recoverFirstInstall(staging, dest, onError, promoted.err);
   }
 
   // New skill is in place — backup cleanup must not fail the install.
@@ -108,6 +84,40 @@ export function installSkillAtomic(opts: {
     files: countFiles(dest),
     existed,
   };
+}
+
+function promoteStaging(
+  staging: string,
+  dest: string,
+): { ok: true } | { ok: false; err: unknown } {
+  try {
+    fs.renameSync(staging, dest);
+    return { ok: true };
+  } catch {
+    try {
+      fs.cpSync(staging, dest, { recursive: true, force: true });
+      fs.rmSync(staging, { recursive: true, force: true });
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, err };
+    }
+  }
+}
+
+function recoverFirstInstall(
+  staging: string,
+  dest: string,
+  onError: (message: string) => never,
+  err: unknown,
+): void {
+  if (!fs.existsSync(dest) && fs.existsSync(staging)) {
+    const again = promoteStaging(staging, dest);
+    if (again.ok) return;
+    fs.rmSync(staging, { recursive: true, force: true });
+    onError(`skill install failed: ${errorMessage(err)}`);
+  }
+  fs.rmSync(staging, { recursive: true, force: true });
+  onError(`skill install failed: ${errorMessage(err)}`);
 }
 
 function isSymlink(p: string): boolean {

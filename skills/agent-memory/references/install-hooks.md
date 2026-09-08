@@ -81,8 +81,8 @@ Target = this skill's `metadata.version` (Read `SKILL.md` frontmatter). For each
 
 1. Read `$hooksDir/.version` (first line, trim). Stamp path is the installer dir: `.cursor/hooks/.version`, `.opencode/hooks/.version`, and so on.
 2. **Complete** when all five scripts exist in that dir (`agent-memory-common.sh`, `agent-memory-sync.sh`, `agent-memory-session.sh`, `agent-memory-consume-evidence.sh`, `agent-memory-print-evidence.sh`). OpenCode also needs `.opencode/plugins/agent-memory.ts` and `safe-script.ts`.
-3. **current:** stamp equals target **and** Complete. Report one line: `hooks <harness> current (<stamp>) — installer skip`. Do **not** print step 4 commands.
-4. **stale:** missing stamp, stamp ≠ target, or not Complete. Print step 4 commands for that harness (no agent copy/merge).
+3. **current:** Complete **and** stamp SemVer is equal to or later than this skill (do not print an installer that would downgrade). Report one line: `hooks <harness> current (<stamp>) — installer skip`. Do **not** print step 4 commands.
+4. **stale:** missing stamp, not Complete, or stamp is an older SemVer than this skill. Print step 4 commands for that harness (no agent copy/merge).
 5. No installed harness: report none found. Do **not** print step 4.
 
 `/agent-memory install hooks <harness>` and `init` step 7 always print step 4 (user asked to install). This stamp check is **`update` only**.

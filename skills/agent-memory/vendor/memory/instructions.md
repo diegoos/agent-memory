@@ -17,7 +17,7 @@ Git-versioned **recall layer** in `.agents/memory/` — operational state for **
 
 **Fail closed** on Reusable lesson: missing incident or missing 1–3 paths → the row is **no** (do not invent importance). Do not substitute a vague “next cold session would be wrong.”
 
-If resume rotten **and** session closed: write `log.md` only; delete `active-work` on merge. If **User constraint** also fires (with resume rotten, session closed, and/or Reusable lesson): write `decisions.md` only — the correction is the fact that must survive. If **Reusable lesson** also fires (with resume rotten and/or session closed) and User constraint does not: write learnings only (plus the index hint) — the pitfall is the fact that must survive.
+**Winner** (first yes wins; still one file): User constraint → `decisions.md`. Else Reusable lesson → learnings + index hint. Else Closed why missing → `log.md` (delete `active-work` on merge). Else Resume rotten → `active-work`. Else Shared blocker → `current.md`.
 
 ADR **pointers** (decision already lives in an ADR) are **not** a floor row — the ADR index belongs on `AGENTS.md`. Optional `## Hold` on `active-work` is still that file (_How to write_). When a canonical doc **starts existing**, patch `AGENTS.md` and strip the duplicate memory body (consolidate or same turn). `log.md` is not a session diary — it is what must survive after `active-work` is gone.
 

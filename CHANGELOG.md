@@ -21,6 +21,8 @@ Human release notes. Machine migrations (`safe` / `sensitive`) live in [`skills/
 ### Fixed
 
 - Checkpoint matching HEAD looked stale on Git 2.55. Hex SHAs use `git rev-parse --verify`. Lint strips the newline from `git branch` so it is not a trailing `-`.
+- CLI `update` does not overwrite a newer hooks `.version` (`--force` / local checkout included). Missing shared scripts still refresh. Skill install follows a symlink project root the same way as `install-hooks.sh`.
+- Sync checkpoints tracked dirty files only (no untracked walk on the 15s stop path). The session-id sed fallback binds the first `"session_id"` key, not the last substring.
 - Lint emitters run from the documented cwd (`wrong-cwd:` otherwise), read paths via `ENVIRON`, transliterate heading slugs, and resolve Relates `#fragment` against target H2s. `decision-hidden` is once per index line. `decision-lesson-dup` also fires from a learnings back-link.
 - `.version` comes from `SKILL.md` `metadata.version`. No downgrade if installed SemVer is ahead; gitignore, graph reshape, and instruction blocks still run. Last `## <version>` in `UPDATE.md` must equal `package.json`. Prereleases sort below the same core.
 
@@ -30,7 +32,7 @@ Human release notes. Machine migrations (`safe` / `sensitive`) live in [`skills/
 
 ### Changed
 
-- Daily method: write floor (one file or skip; a git commit does not skip). Cold session is four questions; Validation is the done signal. Resume rotten also when Validation has no exact command. Flipped lasting assumption is a user constraint. Always-load is `index.md` and `current.md`; `AGENTS.md` is the docs map. After a turn that changed repo files, last line `Memory: skip` or `Memory: <file>`. After a skill command, `Memory: skip`. Opposite Insight: `- Relates: contradicts` on the new H2.
+- Daily method: write floor (one file or skip; a git commit does not skip). Cold session is four questions; Validation is the done signal. Resume rotten also when Validation has no exact command. Flipped lasting assumption is a user constraint. Always-load is `index.md` and `current.md`; `AGENTS.md` is the docs map. After a turn that changed repo files, last line `Memory: skip` or `Memory: <file>`. After a skill command, `Memory: skip`. Opposite Insight: `- Relates: contradicts` on the new H2. Write-floor winner (first yes): User constraint, then Reusable lesson, then closed why, then resume rotten, then shared blocker.
 - `update` deletes leftover vision/architecture/domains mirrors, patches the `AGENTS.md` docs map, and skips hook installer commands when stamps match. It does not invent learnings. Re-run on installs already at `0.2.1-rc.0`–`rc.4` if mirrors remain. Installed memory has no `TEMPLATE.md`; copy from `references/active-work-template.md`.
 - `lint --fix` (confirm) refreshes Checkpoint, trims Progress/Validation to 5 bullets, and deletes closed-placeholder resumes that are not the current branch. Overbroad globs and `decisions.md` slim belong to `consolidate`.
 - `consolidate` always runs Pass A (docs-map, ghosts, overbroad, `double-injection` / `delegation-canary` in the same run). `decisions.md` non-empty > 200 is a candidate; the Report prints `decisions.md non-empty N (budget 200)`. Leftover live Context/Why while N > 200 is a failed run. Pass B trims prior-day log. At most three learnings, from incident-shaped decisions already on disk, not from `log.md`.

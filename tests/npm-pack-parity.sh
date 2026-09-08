@@ -47,6 +47,21 @@ grep -qx 'package/skills/agent-memory/scripts/lint-structural-from-root.sh' "$TM
   fail "npm pack must include lint-structural-from-root.sh (skill scripts)"
 grep -qx 'package/hooks/install-hooks.sh' "$TMP/list.txt" ||
   fail "npm pack must include hooks/install-hooks.sh"
+grep -qx 'package/hooks/lib/merge-hooks.mjs' "$TMP/list.txt" ||
+  fail "npm pack must include hooks/lib/merge-hooks.mjs"
+grep -qx 'package/hooks/git/pre-commit' "$TMP/list.txt" ||
+  fail "npm pack must include hooks/git/pre-commit"
+grep -qx 'package/hooks/git/post-commit' "$TMP/list.txt" ||
+  fail "npm pack must include hooks/git/post-commit"
+for f in \
+  agent-memory-common.sh \
+  agent-memory-sync.sh \
+  agent-memory-session.sh \
+  agent-memory-consume-evidence.sh \
+  agent-memory-print-evidence.sh; do
+  grep -qx "package/hooks/agent-memory-hooks/$f" "$TMP/list.txt" ||
+    fail "npm pack must include hooks/agent-memory-hooks/$f"
+done
 
 rebuild=$(mktemp)
 trap 'rm -f "$rebuild" "$TMP"/*.tgz; rm -rf "$TMP" ${PROJ:+"$PROJ"}' EXIT

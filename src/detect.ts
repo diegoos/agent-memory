@@ -5,13 +5,18 @@ import {
   CANONICAL_HARNESSES,
   HARNESS_ALIASES,
   HARNESS_HOOKS_DIR,
+  SHARED_HOOK_SCRIPTS,
   type Harness,
 } from "./constants";
 
 export function projectDir(): string {
   const fromEnv = process.env.AGENT_MEMORY_PROJECT_DIR;
-  if (fromEnv) return fromEnv;
-  return process.cwd();
+  const raw = fromEnv && fromEnv.length > 0 ? fromEnv : process.cwd();
+  try {
+    return fs.realpathSync(raw);
+  } catch {
+    return path.resolve(raw);
+  }
 }
 
 export function installedSkillDir(): string {
@@ -44,6 +49,20 @@ export function readInstalledHooksVersion(harness: Harness): string | null {
   return v || null;
 }
 
+export function hooksInstallComplete(harness: Harness): boolean {
+  const root = projectDir();
+  const dir = path.join(root, HARNESS_HOOKS_DIR[harness]);
+  for (const f of SHARED_HOOK_SCRIPTS) {
+    if (!fs.existsSync(path.join(dir, f))) return false;
+  }
+  if (harness === "opencode") {
+    const plugins = path.join(root, ".opencode", "plugins");
+    if (!fs.existsSync(path.join(plugins, "agent-memory.ts"))) return false;
+    if (!fs.existsSync(path.join(plugins, "safe-script.ts"))) return false;
+  }
+  return true;
+}
+
 function fileContains(filePath: string, needle: string): boolean {
   try {
     return fs.readFileSync(filePath, "utf8").includes(needle);
@@ -52,37 +71,41 @@ function fileContains(filePath: string, needle: string): boolean {
   }
 }
 
+function hookSyncPath(root: string, harness: Harness): string {
+  return path.join(root, HARNESS_HOOKS_DIR[harness], "agent-memory-sync.sh");
+}
+
 export function detectInstalledHarnesses(): Harness[] {
   const root = projectDir();
   const found: Harness[] = [];
   if (
-    fs.existsSync(path.join(root, ".cursor", "hooks", "agent-memory-sync.sh")) ||
+    fs.existsSync(hookSyncPath(root, "cursor")) ||
     fileContains(path.join(root, ".cursor", "hooks.json"), "agent-memory")
   ) {
     found.push("cursor");
   }
-  if (fs.existsSync(path.join(root, ".claude", "hooks", "agent-memory-sync.sh"))) {
+  if (fs.existsSync(hookSyncPath(root, "claude"))) {
     found.push("claude");
   }
-  if (fs.existsSync(path.join(root, ".codex", "hooks", "agent-memory-sync.sh"))) {
+  if (fs.existsSync(hookSyncPath(root, "codex"))) {
     found.push("codex");
   }
   if (
     fs.existsSync(path.join(root, ".opencode", "plugins", "agent-memory.ts")) ||
     // Legacy singular path (pre-fix; OpenCode never auto-loaded it)
     fs.existsSync(path.join(root, ".opencode", "plugin", "agent-memory.ts")) ||
-    fs.existsSync(path.join(root, ".opencode", "hooks", "agent-memory-sync.sh"))
+    fs.existsSync(hookSyncPath(root, "opencode"))
   ) {
     found.push("opencode");
   }
   if (
     fs.existsSync(path.join(root, ".github", "hooks", "agent-memory.json")) ||
-    fs.existsSync(path.join(root, ".github", "hooks", "agent-memory-sync.sh"))
+    fs.existsSync(hookSyncPath(root, "copilot"))
   ) {
     found.push("copilot");
   }
   if (
-    fs.existsSync(path.join(root, ".gemini", "hooks", "agent-memory-sync.sh")) ||
+    fs.existsSync(hookSyncPath(root, "gemini")) ||
     fileContains(path.join(root, ".gemini", "settings.json"), "agent-memory")
   ) {
     found.push("gemini");

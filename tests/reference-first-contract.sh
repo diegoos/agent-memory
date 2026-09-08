@@ -151,8 +151,10 @@ assert_contains "$instructions" '**One Task**' \
   "instructions require one live Task in active-work"
 assert_contains "$agent_block" 'not a catalog' \
   "always-on block keeps index a map not a catalog"
-assert_contains "$agent_block" '**Write floor**' \
-  "always-on block names the write floor"
+assert_contains "$agent_block" 'first yes wins' \
+  "always-on write floor names winner order"
+assert_contains "$instructions" '**Winner**' \
+  "instructions name a single write-floor winner list"
 assert_contains "$agent_block" 'Resume rotten' \
   "always-on write floor includes resume rotten"
 assert_contains "$agent_block" 'Status `load:`' \
@@ -189,13 +191,13 @@ assert_contains "$instructions" 'Reusable lesson' \
   "write floor includes reusable lesson"
 assert_contains "$instructions" '**Fail closed** on Reusable lesson' \
   "reusable lesson fails closed without incident or paths"
-assert_contains "$instructions" 'write learnings only' \
+assert_contains "$instructions" 'Else Reusable lesson → learnings' \
   "reusable lesson tie-break writes learnings only"
 assert_contains "$instructions" 'Path-scoped capture without a usable' \
   "path-scoped learning without index hint is a failed write"
 assert_contains "$instructions" 'never dual-write learnings with `active-work`' \
   "learnings never dual-write with active-work or log"
-assert_contains "$instructions" 'write `decisions.md` only' \
+assert_contains "$instructions" 'User constraint → `decisions.md`' \
   "user constraint tie-break writes decisions only"
 assert_contains "$instructions" '**Exception (approach):**' \
   "live user decision beats code for approach"
@@ -422,8 +424,8 @@ assert_contains "$install_hooks" 'installer skip' \
   "update skip line when hook stamp matches skill"
 assert_contains "$install_hooks" 'hooks <harness> current' \
   "install-hooks current report line"
-assert_contains "$install_hooks" '`update` only' \
-  "stamp check is update-only not init"
+assert_contains "$install_hooks" 'do not print an installer that would downgrade' \
+  "install-hooks skip when stamp SemVer is later than the skill"
 assert_contains "$update" '`/agent-memory update instructions`' \
   "update missing-block skip points at update instructions"
 assert_contains "$init" '## AGENTS.md block' \

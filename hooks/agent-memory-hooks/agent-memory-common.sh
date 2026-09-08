@@ -80,12 +80,27 @@ _amc_flat_json_body() {
   printf '%s' "$1" | sed -n 's/^[^{]*{\([^{}]*\).*/\1/p' | head -1
 }
 
-# Extract a quoted string value for a top-level JSON field (sed fallback path).
+# Extract a quoted string value for a top-level JSON field (jq-less fallback).
 json_string_field() {
   local body
   body=$(_amc_flat_json_body "$1")
   [ -n "$body" ] || return 0
-  printf '%s' "$body" | sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
+  # First `"key":"..."` wins (leading `.*` would take the last substring).
+  printf '%s' "$body" | awk -v key="$2" '
+    BEGIN { needle = "\"" key "\"" }
+    {
+      s = $0
+      while ((p = index(s, needle)) > 0) {
+        rest = substr(s, p + length(needle))
+        if (match(rest, /^[ \t]*:[ \t]*"/)) {
+          rest = substr(rest, RLENGTH + 1)
+          q = index(rest, "\"")
+          if (q > 0) { print substr(rest, 1, q - 1); exit }
+        }
+        s = substr(s, p + 1)
+      }
+    }
+  '
 }
 
 _parse_hook_stdin_sed() {
@@ -950,10 +965,11 @@ _write_state_unlocked() {
 agent_memory_include_commit_files="${agent_memory_include_commit_files:-0}"
 
 list_worktree_changes() {
+  # Tracked dirty only — skip untracked walk (sessionStart parity; 15s stop budget).
+  # ceiling: pending omits untracked until git add; upgrade: pathspec or timeout.
   {
     git -C "$cwd" diff --name-only 2>/dev/null || true
     git -C "$cwd" diff --cached --name-only 2>/dev/null || true
-    git -C "$cwd" ls-files --others --exclude-standard 2>/dev/null || true
   } | sort -u | grep -vE '^\.agents/memory/|^$' || true
 }
 
