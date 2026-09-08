@@ -5,7 +5,7 @@ description: >-
   via `/agent-memory <command>`.
 metadata:
   invocation: manual
-  version: "0.2.1-rc.6"
+  version: "0.2.1-rc.7"
 compatibility: >-
   Works offline from the skill package vendor skeleton. Hook installation is
   print-only (user-run shell script or npx CLI).

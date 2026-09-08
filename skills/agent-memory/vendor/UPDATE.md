@@ -266,7 +266,7 @@ Format:
 - safe: `lint --fix` may refresh `stale-resume:` Checkpoint (today @ HEAD short SHA) and trim `dup-progress-log:` to ≤5 Progress bullets (confirm). `overbroad-hint:` / `live-dup-identity:` / `decision-lesson-dup:` stay consolidate Pass A (default Apply; identity successor supersede+collapse). Update report: `--fix` does not slim `decisions.md`.
 - safe: hooks — `hooks/agent-memory-hooks/` derives install-site like harness dirs (stale `*_PROJECT_DIR` / `GITHUB_WORKSPACE` must not retarget state). Status `when editing:` uses lint Overbroad denylist; `*` does not cross `/`. **User must re-run the hooks installer** (shared scripts).
 
-## 0.2.1-rc.6
+## 0.2.1-rc.7
 
 - safe: `init` / `update` tokens `instructions` / `agents.md` / `rules` insert or refresh the canonical block in `AGENTS.md` only. Bare `init` still refuses an existing `.agents/memory/` except those tokens. Full `update` skip of a missing block on other carriers points at `update instructions`, not a new command.
 - safe: `lint --fix` may trim `dup-validation:` to ≤5 Validation bullets (confirm). `overbroad-hint:` includes covering `src/pages/**…` and `src/<seg>/**` trees. `live-dup-identity:` docs-layout heuristic matches `reorganiz` / `docs layout` / `docs suite` / `docs/specs` / `docs tree`. `memory-ghost-docs:` on live backtick `docs/…` stays consolidate Pass A (default Apply). Update report: when installed SemVer is ahead of the skill, `.version` stays and stable-core migrations will not run (always-on gitignore / graph reshape / blocks still run).
