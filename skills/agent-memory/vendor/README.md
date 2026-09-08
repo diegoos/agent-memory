@@ -14,13 +14,13 @@ Use it on a project where AI agents work across sessions, and where humans and a
 
 ## How agents use it
 
-Agents read and write the memory. Method (write floor, **cold session**, hop, catch-up): [`memory/instructions.md`](./memory/instructions.md) — load it before writing. Keep `index.md` a short map. Project docs live on `AGENTS.md`. Catch up with `/agent-memory sync` only when there is meaning. Run `agent-memory-print-evidence.sh` for hook fields. Do not Read `.hook-sync-state`. Hooks write only `.hook-sync-state`. They do not write Markdown.
+Agents read and write the memory. Method (write floor, **cold session**, **done signal**, hop, catch-up): [`memory/instructions.md`](./memory/instructions.md) — load it before writing. Keep `index.md` a short map. Project docs live on `AGENTS.md` (standing context). Catch up with `/agent-memory sync` only when there is meaning. Run `agent-memory-print-evidence.sh` for hook fields. Do not Read `.hook-sync-state`. Hooks write only `.hook-sync-state`. They do not write Markdown.
 
 ## What's inside (`.agents/memory/`)
 
 | File              | Role                                                                                                                                                      |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `instructions.md` | Canonical method: write floor + **cold session** (read before writing memory).                                                                            |
+| `instructions.md` | Canonical method: write floor + **cold session** (read before writing memory). Validation is the **done signal**.                                                                            |
 | `index.md`        | Recall-file map (not a docs catalog).                                                                                                                     |
 | `current.md`      | Shared active state (in progress / blockers handoff).                                                                                                     |
 | `active-work/`    | Per-branch resume scratchpad (create when resumable). Copy from the skill `references/active-work-template.md`; do not keep a TEMPLATE in this directory. |

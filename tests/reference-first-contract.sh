@@ -163,8 +163,18 @@ assert_contains "$instructions" '## Cold session' \
   "instructions define cold-session quality bar"
 assert_contains "$instructions" 'next concrete **product** step' \
   "cold session names the four resume questions"
+assert_contains "$instructions" '**done signal**' \
+  "Validation is the done signal for a cold session"
+assert_contains "$instructions" 'assumption that flipped' \
+  "user constraint includes a flipped lasting assumption"
+assert_contains "$instructions" 'retrospective' \
+  "primary write is this turn's retrospective"
 assert_contains "$agent_block" '_Cold session_' \
   "always-on block points at Cold session for write quality"
+assert_contains "$agent_block" 'flipped assumption' \
+  "always-on write floor names flipped assumption as user constraint"
+assert_contains "$agent_block" '**done signal**' \
+  "always-on block names the done signal on write"
 assert_contains "$lint" 'instructions.md` → _Cold session_' \
   "lint quality pass checks the method Cold session bar"
 assert_contains "$bootstrap" 'references/learn.md' \
@@ -272,7 +282,7 @@ assert_contains "$instructions" 'never dual-write' "no dual-write on stop"
 assert_contains "$instructions" 'Progress is optional' "Progress optional in method"
 assert_contains "$instructions" 'Authority: working rules' "authority map folded into Precedence"
 assert_contains "$instructions" '## Retention gate and lifecycle' "retention gate present"
-assert_contains "$instructions" 'Reusable in another session?' "gate asks reusability"
+assert_contains "$instructions" 'Reusable **downstream**?' "gate asks reusability"
 assert_contains "$instructions" 'link + delta/relevance' "pointer-over-copy gate"
 assert_contains "$instructions" 'Minimum pointer line:' "minimum pointer format"
 assert_contains "$instructions" '### Harness parity — memory contract' "harness parity SoT heading"
