@@ -329,6 +329,10 @@ assert_contains "$learn" '- Insight: reusable pattern in one or two sentences.' 
   "learning Insight field in learn reference"
 assert_contains "$learn" 'learnings-<topic>.md' "topic split convention in learn reference"
 assert_contains "$learn" '**Duplicate rule**' "duplicate rule SoT in learn reference"
+assert_contains "$learn" 'do not append an unlinked opposite' \
+  "duplicate rule opposite Insight gets contradicts on the new H2"
+assert_contains "$instructions" 'opposite Insight in the target file' \
+  "in-turn learnings contradict without an unlinked pair"
 assert_contains "$learn" '**Legacy one-liner**' "legacy one-liner SoT in learn reference"
 # Overbroad when-editing denylist SoT is lint (not always-load instructions)
 assert_contains "$lint" 'overbroad-hint:' "lint names overbroad-hint finding"
