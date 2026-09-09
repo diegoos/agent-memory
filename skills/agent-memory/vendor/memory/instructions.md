@@ -83,7 +83,7 @@ Follow session Status (`load:` / Next / Checkpoint) first. After `index.md`, if 
 
 ## When stopping (primary write)
 
-**Primary write path (agent, in the turn):** this turn's retrospective — walk the **write floor** table (every row yes/no). Write **at most one** memory file — or **skip** when every floor row is no. Pick the winning row. Dual-write rules and index-hint exceptions sit in the table and the **Exception** above. The write is done when a **cold session** could answer the four questions from always-on files, or every floor row was no. When this turn changed repo files, the last assistant line is `Memory: skip` or `Memory: <file>` (winning row) — that line is not a write.
+**Primary write path (agent, in the turn):** this turn's retrospective — walk the **write floor** table (every row yes/no). Write **at most one** memory file — or **skip** when every floor row is no. Pick the winning row. Dual-write rules and index-hint exceptions sit in the table and the **Exception** above. The write is done when a **cold session** could answer the four questions from always-on files, or every floor row was no. When this turn wrote a memory file, the last assistant line is `Memory: <file>` (winning row) — that line is not a write. Skip prints no Memory line.
 
 **Primary-write triggers** — the write floor, plus compact/handoff if resume would rot. Status shows Checkpoint behind HEAD or pending paths > 0 **with meaning** feeds the resume-rotten row. When Checkpoint matches HEAD and outcomes cover pending paths, **Must consume** pending path evidence (run consume-evidence).
 

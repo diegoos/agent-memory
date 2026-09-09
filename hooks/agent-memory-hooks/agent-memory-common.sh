@@ -1526,7 +1526,7 @@ amc_maybe_stop_floor_reminder() {
   cat <<'EOF' >&2
 
 [agent-memory] Resume may be rotten (pending paths, Checkpoint behind HEAD, or dirty tree with no active-work).
-Walk the write floor this turn: one file or skip. Last line: Memory: skip | <file>.
+Walk the write floor this turn: one file or skip. If you wrote a file, last line: Memory: <file>.
 (This is a reminder, not a block. Hooks did not write Markdown.)
 
 EOF

@@ -118,7 +118,7 @@ Read the subcommand from the invocation, load **only** the matching reference, a
 
 If no subcommand is given, or it is not one of those above, run `help` (below) and stop.
 
-When the loaded command finishes, its **Report** is done. Last assistant line: `Memory: skip` (skill writes are not a write-floor row).
+When the loaded command finishes, its **Report** is done. Do not append a Memory line (skill writes are not a write-floor row).
 
 For `init`, an optional second token selects one harness (`cursor`, `claude`, `codex`, `opencode`, `copilot`, `gemini`) **or** an AGENTS.md block token (`instructions`, `agents.md`, `rules` — `references/init.md` → **AGENTS.md block**). Load `references/init.md`.
 

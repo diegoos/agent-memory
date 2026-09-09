@@ -952,12 +952,16 @@ assert_contains "$agent_block" 'Never dual-write' "agent-block no dual-write"
 assert_contains "$agent_block" 'Status `load:`' \
   "agent-block defers hint follow to Status load"
 assert_contains "$agent_block" '_How to write_' "agent-block points at concise writing guidance"
-assert_contains "$agent_block" 'Memory: skip' \
-  "agent-block requires a last-line skip or file after repo-changing turns"
-assert_contains "$skill" 'Last assistant line: `Memory: skip`' \
-  "skill Report ends with Memory skip not a floor row"
-assert_contains "$instructions" 'Memory: skip' \
-  "stop names skip or winning file without a second write"
+assert_contains "$agent_block" 'Memory: <file>' \
+  "agent-block requires a last-line file after a memory write"
+assert_absent "$agent_block" 'Memory: skip' \
+  "agent-block must not print Memory skip"
+assert_absent "$skill" 'Memory: skip' \
+  "skill Report must not append a Memory skip line"
+assert_contains "$instructions" 'Memory: <file>' \
+  "stop names the winning file without a second write"
+assert_absent "$instructions" 'Memory: skip' \
+  "stop must not print Memory skip"
 assert_contains "$agent_block" '_Harness parity — memory contract_' \
   "agent-block links harness parity"
 assert_contains "$skill" 'agent-memory-consume-evidence.sh' \
