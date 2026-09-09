@@ -6,7 +6,6 @@ set -euo pipefail
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 skeleton="$repo_root/skills/agent-memory/vendor/memory"
 update_md="$repo_root/skills/agent-memory/vendor/UPDATE.md"
-hook_dir="$repo_root/hooks/agent-memory-hooks"
 
 fail() {
   printf 'not ok - %s\n' "$1" >&2
@@ -16,7 +15,7 @@ fail() {
 grep -q '## 0.1.0' "$update_md" || fail "UPDATE.md missing 0.1.0"
 grep -q 'graph reshape' "$update_md" || fail "UPDATE.md missing graph reshape"
 grep -q 'update-graph.md' "$update_md" || fail "UPDATE.md missing update-graph.md"
-grep -q 'Supersedes 0.0.14' "$update_md" || fail "UPDATE.md 0.2.1 must supersede 0.0.14 keep-mirrors"
+grep -q 'Supersedes 0.0.14' "$update_md" || fail "UPDATE.md must supersede 0.0.14 keep-mirrors"
 grep -q 'safe:' "$update_md" || fail "UPDATE.md 0.1.0 missing safe items"
 grep -q 'sensitive:' "$update_md" || fail "UPDATE.md 0.1.0 missing sensitive items"
 
@@ -70,17 +69,16 @@ grep -q 'Migrate fixture' .agents/memory/active-work/legacy-branch.md ||
 grep -q '\.hook-sync-state' .agents/memory/.gitignore ||
   fail ".gitignore must ignore .hook-sync-state"
 
-# Hooks on migrated tree must not rewrite Markdown
-cp "$hook_dir"/agent-memory-*.sh .
-chmod +x agent-memory-*.sh
+# Hooks on migrated tree must not rewrite Markdown (installer layout)
+AGENT_MEMORY_PROJECT_DIR="$TMP" bash "$repo_root/hooks/install-hooks.sh" cursor >/dev/null
 md_before=$(find .agents/memory -name '*.md' | sort | while read -r f; do cksum "$f"; done | cksum)
 printf '{"session_id":"mig","cwd":"%s"}\n' "$TMP" |
   AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
-  ./agent-memory-session.sh >/dev/null
+  .cursor/hooks/agent-memory-session.sh >/dev/null
 printf '{"session_id":"mig","cwd":"%s"}\n' "$TMP" |
   AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
   AGENT_MEMORY_EVENT=afterAgentResponse AGENT_MEMORY_SESSION_ID=mig \
-  ./agent-memory-sync.sh >/dev/null
+  .cursor/hooks/agent-memory-sync.sh >/dev/null
 md_after=$(find .agents/memory -name '*.md' | sort | while read -r f; do cksum "$f"; done | cksum)
 [[ "$md_before" == "$md_after" ]] || fail "hooks altered Markdown during migration smoke"
 

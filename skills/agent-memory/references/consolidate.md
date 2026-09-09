@@ -1,20 +1,20 @@
 # `/agent-memory consolidate`
 
-Guided, conservative promotion and pruning of memory. Turns closed-session noise into pointers, decisions, learnings/pitfalls, or discard — **with confirmation**. Never run automatically (not from hooks, sync, lint, pre-commit, or init). Does **not** accept `--auto`.
+Guided, conservative promotion and pruning of memory. Turns closed-session noise into pointers, decisions, learnings/pitfalls, or discard — **with confirmation**. Never run automatically (not from hooks, sync, lint, pre-commit, or init). Does **not** accept `--auto` / `auto`.
 
 Two passes, always both:
 
-- **Pass A — corpus** (decisions / index / AGENTS docs map / learnings). Run even when Pass B is empty (open branch, today's log only). Candidates: `decision-docs-map`, `decision-canonical-dup`, `decision-stale-live`, `live-dup-identity`, `incident-unpromoted`, `decision-hidden`, `decision-body-bloat`, `memory-ghost-docs`, `agents-docs-gap`.
+- **Pass A — corpus** (decisions / index / AGENTS docs map / learnings / redundant harness blocks). Run even when Pass B is empty (open branch, today's log only). Candidates: `decision-docs-map`, `decision-canonical-dup`, `decision-stale-live`, `decision-lesson-dup`, `live-dup-identity`, `incident-unpromoted`, `decision-hidden`, `decision-body-bloat`, `memory-ghost-docs`, `agents-docs-gap`, `overbroad-hint`, `double-injection`, `delegation-canary`, and `decisions.md` **non-empty** > 200 (lint _Soft budgets_).
 - **Pass B — closed log prune.** Current session = session id **or** today's calendar date (below). **An open branch is not the current session.** Prior-day `log.md` headings are Trim/Discard candidates even when `active-work` exists.
 
-report **no-op** and stop only when **both** passes have zero candidates — do not invent promotions. If lint (or step 3) marked a Pass A finding ID, an empty plan is a **failed consolidate**, not no-op. Defer only with one reason line per ID.
+report **no-op** and stop only when **both** passes have zero candidates — do not invent promotions. If lint (or step 3) marked a Pass A finding ID **or** `decisions.md` is non-empty > 200, an empty plan is a **failed consolidate**, not no-op. Defer only with one reason line per ID.
 
-Learning promotions: at most **3** per run (confirm each). Do not scrape `log.md` diary bullets into Insights. Promote Learning only from an **incident-shaped decision** (rollback / workaround / revert + 1–3 `src/` or config paths) or skip that row.
+Learning promotions: at most **3** per run (confirm each). Do not scrape `log.md` diary bullets into Insights. Promote Learning only from an **incident-shaped decision** that still has **no matching** learnings Relates/slug (lint `incident-unpromoted:` is per heading). Skip a row that already has a matching H2.
 
 ## Boundary
 
-- **May edit** (with per-diff confirmation): paths in `SKILL.md` `allowed-tools`, plus `decisions.md` / `learnings.md` / `learnings-*.md` when a promotion needs them — those three are **not** pre-approved (expect a host permission prompt). **`AGENTS.md` docs map only** (bullets outside the agent-memory block — `references/docs-map.md`). **Not** `instructions.md` (that is `/agent-memory update` only).
-- **Must not** edit README, docs, specs, or ADR **bodies**, or harness agent files **except** that `AGENTS.md` map. Patch `AGENTS.md` **outside** `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`.
+- **May edit** (with per-diff confirmation): paths in `SKILL.md` `allowed-tools`, plus `decisions.md` / `learnings.md` / `learnings-*.md` when a promotion needs them — those three are **not** pre-approved (expect a host permission prompt). **`AGENTS.md` docs map only** (bullets outside the agent-memory block — `references/docs-map.md`). **Also** delete a redundant delimited `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` copy (legacy plain tags too) for `double-injection:` / `delegation-canary:`. **Not** `instructions.md` (that is `/agent-memory update` only).
+- **Must not** edit README, docs, specs, or ADR **bodies**. Leave harness files alone except the docs map and a redundant-block delete above. Never strip the block from `AGENTS.md` when it is a shared carrier (codex, opencode, or claude/gemini `@AGENTS.md`).
 - When an external promotion is needed, report the suggested path and keep the fact as `pending-doc` until the user updates the external source.
 - Never prune the **current session** heading(s) in `log.md` (definition below).
 - Never prune the **current branch's** active-work file.
@@ -51,8 +51,9 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    **Pass A — corpus** (exclude nothing for these IDs; they are not log prune):
    - Local decision bodies that already have (or should have) an ADR pointer (`decision-canonical-dup:`).
    - Decisions that should be marked `superseded` with `Superseded by:` (`decision-stale-live:` when Status is still live and the block says superseded).
-   - Two `Status: live` entries on the same identity (append without supersede) — keep one live successor (`live-dup-identity:`).
-   - Path-scoped learnings / topic splits listed in `index.md` **without** a `when editing:` hint when Evidence names concrete paths (lint stale/missing hint). Live `decisions.md` that names 1–3 repo-relative paths while the index `decisions.md` line has no hint (`decision-hidden:`).
+   - Two `Status: live` entries on the same identity (append without supersede) — keep one live successor (`live-dup-identity:`). **Identity is the approach noun** (docs tree layout, language major, cache strategy), not a unique heading. Two live entries that pick different values for the same noun and have no `Superseded by:` / `Relates: supersedes` between them are one identity — newest stays live; older get `Status: superseded` + collapse.
+   - Path-scoped learnings / topic splits listed in `index.md` **without** a `when editing:` hint when Evidence names concrete paths (lint stale/missing hint). Live `decisions.md` that names 1–3 repo-relative paths while the index `decisions.md` line has no hint (`decision-hidden:`). Index `when editing:` glob on the Overbroad denylist or a covering `src/pages/**…` / `src/<seg>/**` tree (`overbroad-hint:`) — replace those globs with Evidence path literals from the linked recall file (max 3). A narrow companion glob does not redeem a denylist glob. Default **Apply**.
+   - **`live-dup-identity:` / `decision-stale-live:` / `memory-ghost-docs:` on a live decision** — newest live successor stays; older get `Status: superseded` + collapse in the same Apply. A still-useful older body is not a Defer reason. Live identity whose named `docs/` or ADR path is missing (backtick `` `docs/…` `` or Markdown link) → supersede toward the live successor, or drop the ghost link and collapse the body (Apply). Do not leave `Status: live` plus a missing `docs/` path for a later human pass.
    - **Contradiction** — two recall Insights or decision pointers that conflict (`contradicts-unlinked` from lint). Propose a `contradicts` / `Contradicts:` edge, Trim the stale side, or Defer — do not re-crawl architecture folders.
    - **No evidence** — a learning/pitfall with no Evidence (or `learning-missing-evidence`); `Invalidate when` already true. Propose pointer, Discard, or Defer. Not a graph rebuild.
    - **Orphan Relates** (`relates-missing`) — typed edge whose target file is gone, or whose `#fragment` is missing from the target. Propose drop the Relates line, retarget, or Defer. After an approved log Discard/Trim, Grep Relates / aliases for that heading or path and offer the same.
@@ -61,13 +62,18 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    - Legacy mirror files (`vision.md`, `architecture.md`, `patterns.md`, `domains/*`, `features/*`) **only if they survived `/agent-memory update`** (user skipped graph reshape). Prefer pointer then delete. Do **not** fold their docs links into `index.md` — AGENTS map (`references/docs-map.md`).
    - **Docs now canonical** — a local decision body or Canonical bullet that duplicates an ADR/spec/`AGENTS.md` link: **Reference** (pointer or drop); patch `AGENTS.md` if the index exists and AGENTS omits it; then strip the memory copy (`decision-docs-map:` when live + Source-only and AGENTS already links the path).
    - **Superseded bodies** — `Status: superseded` still has Context / Decision / Why: collapse to heading + Status + `Superseded by:` (+ Relates).
-   - **Incident-shaped decisions** (`incident-unpromoted:`) — rollback/workaround/revert + 1–3 `src/` or config paths: promote **Learning** (H2 + `when editing:`), cap **3** per run; leave at most `- Relates: see` on the decision if the live approach still matters. Do not invent Insights from `log.md`.
-   - **`live-dup-identity`** — keep one live successor; mark the rest superseded **and** collapse those bodies.
+   - **Lesson already promoted** (`decision-lesson-dup:`) — live Context / Decision / Why still present and Relates already points at a learnings H2 **or** a learnings H2 already points at this decision: collapse to heading + Status + Relates.
+   - **Incident-shaped decisions** (`incident-unpromoted:`) — rollback/workaround/revert + 1–3 `src/` or config paths **and no matching learnings Relates/slug**: promote **Learning** (H2 + `when editing:` from Evidence path literals, max 3 — do not widen to `src/pages/**`), cap **3** per run. Then collapse that decision (`decision-lesson-dup:`): keep `Status: live` + `- Relates: see` only when the live approach still matters; drop Context / Decision / Why. Do not invent Insights from `log.md`. One existing learning does **not** skip other incident headings.
    - **Ghost docs** — memory links `docs/` or an ADR path that does not exist: drop the link (do not invent the tree).
    - **AGENTS docs gap** — a project-docs index exists and `AGENTS.md` does not link it: patch AGENTS (`references/docs-map.md`), then drop the duplicate from memory.
+   - **`double-injection:` / `delegation-canary:`** — remove the redundant delimited block in this run (confirm). Cursor/Copilot native keeps the block; drop the extra copy from `AGENTS.md` when that file is **not** a shared carrier. Delegator (`CLAUDE.md` / `GEMINI.md` with `@AGENTS.md`) drops its copy; `AGENTS.md` keeps it. Do not leave this as a follow-up edit.
+   - **`decisions.md` non-empty > 200** (lint _Soft budgets_; blank lines do not count) — Pass A slim even when no other finding ID fired. Count now; keep the row through Second Pass A.
 
    **Pass B — closed log / stale resume** (exclude current-session headings and current branch active-work from prune/Discard):
    - Stale `active-work/*.md` whose branch no longer exists.
+   - **`closed-placeholder-resume:`** — Task starts with `Closed`, or Next step is only delete/confirm-merged, **and** the file is not the current git branch. Offer delete even when the git branch still exists (archived resume).
+   - **`dup-progress-log:`** on the current branch file — Trim Progress to current facts + at most one `log.md` pointer (max 5 bullets).
+   - **`dup-validation:`** on the current branch file — Trim Validation to the closure command + expected result (max 5 bullets; at most one `log.md` pointer for historical reviews).
    - **Closed** session headings in `log.md` only (not current session; not the sole remaining heading). `log.md` is a **rolling window** of recent deltas, not an archive: closed headings whose outcomes are reconstructible from Git or already live in `index.md` / learnings are Discard or Trim candidates.
    - Same-day headings of the same `[type]` where a later heading supersedes an earlier one (false inventory left behind): merge into one heading (Trim the stale one) even on the current calendar day when the user confirms the older bullets are obsolete.
    - Empty **closed**-session headings (no bullets).
@@ -90,7 +96,10 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    - **Orphan Relates** — drop or retarget; do not leave a hop pointing at a discarded log heading.
    - **Defer** — preserve when unsure, waiting on external doc promotion (`pending-doc`), or when durable facts already live in learnings/index but the session heading is still current — **unless** lint/`pending-doc-met` shows the invalidate condition is already true — then prefer remove `pending-doc` / pointer / discard over indefinite defer.
 
-5. **Show the classification plan** to the user (table or grouped list). Group Pass A vs Pass B. Do not write yet. For any log Discard AskQuestion on a borderline same-day heading, recommend **Manter** by default. In the plan table, mark current-session log rows as **Retained** (reason: current session / founding day) — do not list them as Discard candidates. If Pass A findings exist, the table must include a row per ID (Reference / Learning / Defer+reason) — empty Pass A while those IDs exist is a failed consolidate.
+5. **Show the classification plan** to the user (table or grouped list). Group Pass A vs Pass B. Do not write yet.
+   - **Pass A defaults: Apply.** Recommend Reference / supersede / collapse / Learning for each finding ID. Defer only with one reason line that names missing evidence (path not on disk, no ADR tree, Duplicate rule hit). “Looks durable” is not a reason.
+   - **Pass B defaults:** current-session / founding / sole heading → **Retained**. Same-day borderline Discard → recommend **Retain**. **Prior-day** heading (date < today) → default **Trim** to heading + one outcome bullet when bullets are `source:` to spec/ADR/README, cite a git SHA, or replay Progress/diary; default **Discard** only when that outcome already lives in decisions/learnings **and** at least one other heading remains. Do not default Retain on prior-day diary.
+   In the plan table, mark current-session log rows as **Retained** (reason: current session / founding day) — do not list them as Discard candidates. If Pass A findings exist **or** `decisions.md` is non-empty > 200, the table must include a row per ID (and a slim row when over budget: Reference / collapse) — empty Pass A while those rows exist is a failed consolidate.
 
 6. **Apply in safe order** — confirm each diff (approve / skip / abort):
    1. Additions/promotions first: `decisions.md`, `learnings.md` / `learnings-*.md`, `current.md` (shared blockers only if still active), `index.md` (recall links and `when editing:` hints — not a docs catalog), `AGENTS.md` docs-map bullets when a project-docs index exists and AGENTS omits it.
@@ -98,7 +107,11 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    3. Propose removal of legacy path-only bullets, empty closed-session headings, and legacy _Touched files_ sections (Git available; evidence reconstructible).
    4. Propose deleting stale `active-work/<branch>.md` one-by-one, or with an explicit "delete all stale" approval. If `active-work/TEMPLATE.md` is still present, delete it (scaffold SoT is this skill's `references/active-work-template.md`).
    5. For leftover mirrors (user skipped `update` graph reshape): fold unique **non-docs** facts then delete; deleting a legacy file is sensitive and must be confirmed. Skip if the file is already gone. Do not dump docs links into `index.md`.
-   6. **Progress follow-up** — only if a **closed**-session log Discard/Trim was approved: offer to refresh active-work Progress so it does not point at removed log headings. Do not open this AskQuestion when no closed-session log removal was approved.
+   6. **Progress / Validation follow-up** — offer to Trim `dup-progress-log:` and `dup-validation:` on the current branch file, or refresh Progress so it does not point at removed log headings after an approved closed-session log Discard/Trim. Skip this AskQuestion only when none apply.
+   7. **Redundant block** — apply approved `double-injection:` / `delegation-canary:` deletes in this same invocation. Confirm the carrier diff. Do not defer to a later edit.
+
+   **Second Pass A.** Count **non-empty** lines in `decisions.md` (lint _Soft budgets_ — blank lines do not count) **even when step 6 had no approved corpus diffs**. If that count is still **> 200**, keep applying Pass A **in this invocation** (confirm each extra diff) until **non-empty ≤ 200** **or** every remaining live heading is pointer-only (heading + Status + optional Source / Relates / one Relevance line — no Context / Decision / Why). Collect remaining `memory-ghost-docs:`, `decision-stale-live:`, `decision-body-bloat:`, `decision-canonical-dup:`, `decision-docs-map:`, and any `Status: live` that still has Context / Decision / Why. Collapse those wiki bodies to pointer-only (default Apply). Defer a live wiki body only when it is the sole record of a write-floor **User constraint** (approach) with no Source and no Relates — then keep **one** Decision sentence, drop Context / Why / Consequences. Apply leftover `double-injection:` / `delegation-canary:` here if step 7 has not run.
+   **Done when:** the Report line `decisions.md non-empty N (budget 200)` has **N ≤ 200**, or every live heading is pointer-only. **Failed consolidate** (do not call the run done): N > 200 and any live heading still has Context / Decision / Why — keep applying in this invocation; do not offer a later pass.
 
 7. **Report.** Summarize separately:
    - **promoted** — decision or learning/pitfall bodies added;
@@ -109,12 +122,14 @@ When unsure whether a same-day heading is closed, **Retain** (default AskQuestio
    - **discarded** — transient / reconstructible / duplicated removed;
    - **retained** — kept as-is. **Always name current-session log headings** that the prune-exclusion guard kept (e.g. `retained: current-session founding log — ## [YYYY-MM-DD] [docs] …`) so the user can see the contract working — even when nothing else changed. If Pass A applied and Pass B retained, say both;
    - **deferred** — `pending-doc` or user skip;
-   - **external promotions suggested** — paths the user should update outside the skill.
+   - **block removed** — redundant agent-memory delimiters deleted (`double-injection:` / `delegation-canary:`);
+   - **budget** — required line: `decisions.md non-empty N (budget 200)` (same count as lint _Soft budgets_). N > 200 with any live Context / Decision / Why remaining is a **failed consolidate**;
+   - **external promotions suggested** — paths the user should update outside the skill (not wiring leftovers from this run).
 
 ## Notes
 
 - Consolidation should be a dedicated change (its own commit when practical).
 - Prefer linking over copying. Prefer discard of reconstructible path evidence over keeping duplicate lists — without emptying the session log.
 - If `git` is unavailable, do not discard path bullets as "reconstructible" — defer them.
-- Align with the lifecycle and gate in `instructions.md`.
+- Align with the lifecycle, gate, and _Cold session_ bar in `instructions.md`.
 - **Day-0 / founding session:** after bootstrap or first dogfood on the same calendar day, treat consolidate as **report-only for Pass B prune** (pending-doc deferrals, external promotions, uncommitted-scaffold advice). Do not set user expectations for Discard/Trim of founding headings — that waits for a closed session (next day or explicit stream-ended confirmation). Pass A still runs (docs-map / stale-live / incident-shaped).

@@ -26,9 +26,12 @@ skill_v=$(grep -E '^\s+version:\s*"' skills/agent-memory/SKILL.md | head -1 | se
 fallback=$(grep -E 'VERSION="\$\{VERSION:-' hooks/install-hooks.sh | sed -E 's/.*VERSION:-([^}]+)\}.*/\1/')
 [[ "$fallback" == "$version" ]] || fail "install-hooks fallback $fallback != $version"
 
+last_update=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+' skills/agent-memory/vendor/UPDATE.md | tail -1)
+last_update=${last_update#\#\# }
+[[ "$last_update" == "$version" ]] ||
+  fail "UPDATE.md last heading $last_update != package.json $version"
+
 if [[ "$prerelease" -eq 0 ]]; then
-  grep -Fq "## $version" skills/agent-memory/vendor/UPDATE.md ||
-    fail "UPDATE.md missing ## $version"
   grep -Fq "## [$version]" CHANGELOG.md ||
     fail "CHANGELOG.md missing ## [$version]"
 else
@@ -54,6 +57,24 @@ for f in \
       fail "$f pins do not include $version"
   fi
 done
+
+# Shared hook scripts: vendor glob, installer copy list, and lint need= must match.
+shared_scripts=$(printf '%s\n' \
+  agent-memory-common.sh \
+  agent-memory-consume-evidence.sh \
+  agent-memory-print-evidence.sh \
+  agent-memory-session.sh \
+  agent-memory-sync.sh)
+vendor_scripts=$(cd hooks/agent-memory-hooks && ls -1 agent-memory-*.sh | sort)
+[[ "$vendor_scripts" == "$shared_scripts" ]] ||
+  fail "hooks/agent-memory-hooks/*.sh != installer shared list"$'\n'"vendor:"$'\n'"$vendor_scripts"
+need_line=$(grep -E '^need=' skills/agent-memory/scripts/lint-structural-from-root.sh)
+while IFS= read -r f; do
+  grep -q "$f" hooks/install-hooks.sh || fail "install-hooks.sh missing $f"
+  grep -q "$f" src/constants.ts || fail "src/constants.ts SHARED_HOOK_SCRIPTS missing $f"
+  printf '%s' "$need_line" | grep -q "$f" ||
+    fail "lint-structural-from-root.sh need= missing $f"
+done <<<"$shared_scripts"
 
 # No stray older pin that is not historical changelog/update text
 if grep -RnE 'blob/0\.0\.14|--branch 0\.0\.14|agent-memory#0\.0\.14' \

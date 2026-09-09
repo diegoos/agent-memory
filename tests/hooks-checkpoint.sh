@@ -23,11 +23,19 @@ git init -q
 git config user.email test@example.com
 git config user.name test
 
+# Copy vendor scripts (CWD = no install-site). Installer layout is
+# tests/cli-install.sh + tests/migration-smoke.sh.
+copy_am_scripts() {
+  local dest=$1
+  mkdir -p "$dest"
+  cp "$hook_dir"/agent-memory-*.sh "$dest/"
+  chmod +x "$dest"/agent-memory-*.sh
+}
+
 mkdir -p .agents
 cp -R "$skeleton" .agents/memory
 mkdir -p .agents/memory/active-work
-cp "$hook_dir"/agent-memory-*.sh .
-chmod +x agent-memory-*.sh
+copy_am_scripts .
 
 # --- parse_checkpoint_sha (SoT for Status; pre-commit keeps /bin/sh copy) ---
 # shellcheck source=../hooks/agent-memory-hooks/agent-memory-common.sh
@@ -40,6 +48,28 @@ parse_checkpoint_sha 'Checkpoint: 2026-08-02 @ abcdef1 see TEMPLATE' >/dev/null 
   fail "parse_checkpoint_sha should accept trailing prose (sha still extracted)"
 ! parse_checkpoint_sha 'Checkpoint: not-a-date @ zz' >/dev/null ||
   fail "parse_checkpoint_sha should reject non-hex"
+
+amc_hint_glob_rejected 'src/**' || fail "src/** must be rejected"
+amc_hint_glob_rejected '**/*.ts' || fail "**/*.ts must be rejected as exact denylist"
+amc_hint_glob_rejected 'src/pages/**' || fail "src/pages/** must be rejected"
+amc_hint_glob_rejected 'src/pages/**/index.astro' || fail "src/pages/**/index.astro must be rejected"
+amc_hint_glob_rejected 'src/pages/blog/**' || fail "src/pages/blog/** must be rejected"
+amc_hint_glob_rejected 'src/modules/**' || fail "src/modules/** must be rejected"
+! amc_hint_glob_rejected 'src/pages/[slug]/index.astro' ||
+  fail "evidence path literal under pages must not be rejected"
+! amc_path_matches_hint_glob 'src/pages/foo/index.astro' 'src/pages/**/index.astro' ||
+  fail "covering src/pages/**/index.astro must not match (rejected)"
+amc_hint_glob_rejected './hooks/**' || fail "normalized hooks/** must be rejected"
+! amc_hint_glob_rejected 'src/lib/dates.ts' ||
+  fail "evidence path literal must not be rejected"
+amc_path_matches_hint_glob 'src/lib/dates.ts' 'src/lib/dates.ts' ||
+  fail "exact path must match"
+amc_path_matches_hint_glob 'src/foo.ts' 'src/*.ts' ||
+  fail "* should match one path segment"
+! amc_path_matches_hint_glob 'src/foo/bar.ts' 'src/*.ts' ||
+  fail "* must not match across /"
+! amc_path_matches_hint_glob 'src/pages/index.astro' 'src/**' ||
+  fail "overbroad src/** must not match (rejected)"
 
 # Snapshot Markdown before hooks
 md_checksum() {
@@ -94,8 +124,8 @@ printf '{"session_id":"s1","cwd":"%s"}\n' "$TMP" |
 
 grep -q 'session_touched_files=.*app.txt' .agents/memory/.hook-sync-state ||
   fail "full checkpoint missing app.txt in state"
-grep -q 'other.txt' .agents/memory/.hook-sync-state ||
-  fail "full checkpoint missing other.txt in state"
+! grep -q 'other.txt' .agents/memory/.hook-sync-state ||
+  fail "full checkpoint must not walk untracked other.txt"
 grep -q 'last_processed_head=' .agents/memory/.hook-sync-state ||
   fail "missing last_processed_head"
 grep -q 'Resume may be rotten' "$TMP/stop.err" ||
@@ -754,9 +784,7 @@ grep -qi 'ignoring stdin cwd' "$TMP/cross-cwd.err" ||
   fail "stdin cwd must not write .hook-sync-state in a foreign project"
 
 # --- security: install-site anchor ignores mismatched stdin cwd ---
-mkdir -p .cursor/hooks
-cp ./agent-memory-*.sh .cursor/hooks/
-chmod +x .cursor/hooks/agent-memory-*.sh
+copy_am_scripts .cursor/hooks
 printf '%s\n' \
   'session_binding=s-anchor' \
   'session_touched_files=anchor-keep.txt' \
@@ -785,13 +813,26 @@ grep -q 'session_binding=s-env-anchor' .agents/memory/.hook-sync-state ||
 grep -qi 'preferring install-site' "$TMP/env-anchor.err" ||
   fail "expected install-site preference warning"
 
+# --- security: vendor hooks/agent-memory-hooks is install-site (stale PROJECT_DIR) ---
+copy_am_scripts "$TMP/hooks/agent-memory-hooks"
+printf '%s\n' 'session_binding=s-vendor-keep' >.agents/memory/.hook-sync-state
+printf '{"session_id":"s-vendor-anchor","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$VICTIM" \
+  AGENT_MEMORY_EVENT=Stop AGENT_MEMORY_SESSION_ID=s-vendor-anchor \
+  "$TMP/hooks/agent-memory-hooks/agent-memory-sync.sh" >/dev/null 2>"$TMP/vendor-anchor.err" || true
+grep -q 'session_binding=s-vendor-anchor' .agents/memory/.hook-sync-state ||
+  fail "vendor agent-memory-hooks path must win over stale PROJECT_DIR"
+! test -f "$VICTIM/.agents/memory/.hook-sync-state" ||
+  fail "vendor install-site must not write foreign .hook-sync-state"
+grep -qi 'preferring install-site' "$TMP/vendor-anchor.err" ||
+  fail "expected vendor-path install-site preference warning"
+
 # --- security: symlinked hooks dir must not retarget install-site to victim ---
 ATTACK=$(mktemp -d)
 trap 'rm -rf "$TMP" "$VICTIM" "$ATTACK" ${ESCAPE:+"$ESCAPE"} ${ESCAPE2:+"$ESCAPE2"}' EXIT
-mkdir -p "$ATTACK/.agents/memory" "$ATTACK/.cursor" "$VICTIM/.cursor/hooks"
+mkdir -p "$ATTACK/.agents/memory" "$ATTACK/.cursor"
 # Victim already has memory from earlier; ensure hooks scripts exist there
-cp ./agent-memory-*.sh "$VICTIM/.cursor/hooks/"
-chmod +x "$VICTIM/.cursor/hooks"/agent-memory-*.sh
+copy_am_scripts "$VICTIM/.cursor/hooks"
 printf '%s\n' 'session_binding=victim-keep' >"$VICTIM/.agents/memory/.hook-sync-state"
 ln -s "$VICTIM/.cursor/hooks" "$ATTACK/.cursor/hooks"
 # Run via victim's real script path (OpenCode-style realpath $0) with attack as PROJECT_DIR
@@ -875,9 +916,8 @@ grep -qi 'refusing install-site outside workspace' "$TMP/wrapper-hooks.err" ||
 # --- security: both projects have hooks + stale PROJECT_DIR → fail closed ---
 OTHER=$(mktemp -d)
 trap 'rm -rf "$TMP" "$VICTIM" "$ATTACK" "$ATTACK2" "$ATTACK3" "$ATTACK4" "$OTHER" ${ESCAPE:+"$ESCAPE"} ${ESCAPE2:+"$ESCAPE2"}' EXIT
-mkdir -p "$OTHER/.cursor/hooks" "$OTHER/.agents/memory"
-cp ./agent-memory-*.sh "$OTHER/.cursor/hooks/"
-chmod +x "$OTHER/.cursor/hooks"/agent-memory-*.sh
+mkdir -p "$OTHER/.agents/memory"
+copy_am_scripts "$OTHER/.cursor/hooks"
 printf '%s\n' 'session_binding=other-keep' >"$OTHER/.agents/memory/.hook-sync-state"
 printf '%s\n' 'session_binding=tmp-keep' >.agents/memory/.hook-sync-state
 # Run install-site (TMP) hooks with PROJECT_DIR=OTHER (both have real hooks).
@@ -1024,6 +1064,20 @@ printf '{"session_id":"root-good","outer":{"session_id":"evil"},"cwd":"%s", bad 
 grep -q 'session_binding=root-good' .agents/memory/.hook-sync-state ||
   fail "sed fallback must bind root session_id, not nested trailing evil"
 
+# --- security: first top-level session_id wins over a later substring ---
+printf '%s\n' \
+  'session_binding=s-first-keep' \
+  'session_touched_files=first-keep.txt' \
+  >.agents/memory/.hook-sync-state
+printf '{"session_id":"root-first","note":"session_id\":\"evil-id\"","cwd":"%s", bad }\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=Stop \
+  ./agent-memory-sync.sh >/dev/null 2>"$TMP/first-sid.err" || true
+grep -q 'session_binding=root-first' .agents/memory/.hook-sync-state ||
+  fail "sed fallback must bind first session_id, not last substring"
+! grep -q 'session_binding=evil-id' .agents/memory/.hook-sync-state ||
+  fail "sed fallback must not bind substring session_id in a sibling string"
+
 # --- security: inherited _AMC_HAVE_JQ=0 must not sticky-downgrade past real jq ---
 if command -v jq >/dev/null 2>&1; then
   printf '%s\n' \
@@ -1164,7 +1218,7 @@ md_snap=$(md_checksum)
 cp "$repo_root/hooks/git/pre-commit" .git/hooks/pre-commit
 cp "$repo_root/hooks/git/post-commit" .git/hooks/post-commit
 chmod +x .git/hooks/pre-commit .git/hooks/post-commit
-cp ./agent-memory-*.sh .git/hooks/
+copy_am_scripts .git/hooks
 printf 'remind\n' >remind.txt
 git add remind.txt
 out=$(git commit -q -m remind 2>&1 || true)

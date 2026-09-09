@@ -25,6 +25,14 @@ export const HARNESS_HOOKS_DIR: Record<Harness, string> = {
   gemini: ".gemini/hooks",
 };
 
+export const SHARED_HOOK_SCRIPTS = [
+  "agent-memory-common.sh",
+  "agent-memory-consume-evidence.sh",
+  "agent-memory-print-evidence.sh",
+  "agent-memory-session.sh",
+  "agent-memory-sync.sh",
+] as const;
+
 /**
  * Env keys forwarded to install-hooks.sh (keep in sync with OpenCode
  * ENV_ALLOWLIST_EXACT in hooks/opencode/agent-memory.ts).

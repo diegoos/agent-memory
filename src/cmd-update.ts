@@ -4,6 +4,7 @@ import { type Harness } from "./constants";
 import { cliInvocation, isSourceCheckout, VERSION } from "./context";
 import {
   detectInstalledHarnesses,
+  hooksInstallComplete,
   nextSkillCommand,
   readInstalledHooksVersion,
   readInstalledSkillVersion,
@@ -31,7 +32,7 @@ type SkillPlan =
 
 type HookPlan = {
   harness: Harness;
-  kind: "upgrade" | "refresh" | "skip";
+  kind: "upgrade" | "refresh" | "skip" | "downgrade";
   stamp: string | null;
 };
 
@@ -56,7 +57,11 @@ function planHooks(
   const plans: HookPlan[] = [];
   for (const h of harnesses) {
     const stamp = readInstalledHooksVersion(h);
-    if (!stamp || compareSemver(pkg, stamp) > 0) {
+    if (stamp && compareSemver(pkg, stamp) < 0) {
+      plans.push({ harness: h, kind: "downgrade", stamp });
+      continue;
+    }
+    if (!stamp || !hooksInstallComplete(h) || compareSemver(pkg, stamp) > 0) {
       plans.push({ harness: h, kind: "upgrade", stamp });
       continue;
     }
@@ -111,6 +116,12 @@ function printHookPlans(plans: HookPlan[], noneInstalled: boolean): void {
     return;
   }
   for (const p of plans) {
+    if (p.kind === "downgrade") {
+      console.log(
+        `  ${c.yellow("!")} hooks ${p.harness} (${p.stamp}) is newer than package (${VERSION}); will not downgrade`,
+      );
+      continue;
+    }
     if (p.kind === "skip") {
       printStep(`hooks ${p.harness}: ${p.stamp} ${c.dim("(current)")}`);
       continue;
@@ -249,8 +260,11 @@ export async function cmdUpdate(args: string[]): Promise<void> {
   const hooksToRefresh: Harness[] = [];
   const hooksSkipped: Harness[] = [];
   for (const p of hookPlans) {
-    if (p.kind === "skip") hooksSkipped.push(p.harness);
-    else hooksToRefresh.push(p.harness);
+    if (p.kind === "upgrade" || p.kind === "refresh") {
+      hooksToRefresh.push(p.harness);
+    } else {
+      hooksSkipped.push(p.harness);
+    }
   }
   const needSkill = skillNeedsInstall(skillPlan);
 

@@ -21,6 +21,10 @@ trap 'rm -rf "$TMP"' EXIT
 AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" install skill >/dev/null
 [[ -f "$TMP/.agents/skills/agent-memory/SKILL.md" ]] || fail "skill not installed"
 [[ -d "$TMP/.agents/skills/agent-memory/vendor/memory" ]] || fail "vendor missing"
+[[ -f "$TMP/.agents/skills/agent-memory/scripts/lint-structural-from-memory.sh" ]] ||
+  fail "lint-structural-from-memory.sh missing from installed skill"
+[[ -f "$TMP/.agents/skills/agent-memory/scripts/lint-structural-from-root.sh" ]] ||
+  fail "lint-structural-from-root.sh missing from installed skill"
 
 # Plant an obsolete file then reinstall — atomic replace must remove it
 echo obsolete >"$TMP/.agents/skills/agent-memory/OBSOLETE.md"
@@ -28,14 +32,40 @@ AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" install skill >/dev/null
 [[ ! -e "$TMP/.agents/skills/agent-memory/OBSOLETE.md" ]] ||
   fail "atomic skill install left obsolete file"
 
+# --- skill install through a symlink project root (parity with install-hooks.sh) ---
+mkdir -p "$TMP/phys-root"
+ln -s "$TMP/phys-root" "$TMP/via-link"
+AGENT_MEMORY_PROJECT_DIR="$TMP/via-link" node "$cli" install skill >/dev/null
+[[ -f "$TMP/phys-root/.agents/skills/agent-memory/SKILL.md" ]] ||
+  fail "skill install through symlink root should land on the real path"
+
 # --- install hooks cursor ---
 AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" install hooks cursor >/dev/null
-[[ -x "$TMP/.cursor/hooks/agent-memory-sync.sh" ]] || fail "cursor sync missing"
-[[ -x "$TMP/.cursor/hooks/agent-memory-print-evidence.sh" ]] ||
-  fail "cursor print-evidence missing"
+for f in \
+  agent-memory-common.sh \
+  agent-memory-sync.sh \
+  agent-memory-session.sh \
+  agent-memory-consume-evidence.sh \
+  agent-memory-print-evidence.sh; do
+  [[ -x "$TMP/.cursor/hooks/$f" ]] || fail "cursor missing $f"
+done
 [[ -f "$TMP/.cursor/hooks.json" ]] || fail "cursor hooks.json missing"
 [[ -f "$TMP/.cursor/hooks/.version" ]] || fail "hooks version stamp missing"
 ! grep -q postToolUse "$TMP/.cursor/hooks.json" || fail "installed cursor config has postToolUse"
+
+# --- incomplete hook scripts → update reinstalls ---
+rm -f "$TMP/.cursor/hooks/agent-memory-sync.sh"
+AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" update --yes >/dev/null
+[[ -x "$TMP/.cursor/hooks/agent-memory-sync.sh" ]] ||
+  fail "update did not restore missing hook script"
+
+# --- refuse hooks downgrade even with --force ---
+printf '9.9.9\n' >"$TMP/.cursor/hooks/.version"
+hooks_down=$(AGENT_MEMORY_PROJECT_DIR="$TMP" node "$cli" update --force --yes 2>&1 || true)
+echo "$hooks_down" | grep -qi 'will not downgrade\|not downgrade\|newer' ||
+  fail "expected hooks no-downgrade message: $hooks_down"
+grep -qx '9.9.9' "$TMP/.cursor/hooks/.version" ||
+  fail "hooks stamp was downgraded unexpectedly"
 
 # --- update --yes refreshes from local checkout even when SemVer matches ---
 # (source tree has src/cli.ts; published packs skip same-version refresh unless --force)
@@ -125,5 +155,39 @@ if PATH="$TMP/empty-bin" AGENT_MEMORY_PROJECT_DIR="$TMP" \
 fi
 grep -qi 'realpath or python3' "$TMP/no-resolve.err" ||
   fail "expected fail-closed message: $(cat "$TMP/no-resolve.err")"
+
+# --- CLI-installed Cursor hooks run (not a vendor glob copy) ---
+skeleton="$repo_root/skills/agent-memory/vendor/memory"
+mkdir -p "$TMP/.agents"
+[[ -d "$TMP/.agents/memory" ]] || cp -R "$skeleton" "$TMP/.agents/memory"
+git -C "$TMP" init -q
+git -C "$TMP" config user.email test@example.com
+git -C "$TMP" config user.name test
+md_cli() {
+  find "$TMP/.agents/memory" -name '*.md' | sort | while read -r f; do
+    cksum "$f"
+  done | cksum
+}
+md_before=$(md_cli)
+printf '{"session_id":"cli-run","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  "$TMP/.cursor/hooks/agent-memory-session.sh" >"$TMP/cli-session.json"
+grep -q 'Status:' "$TMP/cli-session.json" ||
+  fail "installed session stdout missing Status:"
+grep -qi 'untrusted recall' "$TMP/cli-session.json" ||
+  fail "installed session stdout missing untrusted recall"
+[[ -f "$TMP/.agents/memory/.hook-sync-state" ]] ||
+  fail "installed session did not create .hook-sync-state"
+"$TMP/.cursor/hooks/agent-memory-print-evidence.sh" >"$TMP/cli-print.out"
+grep -q '^state=present$' "$TMP/cli-print.out" ||
+  fail "installed print-evidence should report state=present"
+! grep -q 'session_touched_files' "$TMP/cli-print.out" ||
+  fail "installed print-evidence must not print session_touched_files"
+printf '{"session_id":"cli-run","cwd":"%s"}\n' "$TMP" |
+  AGENT_MEMORY_HOST=cursor AGENT_MEMORY_PROJECT_DIR="$TMP" \
+  AGENT_MEMORY_EVENT=afterAgentResponse AGENT_MEMORY_SESSION_ID=cli-run \
+  "$TMP/.cursor/hooks/agent-memory-sync.sh" >/dev/null
+[[ "$(md_cli)" == "$md_before" ]] ||
+  fail "installed hooks must not modify Markdown"
 
 printf 'ok - cli install smoke\n'

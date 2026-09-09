@@ -8,6 +8,8 @@ instructions="$repo_root/skills/agent-memory/vendor/memory/instructions.md"
 bootstrap="$repo_root/skills/agent-memory/references/bootstrap.md"
 lint="$repo_root/skills/agent-memory/references/lint.md"
 lint_structural="$repo_root/skills/agent-memory/references/lint-structural.md"
+lint_from_memory="$repo_root/skills/agent-memory/scripts/lint-structural-from-memory.sh"
+lint_from_root="$repo_root/skills/agent-memory/scripts/lint-structural-from-root.sh"
 sync="$repo_root/skills/agent-memory/references/sync.md"
 consolidate="$repo_root/skills/agent-memory/references/consolidate.md"
 learn="$repo_root/skills/agent-memory/references/learn.md"
@@ -149,16 +151,38 @@ assert_contains "$instructions" '**One Task**' \
   "instructions require one live Task in active-work"
 assert_contains "$agent_block" 'not a catalog' \
   "always-on block keeps index a map not a catalog"
-assert_contains "$agent_block" '**Write floor**' \
-  "always-on block names the write floor"
+assert_contains "$agent_block" 'first yes wins' \
+  "always-on write floor names winner order"
+assert_contains "$instructions" '**Winner**' \
+  "instructions name a single write-floor winner list"
 assert_contains "$agent_block" 'Resume rotten' \
   "always-on write floor includes resume rotten"
 assert_contains "$agent_block" 'Status `load:`' \
   "always-on follows Status load with one Read"
 assert_contains "$agent_block" '**Status**' \
   "always-on points at session Status"
-assert_contains "$instructions" '## Write floor' \
-  "instructions define write floor as SoT"
+assert_contains "$instructions" '## Cold session' \
+  "instructions define cold-session quality bar"
+assert_contains "$instructions" 'next concrete **product** step' \
+  "cold session names the four resume questions"
+assert_contains "$instructions" '**done signal**' \
+  "Validation is the done signal for a cold session"
+assert_contains "$instructions" 'assumption that flipped' \
+  "user constraint includes a flipped lasting assumption"
+assert_contains "$instructions" 'retrospective' \
+  "primary write is this turn's retrospective"
+assert_contains "$agent_block" '_Cold session_' \
+  "always-on block points at Cold session for write quality"
+assert_contains "$agent_block" 'flipped assumption' \
+  "always-on write floor names flipped assumption as user constraint"
+assert_contains "$agent_block" '**done signal**' \
+  "always-on block names the done signal on write"
+assert_contains "$lint" 'instructions.md` → _Cold session_' \
+  "lint quality pass checks the method Cold session bar"
+assert_contains "$bootstrap" 'references/learn.md' \
+  "bootstrap H2 format SoT is learn.md"
+assert_contains "$sync" 'cold session' \
+  "sync Report is done when a cold session could resume"
 assert_contains "$instructions" 'Resume rotten' \
   "write floor includes resume rotten"
 assert_contains "$instructions" 'User constraint' \
@@ -167,13 +191,13 @@ assert_contains "$instructions" 'Reusable lesson' \
   "write floor includes reusable lesson"
 assert_contains "$instructions" '**Fail closed** on Reusable lesson' \
   "reusable lesson fails closed without incident or paths"
-assert_contains "$instructions" 'write learnings only' \
+assert_contains "$instructions" 'Else Reusable lesson → learnings' \
   "reusable lesson tie-break writes learnings only"
 assert_contains "$instructions" 'Path-scoped capture without a usable' \
   "path-scoped learning without index hint is a failed write"
 assert_contains "$instructions" 'never dual-write learnings with `active-work`' \
   "learnings never dual-write with active-work or log"
-assert_contains "$instructions" 'write `decisions.md` only' \
+assert_contains "$instructions" 'User constraint → `decisions.md`' \
   "user constraint tie-break writes decisions only"
 assert_contains "$instructions" '**Exception (approach):**' \
   "live user decision beats code for approach"
@@ -209,7 +233,7 @@ assert_absent "$aw_template" '## Hold' \
   "TEMPLATE does not pre-create Hold"
 assert_contains "$lint" 'hold-overflow:' \
   "lint flags Hold over 3 bullets"
-assert_contains "$lint_structural" "'## Hold'" \
+assert_contains "$lint_from_memory" "'## Hold'" \
   "lint treats Hold as optional empty-section heading"
 assert_contains "$agent_block" '_Recall hop_' \
   "always-on block points at Recall hop for durable why"
@@ -260,7 +284,7 @@ assert_contains "$instructions" 'never dual-write' "no dual-write on stop"
 assert_contains "$instructions" 'Progress is optional' "Progress optional in method"
 assert_contains "$instructions" 'Authority: working rules' "authority map folded into Precedence"
 assert_contains "$instructions" '## Retention gate and lifecycle' "retention gate present"
-assert_contains "$instructions" 'Reusable in another session?' "gate asks reusability"
+assert_contains "$instructions" 'Reusable **downstream**?' "gate asks reusability"
 assert_contains "$instructions" 'link + delta/relevance' "pointer-over-copy gate"
 assert_contains "$instructions" 'Minimum pointer line:' "minimum pointer format"
 assert_contains "$instructions" '### Harness parity — memory contract' "harness parity SoT heading"
@@ -286,6 +310,8 @@ assert_contains "$instructions" '**Catch-up (`/agent-memory sync`):**' \
 assert_contains "$instructions" 'without invoking the skill command' \
   "sync may be followed without skill invoke"
 assert_contains "$instructions" '## Memory lint boundaries' "lint boundaries summary"
+assert_contains "$instructions" '`/agent-memory update instructions`' \
+  "instructions names update instructions for a missing AGENTS.md block"
 assert_contains "$instructions" 'when editing:' "scope hint convention"
 assert_contains "$instructions" '## When starting or resuming work' "task-organized resume section"
 assert_contains "$instructions" 'strip section blurbs' \
@@ -305,8 +331,14 @@ assert_contains "$learn" '- Insight: reusable pattern in one or two sentences.' 
   "learning Insight field in learn reference"
 assert_contains "$learn" 'learnings-<topic>.md' "topic split convention in learn reference"
 assert_contains "$learn" '**Duplicate rule**' "duplicate rule SoT in learn reference"
+assert_contains "$learn" 'do not append an unlinked opposite' \
+  "duplicate rule opposite Insight gets contradicts on the new H2"
+assert_contains "$instructions" 'opposite Insight in the target file' \
+  "in-turn learnings contradict without an unlinked pair"
 assert_contains "$learn" '**Legacy one-liner**' "legacy one-liner SoT in learn reference"
 # Overbroad when-editing denylist SoT is lint (not always-load instructions)
+assert_contains "$lint" 'overbroad-hint:' "lint names overbroad-hint finding"
+assert_contains "$lint_from_memory" 'overbroad-hint:' "lint-structural emits overbroad-hint"
 assert_contains "$lint" 'companions do not redeem' "lint overbroad rejects companions"
 assert_contains "$lint" '?*/*' "lint overbroad includes ?*/*"
 assert_contains "$lint" 'to fixpoint' "lint overbroad normalize runs to fixpoint"
@@ -324,6 +356,11 @@ assert_contains "$lint" '*/**' "lint overbroad denylist includes */** equivalent
 assert_contains "$lint" '**/*.ts' "lint overbroad denylist includes **/*.ts"
 assert_contains "$lint" '**/**/*.ts' "lint overbroad denylist includes **/**/*.ts"
 assert_contains "$lint" 'src/**/*' "lint overbroad denylist includes src/**/*"
+assert_contains "$lint" 'src/pages/**' "lint overbroad denylist includes src/pages/**"
+assert_contains "$lint" 'src/pages/**/index.astro' \
+  "lint overbroad covering includes src/pages/**/index.astro"
+assert_contains "$lint" 'src/pages/blog/**' \
+  "lint overbroad covering includes src/pages/blog/**"
 assert_contains "$lint" '*/*' "lint overbroad denylist includes */*"
 assert_contains "$lint" '**/*/*' "lint overbroad denylist includes **/*/*"
 assert_contains "$lint" '*/*/*' "lint overbroad denylist includes */*/*"
@@ -364,6 +401,22 @@ assert_contains "$update" '**Hook status.**' \
   "update classifies hook stamps before printing installer"
 assert_contains "$update" '/agent-memory lint' \
   "update report offers lint after memory migration"
+assert_contains "$update" 'metadata.version' \
+  "update stamps skill metadata.version not a newer UPDATE heading"
+assert_contains "$update" 'do not stamp `.version` downward' \
+  "update does not downgrade .version when installed is later SemVer"
+assert_contains "$update" 'will not run on this tree' \
+  "update report names that stable-core migrations skip when stamp is ahead"
+assert_contains "$update" 'always-on (gitignore, graph reshape, instruction blocks) still run' \
+  "update report names always-on work when stamp is ahead"
+assert_contains "$update" 'overbroad-hint' \
+  "update report says corpus overbroad-hint waits for consolidate"
+assert_contains "$update" 'memory-ghost-docs' \
+  "update report says memory-ghost-docs waits for consolidate Pass A"
+assert_contains "$update" 'decisions.md non-empty N (budget 200)' \
+  "update report names consolidate non-empty budget"
+assert_contains "$init" 'metadata.version' \
+  "init .version uses skill metadata.version"
 install_hooks="$repo_root/skills/agent-memory/references/install-hooks.md"
 assert_contains "$install_hooks" 'Stamp vs skill' \
   "install-hooks documents stamp check for update"
@@ -371,8 +424,20 @@ assert_contains "$install_hooks" 'installer skip' \
   "update skip line when hook stamp matches skill"
 assert_contains "$install_hooks" 'hooks <harness> current' \
   "install-hooks current report line"
-assert_contains "$install_hooks" '`update` only' \
-  "stamp check is update-only not init"
+assert_contains "$install_hooks" 'do not print an installer that would downgrade' \
+  "install-hooks skip when stamp SemVer is later than the skill"
+assert_contains "$update" '`/agent-memory update instructions`' \
+  "update missing-block skip points at update instructions"
+assert_contains "$init" '## AGENTS.md block' \
+  "init defines AGENTS.md block token path"
+assert_contains "$init" 'init agents.md' \
+  "init accepts agents.md token"
+assert_contains "$init" 'init rules' \
+  "init accepts rules token"
+assert_contains "$init" '**Harness token**' \
+  "init with harness token re-wires carrier when memory exists"
+assert_contains "$update" 'update rules' \
+  "update accepts rules token"
 update_graph="$repo_root/skills/agent-memory/references/update-graph.md"
 assert_contains "$update_graph" 'Pointer-only file' \
   "graph reshape defines pointer-only"
@@ -457,8 +522,6 @@ assert_contains "$lint" '## Next step' "lint checks Next step"
 assert_contains "$lint" '## Validation' "lint checks Validation"
 assert_contains "$lint" 'empty-optional-section:' \
   "lint warns on empty optional active-work sections"
-assert_contains "$lint" 'hold-overflow:' \
-  "lint names hold-overflow finding"
 assert_contains "$lint" 'Required headings for resume (agent-owned) — core only' \
   "lint requires core resume headings only"
 assert_contains "$lint" 'same-day-dup-log:' \
@@ -478,28 +541,48 @@ assert_contains "$lint" 'decision-docs-map:' \
 assert_contains "$lint" 'decision-stale-live:' \
   "lint flags live status with superseded-by prose"
 assert_contains "$lint" 'incident-unpromoted:' \
-  "lint flags incident-shaped decisions without learnings"
+  "lint flags incident-shaped decisions without matching learnings"
+assert_contains "$lint" 'decision-lesson-dup:' \
+  "lint flags live decision body after learnings Relates"
+assert_contains "$lint" 'closed-placeholder-resume:' \
+  "lint flags Closed Task active-work placeholders"
+assert_contains "$instructions" 'Identity is the approach noun' \
+  "method defines identity as approach noun not heading"
+assert_contains "$instructions" 'max **5** bullets (historical reviews belong in `log.md`)' \
+  "instructions cap Validation at 5 bullets"
 assert_contains "$lint" 'decision-hidden:' \
   "lint flags decisions index line missing when editing"
 assert_contains "$lint" 'plus **no** `when editing:` anywhere on `index.md`' \
   "lint quality-unanswerable when open work has no hints"
-assert_contains "$lint_structural" 'decision-canonical-dup:' \
+assert_contains "$lint_from_memory" 'decision-canonical-dup:' \
   "lint-structural emits decision-canonical-dup"
-assert_contains "$lint_structural" 'decision-stale-live:' \
+assert_contains "$lint_from_memory" 'decision-stale-live:' \
   "lint-structural emits decision-stale-live"
-assert_contains "$lint_structural" 'incident-unpromoted:' \
-  "lint-structural emits incident-unpromoted"
-assert_contains "$lint_structural" 'decision-hidden:' \
+assert_contains "$lint_from_memory" 'closed-placeholder-resume:' \
+  "lint-structural emits closed-placeholder-resume"
+assert_contains "$lint_from_memory" 'dup-progress-log:' \
+  "lint-structural emits dup-progress-log on Progress > 5"
+assert_contains "$lint_from_memory" 'dup-validation:' \
+  "lint-structural emits dup-validation on Validation > 5"
+assert_contains "$lint" '`--fix` refresh Checkpoint' \
+  "lint --fix may refresh stale-resume Checkpoint"
+assert_contains "$lint" '`--fix` trim Progress' \
+  "lint --fix may trim dup-progress-log"
+assert_contains "$lint" '`--fix` trim Validation' \
+  "lint --fix may trim dup-validation"
+assert_contains "$lint_from_memory" 'decision-hidden:' \
   "lint-structural emits decision-hidden"
-assert_contains "$lint_structural" 'decision-docs-map:' \
+assert_contains "$lint_from_root" 'decision-docs-map:' \
   "lint-structural emits decision-docs-map"
 assert_contains "$lint" 'memory-ghost-docs:' \
   "lint flags memory links to missing docs/ADR"
 assert_contains "$lint" 'agents-docs-gap:' \
   "lint flags docs on disk omitted from AGENTS.md"
-assert_contains "$lint" 're-run `/agent-memory consolidate` until that band is empty' \
-  "lint tells the user to re-run consolidate"
-assert_contains "$lint_structural" 'if (n > 3)' \
+assert_contains "$lint" 'one invocation; Report `decisions.md non-empty N (budget 200)`' \
+  "lint points consolidate at one-run non-empty budget"
+assert_contains "$lint" 'Re-run only if Pass A finding IDs remain' \
+  "lint does not treat a later consolidate as the slim plan"
+assert_contains "$lint_from_memory" 'if (n > 3)' \
   "index-catalog cap is 3"
 assert_contains "$lint" 'empty-log:' "lint warns when log has no session headings"
 assert_contains "$lint" 'empty-log-after-scaffold:' \
@@ -509,29 +592,31 @@ assert_contains "$lint" 'Soft budgets (warnings only)' "soft budgets live in lin
 assert_contains "$lint" 'stale-resume:' "lint checks checkpoint freshness vs HEAD"
 assert_contains "$lint" 'template-in-memory:' \
   "lint flags leftover TEMPLATE.md in project memory"
-assert_contains "$lint_structural" 'branch=$(printf '\''%s'\'' "$branch" | tr -c' \
+assert_contains "$lint_from_root" 'branch=$(printf '\''%s'\'' "$branch" | tr -c' \
   "lint sanitizes branch without piping git newline into tr"
-assert_contains "$lint_structural" 'rev-parse --verify' \
+assert_contains "$lint_from_root" 'rev-parse --verify' \
   "lint resolves Checkpoint SHA with rev-parse --verify"
 assert_absent "$lint" 'rev-parse --end-of-options' \
   "lint must not use rev-parse --end-of-options (Git 2.55)"
-assert_absent "$lint_structural" 'rev-parse --end-of-options' \
-  "lint structural must not use rev-parse --end-of-options (Git 2.55)"
+assert_absent "$lint_from_memory" 'rev-parse --end-of-options' \
+  "lint memory script must not use rev-parse --end-of-options (Git 2.55)"
+assert_absent "$lint_from_root" 'rev-parse --end-of-options' \
+  "lint root script must not use rev-parse --end-of-options (Git 2.55)"
 assert_contains "$lint" 'checkpoint-backticks:' \
   "lint warns on backtick Checkpoint form"
 assert_contains "$lint" 'checkpoint-prose:' \
   "lint warns on Checkpoint trailing TEMPLATE prose"
 assert_contains "$lint" 'stale-next-step:' \
   "lint warns when Next step cites /agent-memory"
-assert_contains "$lint_structural" 'in_ns && /^-/ && /\/agent-memory' \
+assert_contains "$lint_from_memory" 'in_ns && /^-/ && /\/agent-memory' \
   "lint stale-next-step matches action bullets only"
 assert_contains "$lint" 'dup-progress-log' \
   "lint warns when Progress replays log"
 assert_contains "$lint" 'skills/agent-memory/vendor/memory/' \
   "lint skips dogfood instructions↔vendor dup-exact"
-assert_contains "$lint_structural" 'file) continue' \
+assert_contains "$lint_from_memory" 'file) continue' \
   "lint skips when-editing placeholder ./file link"
-assert_contains "$lint_structural" "grep -q '<'" \
+assert_contains "$lint_from_memory" "grep -qF -- '<'" \
   "lint skips shape placeholders with angle brackets (learnings-<topic>.md)"
 assert_contains "$lint" 'evidence-stale-uncleared:' \
   "lint distinguishes uncleared evidence after fresh Checkpoint"
@@ -590,12 +675,18 @@ assert_contains "$lint" '**Typos.**' \
   "lint has a typo pass"
 assert_contains "$lint" '**Instruction contradictions.**' \
   "lint has an instruction-contradiction pass"
-assert_contains "$lint_structural" 'hook-incomplete:' \
+assert_contains "$lint_from_root" 'hook-incomplete:' \
   "lint structural emits hook-incomplete"
-assert_contains "$lint_structural" 'agent-memory-print-evidence.sh' \
+assert_contains "$lint_from_root" 'agent-memory-print-evidence.sh' \
   "lint structural expects print-evidence among shared scripts"
-assert_contains "$lint_structural" 'typo-token:' \
+assert_contains "$lint_from_memory" 'typo-token:' \
   "lint structural emits typo-token"
+assert_contains "$lint_structural" 'lint-structural-from-memory.sh' \
+  "lint-structural.md points at extracted memory script"
+assert_contains "$lint_structural" 'lint-structural-from-root.sh' \
+  "lint-structural.md points at extracted root script"
+assert_absent "$lint_structural" 'report_empty_optional' \
+  "lint-structural.md does not inline the emitter body"
 assert_contains "$instructions" 'Six passes:' \
   "lint boundaries name the six passes"
 
@@ -676,8 +767,40 @@ assert_contains "$consolidate" 'Never propose a Discard set that would leave `lo
   "consolidate never empties log.md"
 assert_contains "$consolidate" '**Trim**' \
   "consolidate can trim closed-session bullets"
-assert_contains "$consolidate" 'Progress follow-up' \
-  "consolidate Progress ask only after closed log removal"
+assert_contains "$consolidate" 'Progress / Validation follow-up' \
+  "consolidate Progress/Validation follow-up covers dup-progress-log and dup-validation"
+assert_contains "$consolidate" 'Second Pass A' \
+  "consolidate re-runs Pass A when decisions.md stays over budget"
+assert_contains "$consolidate" 'non-empty N (budget 200)' \
+  "consolidate Report counts non-empty decisions.md lines against budget 200"
+assert_contains "$consolidate" 'even when step 6 had no approved corpus diffs' \
+  "second Pass A counts even when earlier Pass A diffs were empty"
+assert_contains "$consolidate" 'Pass A slim even when no other finding ID fired' \
+  "over-budget decisions.md is a Pass A candidate without another finding ID"
+assert_contains "$consolidate" 'blank lines do not count' \
+  "consolidate second Pass A ignores blank lines like lint Soft budgets"
+assert_contains "$consolidate" 'N > 200 and any live heading still has Context' \
+  "over-budget live wiki remaining is failed consolidate"
+assert_contains "$consolidate" 'pointer-only' \
+  "second Pass A collapses leftover live wiki bodies not only ghosts"
+assert_contains "$consolidate" 'double-injection:' \
+  "consolidate Pass A deletes double-injection in the same run"
+assert_contains "$consolidate" 'do not offer a later pass' \
+  "consolidate does not defer slim or block delete to a later edit"
+assert_contains "$consolidate" 'Do not leave `Status: live` plus a missing `docs/` path' \
+  "consolidate Apply on live memory-ghost-docs missing docs path"
+assert_contains "$consolidate" 'Pass A defaults: Apply' \
+  "consolidate Pass A default is Apply not Defer"
+assert_contains "$consolidate" 'overbroad-hint:' \
+  "consolidate Pass A narrows overbroad-hint globs"
+assert_contains "$consolidate" 'still-useful older body is not a Defer reason' \
+  "consolidate does not defer live-dup because the older body looks useful"
+assert_contains "$consolidate" 'Prior-day' \
+  "consolidate Pass B defaults Trim on prior-day diary"
+assert_contains "$consolidate" 'closed-placeholder-resume:' \
+  "consolidate Pass B deletes closed-placeholder resume"
+assert_contains "$consolidate" 'decision-lesson-dup:' \
+  "consolidate Pass A collapses promoted decision bodies"
 assert_contains "$consolidate" 'retained: current-session founding log' \
   "consolidate Report names retained founding log"
 assert_contains "$consolidate" "Never prune the **current branch's** active-work file." \
@@ -716,6 +839,10 @@ assert_contains "$learn" 'sanitized' "learn sanitizes topic slug"
 assert_contains "$learn" 'do not guess' "learn does not guess ambiguous target"
 assert_contains "$learn" 'already listed **without** a `when editing:` hint' \
   "learn updates existing index line"
+assert_contains "$learn" 'do not widen to `src/pages/**`' \
+  "learn hints stay Evidence path literals"
+assert_contains "$learn" 'learnings.md` **non-empty** > 200' \
+  "learn topic-split trigger uses lint non-empty budget"
 assert_contains "$learn" '## [YYYY-MM-DD] [learning|pitfall] Short topic' \
   "learn uses canonical H2 entry"
 assert_contains "$learn" '- Relates: caused_by [target](path)' \
@@ -723,9 +850,29 @@ assert_contains "$learn" '- Relates: caused_by [target](path)' \
 assert_contains "$learn" 'Evidence is already a recall file' \
   "learn Relates is required when Evidence is recall"
 skill="$repo_root/skills/agent-memory/SKILL.md"
+assert_contains "$skill" 'a leading `--` is optional, not forbidden' \
+  "flag tokens keep -- forms valid"
+assert_contains "$skill" '`--fix` and `fix` are the same' \
+  "lint --fix and lint fix are aliases"
+assert_contains "$skill" '`--auto` and `auto` are the same' \
+  "sync --auto and sync auto are aliases"
+assert_contains "$skill" '`lint --fix` / `lint fix`' \
+  "help keeps both lint --fix and lint fix"
+assert_contains "$sync" '`--auto` and `auto` are the same' \
+  "sync Flags accept --auto and auto"
+assert_contains "$lint" '`--fix` and `fix` are the same' \
+  "lint Flags accept --fix and fix"
 assert_contains "$skill" '`learn`' "SKILL routes learn"
 assert_contains "$skill" 'references/learn.md' "SKILL points at learn reference"
 assert_contains "$skill" '| `/agent-memory learn`' "SKILL help lists learn"
+assert_absent "$skill" 'install-instructions.md' \
+  "SKILL does not route a separate install-instructions command"
+assert_absent "$skill" '| `/agent-memory install instructions`' \
+  "SKILL help does not list install instructions"
+assert_contains "$skill" 'init instructions' \
+  "SKILL help names init instructions"
+assert_contains "$skill" 'update instructions' \
+  "SKILL help names update instructions"
 assert_contains "$skill" '**Exception:** primary write in-turn' \
   "SKILL allows in-turn gated capture"
 assert_contains "$skill" 'Never edit `instructions.md` except' \
@@ -805,18 +952,24 @@ assert_contains "$agent_block" 'Never dual-write' "agent-block no dual-write"
 assert_contains "$agent_block" 'Status `load:`' \
   "agent-block defers hint follow to Status load"
 assert_contains "$agent_block" '_How to write_' "agent-block points at concise writing guidance"
-assert_contains "$agent_block" 'Memory: skip' \
-  "agent-block requires a last-line skip or file after repo-changing turns"
-assert_contains "$skill" 'Last assistant line: `Memory: skip`' \
-  "skill Report ends with Memory skip not a floor row"
-assert_contains "$instructions" 'Memory: skip' \
-  "stop names skip or winning file without a second write"
+assert_contains "$agent_block" 'Memory: <file>' \
+  "agent-block requires a last-line file after a memory write"
+assert_absent "$agent_block" 'Memory: skip' \
+  "agent-block must not print Memory skip"
+assert_absent "$skill" 'Memory: skip' \
+  "skill Report must not append a Memory skip line"
+assert_contains "$instructions" 'Memory: <file>' \
+  "stop names the winning file without a second write"
+assert_absent "$instructions" 'Memory: skip' \
+  "stop must not print Memory skip"
 assert_contains "$agent_block" '_Harness parity — memory contract_' \
   "agent-block links harness parity"
 assert_contains "$skill" 'agent-memory-consume-evidence.sh' \
   "skill allows consume-evidence helper"
 assert_contains "$skill" 'agent-memory-print-evidence.sh' \
   "skill allows print-evidence helper"
+assert_contains "$skill" 'lint-structural-from-memory.sh' \
+  "skill allows lint structural scripts"
 assert_contains "$session_sh" 'build_session_context_msg' \
   "session uses contextual status builder"
 consume_sh="$repo_root/hooks/agent-memory-hooks/agent-memory-consume-evidence.sh"

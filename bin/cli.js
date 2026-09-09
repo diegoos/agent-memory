@@ -18,13 +18,15 @@ var __toESM = (mod, isNodeMode, target) => {
       return cached;
   }
   target = mod != null ? __create(__getProtoOf(mod)) : {};
-  const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
-  for (let key of __getOwnPropNames(mod))
-    if (!__hasOwnProp.call(to, key))
-      __defProp(to, key, {
-        get: __accessProp.bind(mod, key),
-        enumerable: true
-      });
+  const to = isNodeMode || !mod || !mod.__esModule || !__hasOwnProp.call(mod, "default") ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
+  if (mod && typeof mod === "object" || typeof mod === "function") {
+    for (let key of __getOwnPropNames(mod))
+      if (!__hasOwnProp.call(to, key))
+        __defProp(to, key, {
+          get: __accessProp.bind(mod, key),
+          enumerable: true
+        });
+  }
   if (canCache)
     cache.set(mod, to);
   return to;
@@ -54,6 +56,13 @@ var HARNESS_HOOKS_DIR = {
   copilot: ".github/hooks",
   gemini: ".gemini/hooks"
 };
+var SHARED_HOOK_SCRIPTS = [
+  "agent-memory-common.sh",
+  "agent-memory-consume-evidence.sh",
+  "agent-memory-print-evidence.sh",
+  "agent-memory-session.sh",
+  "agent-memory-sync.sh"
+];
 var ENV_ALLOWLIST_EXACT = new Set([
   "PATH",
   "HOME",
@@ -166,9 +175,12 @@ var import_node_fs3 = __toESM(require("node:fs"));
 var import_node_path3 = __toESM(require("node:path"));
 function projectDir() {
   const fromEnv = process.env.AGENT_MEMORY_PROJECT_DIR;
-  if (fromEnv)
-    return fromEnv;
-  return process.cwd();
+  const raw = fromEnv && fromEnv.length > 0 ? fromEnv : process.cwd();
+  try {
+    return import_node_fs3.default.realpathSync(raw);
+  } catch {
+    return import_node_path3.default.resolve(raw);
+  }
 }
 function installedSkillDir() {
   return import_node_path3.default.join(projectDir(), ".agents", "skills", "agent-memory");
@@ -194,6 +206,22 @@ function readInstalledHooksVersion(harness) {
   const v = import_node_fs3.default.readFileSync(stamp, "utf8").trim();
   return v || null;
 }
+function hooksInstallComplete(harness) {
+  const root = projectDir();
+  const dir = import_node_path3.default.join(root, HARNESS_HOOKS_DIR[harness]);
+  for (const f of SHARED_HOOK_SCRIPTS) {
+    if (!import_node_fs3.default.existsSync(import_node_path3.default.join(dir, f)))
+      return false;
+  }
+  if (harness === "opencode") {
+    const plugins = import_node_path3.default.join(root, ".opencode", "plugins");
+    if (!import_node_fs3.default.existsSync(import_node_path3.default.join(plugins, "agent-memory.ts")))
+      return false;
+    if (!import_node_fs3.default.existsSync(import_node_path3.default.join(plugins, "safe-script.ts")))
+      return false;
+  }
+  return true;
+}
 function fileContains(filePath, needle) {
   try {
     return import_node_fs3.default.readFileSync(filePath, "utf8").includes(needle);
@@ -201,25 +229,28 @@ function fileContains(filePath, needle) {
     return false;
   }
 }
+function hookSyncPath(root, harness) {
+  return import_node_path3.default.join(root, HARNESS_HOOKS_DIR[harness], "agent-memory-sync.sh");
+}
 function detectInstalledHarnesses() {
   const root = projectDir();
   const found = [];
-  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".cursor", "hooks", "agent-memory-sync.sh")) || fileContains(import_node_path3.default.join(root, ".cursor", "hooks.json"), "agent-memory")) {
+  if (import_node_fs3.default.existsSync(hookSyncPath(root, "cursor")) || fileContains(import_node_path3.default.join(root, ".cursor", "hooks.json"), "agent-memory")) {
     found.push("cursor");
   }
-  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".claude", "hooks", "agent-memory-sync.sh"))) {
+  if (import_node_fs3.default.existsSync(hookSyncPath(root, "claude"))) {
     found.push("claude");
   }
-  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".codex", "hooks", "agent-memory-sync.sh"))) {
+  if (import_node_fs3.default.existsSync(hookSyncPath(root, "codex"))) {
     found.push("codex");
   }
-  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".opencode", "plugins", "agent-memory.ts")) || import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".opencode", "plugin", "agent-memory.ts")) || import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".opencode", "hooks", "agent-memory-sync.sh"))) {
+  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".opencode", "plugins", "agent-memory.ts")) || import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".opencode", "plugin", "agent-memory.ts")) || import_node_fs3.default.existsSync(hookSyncPath(root, "opencode"))) {
     found.push("opencode");
   }
-  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".github", "hooks", "agent-memory.json")) || import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".github", "hooks", "agent-memory-sync.sh"))) {
+  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".github", "hooks", "agent-memory.json")) || import_node_fs3.default.existsSync(hookSyncPath(root, "copilot"))) {
     found.push("copilot");
   }
-  if (import_node_fs3.default.existsSync(import_node_path3.default.join(root, ".gemini", "hooks", "agent-memory-sync.sh")) || fileContains(import_node_path3.default.join(root, ".gemini", "settings.json"), "agent-memory")) {
+  if (import_node_fs3.default.existsSync(hookSyncPath(root, "gemini")) || fileContains(import_node_path3.default.join(root, ".gemini", "settings.json"), "agent-memory")) {
     found.push("gemini");
   }
   return found;
@@ -270,38 +301,17 @@ function installSkillAtomic(opts) {
       onError(`skill install failed: ${errorMessage(err)}`);
     }
   }
-  try {
-    import_node_fs4.default.renameSync(staging, dest);
-  } catch {
-    try {
-      import_node_fs4.default.cpSync(staging, dest, { recursive: true, force: true });
+  const promoted = promoteStaging(staging, dest);
+  if (!promoted.ok) {
+    if (movedAside) {
+      const ok = restoreBackup(backup, dest);
       import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
-    } catch (err) {
-      if (movedAside) {
-        const ok = restoreBackup(backup, dest);
-        import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
-        if (!ok) {
-          onError(`skill install failed and restore failed; previous skill left at ${backup}`);
-        }
-        onError(`skill install failed: ${errorMessage(err)}`);
+      if (!ok) {
+        onError(`skill install failed and restore failed; previous skill left at ${backup}`);
       }
-      if (!import_node_fs4.default.existsSync(dest) && import_node_fs4.default.existsSync(staging)) {
-        try {
-          import_node_fs4.default.renameSync(staging, dest);
-        } catch {
-          try {
-            import_node_fs4.default.cpSync(staging, dest, { recursive: true, force: true });
-            import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
-          } catch {
-            import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
-            onError(`skill install failed: ${errorMessage(err)}`);
-          }
-        }
-      } else {
-        import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
-        onError(`skill install failed: ${errorMessage(err)}`);
-      }
+      onError(`skill install failed: ${errorMessage(promoted.err)}`);
     }
+    recoverFirstInstall(staging, dest, onError, promoted.err);
   }
   if (movedAside && import_node_fs4.default.existsSync(backup)) {
     try {
@@ -313,6 +323,31 @@ function installSkillAtomic(opts) {
     files: countFiles(dest),
     existed
   };
+}
+function promoteStaging(staging, dest) {
+  try {
+    import_node_fs4.default.renameSync(staging, dest);
+    return { ok: true };
+  } catch {
+    try {
+      import_node_fs4.default.cpSync(staging, dest, { recursive: true, force: true });
+      import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, err };
+    }
+  }
+}
+function recoverFirstInstall(staging, dest, onError, err) {
+  if (!import_node_fs4.default.existsSync(dest) && import_node_fs4.default.existsSync(staging)) {
+    const again = promoteStaging(staging, dest);
+    if (again.ok)
+      return;
+    import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
+    onError(`skill install failed: ${errorMessage(err)}`);
+  }
+  import_node_fs4.default.rmSync(staging, { recursive: true, force: true });
+  onError(`skill install failed: ${errorMessage(err)}`);
 }
 function isSymlink(p) {
   try {
@@ -1012,11 +1047,11 @@ async function cmdInstall(rest) {
     if (rest.length > 2) {
       fatal(`unexpected argument: ${rest[2]}`);
     }
-    const harness2 = normalizeHarness(raw);
-    if (!harness2) {
+    const harness = normalizeHarness(raw);
+    if (!harness) {
       fatalUsage(`unknown harness: ${raw}`);
     }
-    applyInstall(`install · hooks · ${harness2}`, false, [harness2]);
+    applyInstall(`install · hooks · ${harness}`, false, [harness]);
     return;
   }
   const harness = normalizeHarness(rest[0]);
@@ -1087,9 +1122,9 @@ function comparePre(a, b) {
       return -1;
     if (i >= b.length)
       return 1;
-    const c2 = compareIdents(a[i], b[i]);
-    if (c2 !== 0)
-      return c2;
+    const c = compareIdents(a[i], b[i]);
+    if (c !== 0)
+      return c;
   }
   return 0;
 }
@@ -1122,7 +1157,11 @@ function planHooks(harnesses, pkg, refreshSame) {
   const plans = [];
   for (const h of harnesses) {
     const stamp = readInstalledHooksVersion(h);
-    if (!stamp || compareSemver(pkg, stamp) > 0) {
+    if (stamp && compareSemver(pkg, stamp) < 0) {
+      plans.push({ harness: h, kind: "downgrade", stamp });
+      continue;
+    }
+    if (!stamp || !hooksInstallComplete(h) || compareSemver(pkg, stamp) > 0) {
       plans.push({ harness: h, kind: "upgrade", stamp });
       continue;
     }
@@ -1167,6 +1206,10 @@ function printHookPlans(plans, noneInstalled) {
     return;
   }
   for (const p of plans) {
+    if (p.kind === "downgrade") {
+      console.log(`  ${c.yellow("!")} hooks ${p.harness} (${p.stamp}) is newer than package (${VERSION}); will not downgrade`);
+      continue;
+    }
     if (p.kind === "skip") {
       printStep(`hooks ${p.harness}: ${p.stamp} ${c.dim("(current)")}`);
       continue;
@@ -1260,10 +1303,11 @@ async function cmdUpdate(args) {
   const hooksToRefresh = [];
   const hooksSkipped = [];
   for (const p of hookPlans) {
-    if (p.kind === "skip")
-      hooksSkipped.push(p.harness);
-    else
+    if (p.kind === "upgrade" || p.kind === "refresh") {
       hooksToRefresh.push(p.harness);
+    } else {
+      hooksSkipped.push(p.harness);
+    }
   }
   const needSkill = skillNeedsInstall(skillPlan);
   printUpdateVersions({

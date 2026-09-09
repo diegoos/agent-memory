@@ -80,12 +80,27 @@ _amc_flat_json_body() {
   printf '%s' "$1" | sed -n 's/^[^{]*{\([^{}]*\).*/\1/p' | head -1
 }
 
-# Extract a quoted string value for a top-level JSON field (sed fallback path).
+# Extract a quoted string value for a top-level JSON field (jq-less fallback).
 json_string_field() {
   local body
   body=$(_amc_flat_json_body "$1")
   [ -n "$body" ] || return 0
-  printf '%s' "$body" | sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
+  # First `"key":"..."` wins (leading `.*` would take the last substring).
+  printf '%s' "$body" | awk -v key="$2" '
+    BEGIN { needle = "\"" key "\"" }
+    {
+      s = $0
+      while ((p = index(s, needle)) > 0) {
+        rest = substr(s, p + length(needle))
+        if (match(rest, /^[ \t]*:[ \t]*"/)) {
+          rest = substr(rest, RLENGTH + 1)
+          q = index(rest, "\"")
+          if (q > 0) { print substr(rest, 1, q - 1); exit }
+        }
+        s = substr(s, p + 1)
+      }
+    }
+  '
 }
 
 _parse_hook_stdin_sed() {
@@ -233,15 +248,17 @@ agent_memory_init_context() {
   state_file="$memory/.hook-sync-state"
 }
 
-# When hooks live under <project>/.cursor/hooks (etc.), return <project>.
+# When hooks live under <project>/.cursor/hooks (etc.) or the vendor
+# <package>/hooks/agent-memory-hooks, return that project/package root.
 # Relies on script_dir set by the caller before sourcing this file.
 derive_install_project_dir() {
   local hooks="${script_dir:-}"
   [ -n "$hooks" ] || return 1
   case "$hooks" in
     */.cursor/hooks | */.claude/hooks | */.codex/hooks | */.gemini/hooks | \
-      */.opencode/hooks | */.github/hooks | */.git/hooks)
-      # dirname twice: .../<harness>/hooks → project root
+      */.opencode/hooks | */.github/hooks | */.git/hooks | \
+      */hooks/agent-memory-hooks)
+      # dirname twice: .../<harness>/hooks or .../hooks/agent-memory-hooks → root
       local parent project
       parent=$(dirname -- "$hooks")
       project=$(dirname -- "$parent")
@@ -948,10 +965,11 @@ _write_state_unlocked() {
 agent_memory_include_commit_files="${agent_memory_include_commit_files:-0}"
 
 list_worktree_changes() {
+  # Tracked dirty only — skip untracked walk (sessionStart parity; 15s stop budget).
+  # ceiling: pending omits untracked until git add; upgrade: pathspec or timeout.
   {
     git -C "$cwd" diff --name-only 2>/dev/null || true
     git -C "$cwd" diff --cached --name-only 2>/dev/null || true
-    git -C "$cwd" ls-files --others --exclude-standard 2>/dev/null || true
   } | sort -u | grep -vE '^\.agents/memory/|^$' || true
 }
 
@@ -1168,31 +1186,94 @@ resolve_hex_commit() {
 # Contextual sessionStart message: obligation + branch/checkpoint/path status.
 # Never writes Markdown. Safe when git or active-work is missing.
 
-# Reject untrusted when-editing globs before using them in case-glob match.
+# Normalize when-editing globs (lint.md Overbroad: strip ./ /, collapse // and **/**).
+amc_norm_hint_glob() {
+  local g=$1
+  g=$(printf '%s' "$g" | sed -E 's/^[[:space:]]+//;s/[[:space:]]+$//')
+  while [[ "$g" == ./* ]]; do g=${g#./}; done
+  while [[ "$g" == /* ]]; do g=${g#/}; done
+  while [[ "$g" == *//* ]]; do g=${g//\/\//\/}; done
+  while [[ "$g" == *'**/**'* ]]; do g=${g//\*\*\/\*\*/\*\*}; done
+  printf '%s' "$g"
+}
+
+# Reject untrusted / overbroad when-editing globs (lint.md denylist + metachar).
+# Compare denylist strings with = (do not use case glob — * in the entry would
+# match any hint, e.g. **/*.ts vs src/*.ts).
 amc_hint_glob_rejected() {
-  local g=$1 lit
+  local g lit prefix d
+  g=$(amc_norm_hint_glob "$1")
+  [[ "$g" == /* ]] && return 0
+  for d in \
+    '' '*' '**' '**/*' '**/**' '**/**/*' '*/**' '*/*' '?*/*' '*/*/*' '*/*/**' \
+    '**/*/**' '**/*/*' '*.*' '*.md' '**/*.md' '**/*.*' '*/*.*' \
+    '**/*.ts' '**/*.tsx' '**/*.js' '**/*.jsx' '**/*.py' '**/**/*.ts' '**/*/*.ts' '*/**/*.ts' \
+    'src/**' 'src/**/*' 'src/**/**' 'src/pages/**' 'pages/**' 'lib/**' 'app/**' \
+    'packages/**' 'hooks/**' 'tests/**' 'docs/**' '.agents/**'; do
+    [ "$g" = "$d" ] && return 0
+  done
   case "$g" in
-    ''|'!'*|'*'|'**'|'**/*'|'*/**'|'*/*'|'*.*'|'*.md'|'**/*.md'|'**/*.*') return 0 ;;
-  esac
-  case "$g" in
+    '!'*) return 0 ;;
     *[$'\n\r;`$()|&<>\\']*) return 0 ;;
   esac
+  if [ "${#g}" -ge 3 ] && [ "${g: -3}" = '/**' ]; then
+    prefix=${g:0:${#g}-3}
+    if [[ "$prefix" != */* ]] && [[ "$prefix" != *['*?']* ]]; then
+      return 0
+    fi
+  fi
+  # Covering ** trees: src/pages/**… and src/<one-seg>/** (route/module trees).
+  if [[ "$g" == *'**'* ]]; then
+    prefix=${g%%\*\*}
+    prefix=${prefix%/}
+    case "$prefix" in
+      src/pages|src/pages/*) return 0 ;;
+      src/*)
+        case "$prefix" in
+          src/*/*) ;;
+          *) return 0 ;;
+        esac
+        ;;
+    esac
+  fi
   lit=$(printf '%s' "$g" | tr -d '*?[]/')
   [ "${#lit}" -ge 2 ] || return 0
   return 1
 }
 
-# path vs gitignore-ish glob. Bash case: * matches slashes (slightly looser than gitignore).
+# path vs gitignore-ish glob: * does not cross /; ** does.
 amc_path_matches_hint_glob() {
-  local path=$1 glob=$2
+  local path=$1 glob=$2 re="" i=0 n c
   path=${path#./}
+  glob=$(amc_norm_hint_glob "$2")
   glob=${glob#./}
   amc_hint_glob_rejected "$glob" && return 1
   [ "$path" = "$glob" ] && return 0
-  case "$path" in
-    $glob) return 0 ;;
-  esac
-  return 1
+  n=${#glob}
+  while [ "$i" -lt "$n" ]; do
+    c=${glob:i:1}
+    if [ "$c" = '*' ]; then
+      if [ $((i + 1)) -lt "$n" ] && [ "${glob:i+1:1}" = '*' ]; then
+        re="${re}.*"
+        i=$((i + 2))
+        continue
+      fi
+      re="${re}[^/]*"
+      i=$((i + 1))
+      continue
+    fi
+    if [ "$c" = '?' ]; then
+      re="${re}[^/]"
+      i=$((i + 1))
+      continue
+    fi
+    case "$c" in
+      '.'|'['|']'|'^'|'$'|'+'|'('|')'|'{'|'}'|'|') re="${re}\\${c}" ;;
+      *) re="${re}${c}" ;;
+    esac
+    i=$((i + 1))
+  done
+  [[ "$path" =~ ^${re}$ ]]
 }
 
 amc_path_hint_ok() {
@@ -1445,7 +1526,7 @@ amc_maybe_stop_floor_reminder() {
   cat <<'EOF' >&2
 
 [agent-memory] Resume may be rotten (pending paths, Checkpoint behind HEAD, or dirty tree with no active-work).
-Walk the write floor this turn: one file or skip. Last line: Memory: skip | <file>.
+Walk the write floor this turn: one file or skip. If you wrote a file, last line: Memory: <file>.
 (This is a reminder, not a block. Hooks did not write Markdown.)
 
 EOF

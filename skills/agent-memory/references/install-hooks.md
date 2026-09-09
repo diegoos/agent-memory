@@ -2,7 +2,7 @@
 
 Print how to install or refresh lifecycle hooks for one harness. **This skill does not copy scripts, merge configs, or run installers** — the user must run the shell script or `npx` CLI themselves (trust boundary for security audits).
 
-Does **not** create `.agents/memory/`, touch project memory content, or wire agent instruction files — use `init` for that.
+Does **not** create `.agents/memory/`, touch project memory content, or wire agent instruction files — use `init` (new memory) or `update instructions` / `init instructions` (block missing on `AGENTS.md`).
 
 Also used by `init` (step 7) and `update` (refresh already-installed harnesses) to print the same instructions.
 
@@ -34,7 +34,7 @@ Canonical hook sources live under `hooks/` in the [agent-memory](https://github.
 
 3. **Prerequisite dir.** The user-run installer (`install-hooks.sh` / `npx`) **creates** the harness prerequisite directory if missing (e.g. `.cursor/`, `.opencode/`). The skill itself still must **not** create those dirs — only print the install commands.
 
-4. **Print install instructions (do not execute).** Read this skill's `metadata.version` (e.g. `0.2.0`). Tell the user to review and run **one** of the following from the **project root** (never embed `raw.githubusercontent.com` URLs):
+4. **Print install instructions (do not execute).** Read this skill's `metadata.version` (e.g. `0.3.0`). Tell the user to review and run **one** of the following from the **project root** (never embed `raw.githubusercontent.com` URLs):
 
    **Preferred — npx:**
 
@@ -45,12 +45,12 @@ Canonical hook sources live under `hooks/` in the [agent-memory](https://github.
    **Pinned tag (optional):**
 
    ```bash
-   npx --yes github:diegoos/agent-memory#0.2.0 -- install hooks <harness>
+   npx --yes github:diegoos/agent-memory#0.3.0 -- install hooks <harness>
    ```
 
-   (Replace `0.2.0` with this skill's `metadata.version` when it differs.)
+   (Replace `0.3.0` with this skill's `metadata.version` when it differs.)
 
-   **Alternative — shell script:** open the GitHub release page for the matching tag (Releases → `0.2.0`, or the tag tree on GitHub), review `hooks/install-hooks.sh`, then from a checkout of that tag:
+   **Alternative — shell script:** open the GitHub release page for the matching tag (Releases → `0.3.0`, or the tag tree on GitHub), review `hooks/install-hooks.sh`, then from a checkout of that tag:
 
    ```bash
    bash hooks/install-hooks.sh <harness>
@@ -81,8 +81,8 @@ Target = this skill's `metadata.version` (Read `SKILL.md` frontmatter). For each
 
 1. Read `$hooksDir/.version` (first line, trim). Stamp path is the installer dir: `.cursor/hooks/.version`, `.opencode/hooks/.version`, and so on.
 2. **Complete** when all five scripts exist in that dir (`agent-memory-common.sh`, `agent-memory-sync.sh`, `agent-memory-session.sh`, `agent-memory-consume-evidence.sh`, `agent-memory-print-evidence.sh`). OpenCode also needs `.opencode/plugins/agent-memory.ts` and `safe-script.ts`.
-3. **current:** stamp equals target **and** Complete. Report one line: `hooks <harness> current (<stamp>) — installer skip`. Do **not** print step 4 commands.
-4. **stale:** missing stamp, stamp ≠ target, or not Complete. Print step 4 commands for that harness (no agent copy/merge).
+3. **current:** Complete **and** stamp SemVer is equal to or later than this skill (do not print an installer that would downgrade). Report one line: `hooks <harness> current (<stamp>) — installer skip`. Do **not** print step 4 commands.
+4. **stale:** missing stamp, not Complete, or stamp is an older SemVer than this skill. Print step 4 commands for that harness (no agent copy/merge).
 5. No installed harness: report none found. Do **not** print step 4.
 
 `/agent-memory install hooks <harness>` and `init` step 7 always print step 4 (user asked to install). This stamp check is **`update` only**.

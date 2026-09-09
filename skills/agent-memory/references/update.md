@@ -2,6 +2,15 @@
 
 Migrate `.agents/memory/` from this skill's `vendor/`. Refresh the harness **block** only between `<!-- <agent-memory> -->` … `<!-- </agent-memory> -->` (migrate legacy plain tags to comments). Hook installer commands only when a harness stamp is **stale**. **Graph reshape** is [`references/update-graph.md`](./update-graph.md) — load it in step 4 even when `.version` already matches.
 
+```text
+/agent-memory update
+/agent-memory update instructions   # insert or refresh the block in AGENTS.md only
+/agent-memory update agents.md      # same
+/agent-memory update rules          # same
+```
+
+**`AGENTS.md` block tokens** (case-insensitive): `instructions`, `instruction`, `agents.md`, `rules`, `rule`. When present, follow `references/init.md` → **AGENTS.md block** and **stop** — no migrations, graph reshape, `.version` stamp, docs map, or hook print.
+
 ## Boundary (read before doing anything)
 
 - **Preserve unique recall:** keep decision bodies, log outcomes, learnings H2s, live Task/Next step, and Canonical sources that still pass the index rule — except the mechanical edits in `update-graph.md` (drop bullets `AGENTS.md` already covers or that point at missing docs trees).
@@ -17,12 +26,12 @@ The exact block `init` writes and `update` refreshes is defined in [`references/
 
 ## Steps
 
-1. **Guard.** If `.agents/memory/` does not exist, stop and suggest `/agent-memory init`.
-   **Done when:** memory exists, or init is the only output.
+1. **Guard.** If `.agents/memory/` does not exist, stop and suggest `/agent-memory init`. If an AGENTS.md block token is present and memory exists, follow `references/init.md` → **AGENTS.md block** and stop (this invocation is done).
+   **Done when:** memory exists (full update continues), the AGENTS.md block path finished, or init is the only output.
 
-2. **Read versions.** Installed = `.agents/memory/.version`. Latest = the newest version section in this skill's `vendor/UPDATE.md`. If equal, still run step 4 always-on items (gitignore, delete leftover `active-work/TEMPLATE.md`, **graph reshape**), and step 5 (refresh instruction blocks) before reporting "already up to date".
+2. **Read versions.** Installed = `.agents/memory/.version`. Latest = this skill's `SKILL.md` `metadata.version`. The last `## <version>` heading in `vendor/UPDATE.md` must equal Latest — if it does not, **stop** and tell the user (do not stamp `.version` from a drafted heading newer than metadata, e.g. `## 0.4.0` while this skill is `0.3.0`). If installed already equals Latest, still run step 4 always-on items (gitignore, delete leftover `active-work/TEMPLATE.md`, **graph reshape**), and step 5 (refresh instruction blocks) before reporting "already up to date". If installed is a **later** SemVer than Latest (consumer stamped a newer version than this skill), **do not stamp `.version` downward**; still run always-on step 4 / 5 and report the mismatch.
 
-3. **Select migrations.** Read this skill's `vendor/UPDATE.md` (see `SKILL.md` → Vendor source) and collect every entry with a version greater than the installed version, up to the latest. Each change is tagged `safe` or `sensitive`. **Skip** any item marked **superseded** (e.g. a later version says it supersedes an earlier sensitive step) — do not apply superseded migrations.
+3. **Select migrations.** Read this skill's `vendor/UPDATE.md` (see `SKILL.md` → Vendor source) and collect every `## <ver>` section with `<ver>` greater than installed and **less than or equal to** Latest (SemVer 2.0: a prerelease is less than the matching core — skip `## 0.4.0` when Latest is `0.3.0`). Each change is tagged `safe` or `sensitive`. **Skip** any item marked **superseded** (e.g. a later version says it supersedes an earlier sensitive step) — do not apply superseded migrations.
 
 4. **Apply, conservatively:**
    - **Automatic (no prompt):**
@@ -44,7 +53,7 @@ The exact block `init` writes and `update` refreshes is defined in [`references/
 5. **Refresh instruction blocks.** Read the canonical block from [`references/agent-block.md`](./agent-block.md). For **each wired target** that exists at the project root (table above), decide what changed:
    - **A delimited block exists** (`<!-- <agent-memory> -->` … `<!-- </agent-memory> -->`, or legacy plain `<agent-memory>` … `</agent-memory>`): compare its current text (between the delimiters, inclusive) against the canonical block, byte-for-byte. **Identical → skip (already current).** Different → replace block content with the canonical block (comment delimiters). For `.mdc`, replace only the delimited body; preserve existing frontmatter (or apply the canonical frontmatter from `agent-block.md` — `alwaysApply: true` for Cursor, `applyTo: "**"` for Copilot — if missing). **Sensitive** — show the unified diff, confirm first. Do not edit outside the delimiters **in this step**.
    - **No block yet, but a legacy `## Agent Memory` section exists** (installed by an older `init` without delimiters): replace that section with the canonical block (delimiters and content). **Sensitive** — show the diff, confirm first.
-   - **No block and no legacy section:** skip (the file was never wired by `init`). Do not create a block here — that is `init`'s job. Mention it in the report so the user can run `init` if they want the file wired.
+   - **No block and no legacy section:** skip in this step. Mention it in the report and suggest `/agent-memory update instructions` (or `init instructions`) to insert the block into `AGENTS.md`.
 
    **Migration — cursor/copilot from `AGENTS.md` only** (sensitive, with diff): if `.cursor/rules/agent-memory.mdc` or `.github/instructions/agent-memory.instructions.md` is missing but the block lives in `AGENTS.md`, and no codex/opencode/claude-via-delegation needs that carrier, offer to **move** the block from `AGENTS.md` to the harness native file (create native if needed). Keep any `## Docs` / Quick Reference map in `AGENTS.md`.
 
@@ -57,14 +66,14 @@ The exact block `init` writes and `update` refreshes is defined in [`references/
 6. **Hook status.** Follow [`references/install-hooks.md`](./install-hooks.md) → **Detecting installed harnesses** and **Stamp vs skill**. Print step 4 installer commands only for **stale** harnesses. **current** harnesses: the one-line skip (CLI already refreshed scripts, or stamps already match). **Do not** copy scripts or merge configs.
    **Done when:** every installed harness is classified current or stale, and installer commands appear only for stale.
 
-7. **Finalize.** Update `.agents/memory/.version` to the latest. Append one `log.md` heading `## [YYYY-MM-DD] [chore] agent-memory update to <version>` (merge into today's existing `[chore]` heading when Graph reshape already coalesced same-day `[chore]`).
+7. **Finalize.** Update `.agents/memory/.version` to Latest **unless** installed is a later SemVer (then leave the stamp). Append one `log.md` heading `## [YYYY-MM-DD] [chore] agent-memory update to <version>` using Latest (merge into today's existing `[chore]` heading when Graph reshape already coalesced same-day `[chore]`).
 
-8. **Report.** Summarize what was applied automatically, what was confirmed, and what was skipped — including graph-reshape deletions and rewrites (`update-graph.md` Report), **docs-map** patches or skips, which instruction files had their block refreshed, which had a legacy section migrated, delegation-canary removals offered/applied, which files were left untouched, and hook status (current vs stale vs none found). List printed installer commands only under stale. End with: the user may run `/agent-memory lint` to check the memory after this update (optional; not a required next command). Do **not** say that `lint --fix` or `sync` will slim `decisions.md` or invent learnings — that is `/agent-memory consolidate` Pass A.
+8. **Report.** Summarize what was applied automatically, what was confirmed, and what was skipped — including graph-reshape deletions and rewrites (`update-graph.md` Report), **docs-map** patches or skips, which instruction files had their block refreshed, which had a legacy section migrated, delegation-canary removals offered/applied, which files were left untouched, and hook status (current vs stale vs none found). List printed installer commands only under stale. When installed is a **later** SemVer than Latest: say installed SemVer is ahead of the skill; `.version` was left unchanged; migrations of a newer UPDATE heading (e.g. `0.4.0` while the skill is `0.3.0`) will not run on this tree — always-on (gitignore, graph reshape, instruction blocks) still run. End with: the user may run `/agent-memory lint` to check the memory after this update (optional; not a required next command). Name that `live-dup-identity`, `decision-lesson-dup`, `overbroad-hint`, and `memory-ghost-docs` leave the corpus until `/agent-memory consolidate` Pass A (same-run slim when `decisions.md` **non-empty** > 200; Report `decisions.md non-empty N (budget 200)`). Do **not** say that `lint --fix` or `sync` will slim `decisions.md` or invent learnings — that is `/agent-memory consolidate` Pass A. `lint --fix` may refresh Checkpoint and trim Progress / Validation >5 only.
 
-   For Cursor, note that `.cursor/rules/agent-memory.mdc` is the **context layer** (always-on rules) and hooks are the **checkpoint layer** — both are recommended after `init cursor`. If `.cursor/hooks/agent-memory-sync.sh` exists but `.cursor/rules/agent-memory.mdc` is missing, suggest `/agent-memory init cursor` to add the context layer (likewise for Copilot: if `.github/hooks/` is wired but `.github/instructions/agent-memory.instructions.md` is missing).
+   For Cursor, note that `.cursor/rules/agent-memory.mdc` is the **context layer** (always-on rules) and hooks are the **checkpoint layer** — both are recommended after `init cursor`. If `.cursor/hooks/agent-memory-sync.sh` exists but `.cursor/rules/agent-memory.mdc` is missing, suggest `/agent-memory init cursor` when memory exists (or `init` when it does not). If `AGENTS.md` lost the delimited block, suggest `/agent-memory update instructions`.
 
 ## Gotchas
 
 - Treat an ambiguous edit as sensitive and confirm.
-- Block refresh: only the delimiters (comment form or legacy plain tags). Missing delimiters → legacy `## Agent Memory` case in step 5, or skip and report. Docs map (`references/docs-map.md`) is **outside** the block.
+- Block refresh: only the delimiters (comment form or legacy plain tags). Missing delimiters → legacy `## Agent Memory` case in step 5, or skip and report `update instructions` for `AGENTS.md`. Docs map (`references/docs-map.md`) is **outside** the block.
 - File contents: `vendor/memory/`. How to migrate: `vendor/UPDATE.md`. Leftover mirrors: `update-graph.md` (step 4, including when versions already match).

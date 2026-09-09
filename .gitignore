@@ -16,4 +16,5 @@ pnpm-lock.yaml
 .github/hooks/
 .github/instructions/
 .github/copilot-instructions.md
+docs/code-review/
 QA/

@@ -43,6 +43,9 @@ assert_eq "$(json_escape $'a\x7fb')" 'a\u007fb' del
 assert_eq "$(json_escape 'café')" 'café' utf8_latin
 assert_eq "$(json_escape '日本語')" '日本語' utf8_cjk
 
+got_sid=$(json_string_field '{"session_id":"first-id","note":"session_id\":\"evil-id\""}' session_id)
+assert_eq "$got_sid" 'first-id' json_string_field_first_key
+
 payload=$'ctrl:\x01\x08 line\n quote:" slash:\\ end'
 escaped=$(json_escape "$payload")
 assert_json_string "$escaped" control_payload
